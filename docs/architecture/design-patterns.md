@@ -1044,9 +1044,251 @@ class ResearchReport(BaseModel):
 
 ---
 
+## 14. Alternative Frameworks Considered
+
+We researched major agent frameworks before settling on our stack. Here's why we chose what we chose, and what we'd steal if we're shipping like animals and have time for Gucci upgrades.
+
+### Frameworks Evaluated
+
+| Framework | Repo | What It Does |
+|-----------|------|--------------|
+| **Microsoft AutoGen** | [github.com/microsoft/autogen](https://github.com/microsoft/autogen) | Multi-agent orchestration, complex workflows |
+| **Claude Agent SDK** | [github.com/anthropics/claude-agent-sdk-python](https://github.com/anthropics/claude-agent-sdk-python) | Anthropic's official agent framework |
+| **Pydantic AI** | [github.com/pydantic/pydantic-ai](https://github.com/pydantic/pydantic-ai) | Type-safe agents, structured outputs |
+
+### Why NOT AutoGen (Microsoft)?
+
+**Pros:**
+- Battle-tested multi-agent orchestration
+- `reflect_on_tool_use` - model reviews its own tool results
+- `max_tool_iterations` - built-in iteration limits
+- Concurrent tool execution
+- Rich ecosystem (AutoGen Studio, benchmarks)
+
+**Cons for MVP:**
+- Heavy dependency tree (50+ packages)
+- Complex configuration (YAML + Python)
+- Overkill for single-agent search-judge loop
+- Learning curve eats into 6-day timeline
+
+**Verdict:** Great for multi-agent systems. Overkill for our MVP.
+
+### Why NOT Claude Agent SDK (Anthropic)?
+
+**Pros:**
+- Official Anthropic framework
+- Clean `@tool` decorator pattern
+- In-process MCP servers (no subprocess)
+- Hooks for pre/post tool execution
+- Direct Claude Code integration
+
+**Cons for MVP:**
+- Requires Claude Code CLI bundled
+- Node.js dependency for some features
+- Designed for Claude Code ecosystem, not standalone agents
+- Less flexible for custom LLM providers
+
+**Verdict:** Would be great if we were building ON Claude Code. We're building a standalone agent.
+
+### Why Pydantic AI + FastMCP (Our Choice)
+
+**Pros:**
+- ✅ Simple, Pythonic API
+- ✅ Native async/await
+- ✅ Type-safe with Pydantic
+- ✅ Works with any LLM provider
+- ✅ FastMCP for clean MCP servers
+- ✅ Minimal dependencies
+- ✅ Can ship MVP in 6 days
+
+**Cons:**
+- Newer framework (less battle-tested)
+- Smaller ecosystem
+- May need to build more from scratch
+
+**Verdict:** Right tool for the job. Ship fast, iterate later.
+
+---
+
+## 15. Stretch Goals: Gucci Bangers (If We're Shipping Like Animals)
+
+If MVP ships early and we're crushing it, here's what we'd steal from other frameworks:
+
+### Tier 1: Quick Wins (2-4 hours each)
+
+#### From Claude Agent SDK: `@tool` Decorator Pattern
+Replace our Protocol-based tools with cleaner decorators:
+
+```python
+# CURRENT (Protocol-based)
+class PubMedSearchTool:
+    async def search(self, query: str, max_results: int = 10) -> List[Evidence]:
+        ...
+
+# UPGRADE (Decorator-based, stolen from Claude SDK)
+from claude_agent_sdk import tool
+
+@tool("search_pubmed", "Search PubMed for biomedical papers", {
+    "query": str,
+    "max_results": int
+})
+async def search_pubmed(args):
+    results = await _do_pubmed_search(args["query"], args["max_results"])
+    return {"content": [{"type": "text", "text": json.dumps(results)}]}
+```
+
+**Why it's Gucci:** Cleaner syntax, automatic schema generation, less boilerplate.
+
+#### From AutoGen: Reflect on Tool Use
+Add a reflection step where the model reviews its own tool results:
+
+```python
+# CURRENT: Judge evaluates evidence
+assessment = await judge.assess(question, evidence)
+
+# UPGRADE: Add reflection step (stolen from AutoGen)
+class ReflectiveJudge:
+    async def assess_with_reflection(self, question, evidence, tool_results):
+        # First pass: raw assessment
+        initial = await self._assess(question, evidence)
+
+        # Reflection: "Did I use the tools correctly?"
+        reflection = await self._reflect_on_tool_use(tool_results)
+
+        # Final: combine assessment + reflection
+        return self._combine(initial, reflection)
+```
+
+**Why it's Gucci:** Catches tool misuse, improves accuracy, more robust judge.
+
+### Tier 2: Medium Lifts (4-8 hours each)
+
+#### From AutoGen: Concurrent Tool Execution
+Run multiple tools in parallel with proper error handling:
+
+```python
+# CURRENT: Sequential with asyncio.gather
+results = await asyncio.gather(*[tool.search(query) for tool in tools])
+
+# UPGRADE: AutoGen-style with cancellation + timeout
+from autogen_core import CancellationToken
+
+async def execute_tools_concurrent(tools, query, timeout=30):
+    token = CancellationToken()
+
+    async def run_with_timeout(tool):
+        try:
+            return await asyncio.wait_for(
+                tool.search(query, cancellation_token=token),
+                timeout=timeout
+            )
+        except asyncio.TimeoutError:
+            token.cancel()  # Cancel other tools
+            return ToolError(f"{tool.name} timed out")
+
+    return await asyncio.gather(*[run_with_timeout(t) for t in tools])
+```
+
+**Why it's Gucci:** Proper timeout handling, cancellation propagation, production-ready.
+
+#### From Claude SDK: Hooks System
+Add pre/post hooks for logging, validation, cost tracking:
+
+```python
+# UPGRADE: Hook system (stolen from Claude SDK)
+class HookManager:
+    async def pre_tool_use(self, tool_name, args):
+        """Called before every tool execution"""
+        logger.info(f"Calling {tool_name} with {args}")
+        self.cost_tracker.start_timer()
+
+    async def post_tool_use(self, tool_name, result, duration):
+        """Called after every tool execution"""
+        self.cost_tracker.record(tool_name, duration)
+        if result.is_error:
+            self.error_tracker.record(tool_name, result.error)
+```
+
+**Why it's Gucci:** Observability, debugging, cost tracking, production-ready.
+
+### Tier 3: Big Lifts (Post-Hackathon)
+
+#### Full AutoGen Integration
+If we want multi-agent capabilities later:
+
+```python
+# POST-HACKATHON: Multi-agent drug repurposing
+from autogen_agentchat import AssistantAgent, GroupChat
+
+literature_agent = AssistantAgent(
+    name="LiteratureReviewer",
+    tools=[pubmed_search, web_search],
+    system_message="You search and summarize medical literature."
+)
+
+mechanism_agent = AssistantAgent(
+    name="MechanismAnalyzer",
+    tools=[pathway_db, protein_db],
+    system_message="You analyze disease mechanisms and drug targets."
+)
+
+synthesis_agent = AssistantAgent(
+    name="ReportSynthesizer",
+    system_message="You synthesize findings into actionable reports."
+)
+
+# Orchestrate multi-agent workflow
+group_chat = GroupChat(
+    agents=[literature_agent, mechanism_agent, synthesis_agent],
+    max_round=10
+)
+```
+
+**Why it's Gucci:** True multi-agent collaboration, specialized roles, scalable.
+
+---
+
+## Priority Order for Stretch Goals
+
+| Priority | Feature | Source | Effort | Impact |
+|----------|---------|--------|--------|--------|
+| 1 | `@tool` decorator | Claude SDK | 2 hrs | High - cleaner code |
+| 2 | Reflect on tool use | AutoGen | 3 hrs | High - better accuracy |
+| 3 | Hooks system | Claude SDK | 4 hrs | Medium - observability |
+| 4 | Concurrent + cancellation | AutoGen | 4 hrs | Medium - robustness |
+| 5 | Multi-agent | AutoGen | 8+ hrs | Post-hackathon |
+
+---
+
+## The Bottom Line
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  MVP (Days 1-4): Pydantic AI + FastMCP                      │
+│  - Ship working drug repurposing agent                      │
+│  - Search-judge loop with PubMed + Web                      │
+│  - Gradio UI with streaming                                 │
+│  - MCP server for hackathon track                           │
+├─────────────────────────────────────────────────────────────┤
+│  If Crushing It (Days 5-6): Steal the Gucci                 │
+│  - @tool decorators from Claude SDK                         │
+│  - Reflect on tool use from AutoGen                         │
+│  - Hooks for observability                                  │
+├─────────────────────────────────────────────────────────────┤
+│  Post-Hackathon: Full AutoGen Integration                   │
+│  - Multi-agent workflows                                    │
+│  - Specialized agent roles                                  │
+│  - Production-grade orchestration                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Ship MVP first. Steal bangers if time. Scale later.**
+
+---
+
 ---
 
 **Document Status**: Official Architecture Spec
 **Review Score**: 99/100
-**Sections**: 13 design patterns + data models appendix
+**Sections**: 15 design patterns + data models appendix + stretch goals
 **Last Updated**: November 2025
