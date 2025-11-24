@@ -22,25 +22,25 @@ This document explicitly answers all the "design pattern" questions raised in te
 │  ┌───────────────────────────────┐  │
 │  │  Search Strategy Planner      │  │
 │  └───────────────────────────────┘  │
-│              ↓                       │
+│              ↓                      │
 │  ┌───────────────────────────────┐  │
 │  │  Tool Coordinator             │  │
 │  │  - PubMed Search              │  │
 │  │  - Web Search                 │  │
 │  │  - Clinical Trials            │  │
 │  └───────────────────────────────┘  │
-│              ↓                       │
+│              ↓                      │
 │  ┌───────────────────────────────┐  │
 │  │  Evidence Aggregator          │  │
 │  └───────────────────────────────┘  │
-│              ↓                       │
+│              ↓                      │
 │  ┌───────────────────────────────┐  │
 │  │  Quality Judge                │  │
 │  │  (LLM-based assessment)       │  │
 │  └───────────────────────────────┘  │
-│              ↓                       │
-│       Loop or Synthesize?            │
-│              ↓                       │
+│              ↓                      │
+│       Loop or Synthesize?           │
+│              ↓                      │
 │  ┌───────────────────────────────┐  │
 │  │  Report Generator             │  │
 │  └───────────────────────────────┘  │
