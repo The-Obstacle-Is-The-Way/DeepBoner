@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+*.local
+
+# Claude
+.claude/
+
+# Burner docs (working drafts, not for commit)
+burner_docs/
+
+# Reference repos (clone locally, don't commit)
+reference_repos/autogen-microsoft/
+reference_repos/claude-agent-sdk/
+reference_repos/pydanticai-research-agent/
+reference_repos/pubmed-mcp-server/
+reference_repos/DeepCritical/
+
+# Keep the README in reference_repos
+!reference_repos/README.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/

@@ -10,7 +10,7 @@ AI-powered deep research system for accelerating drug repurposing discovery.
 
 ### Architecture
 - **[Overview](architecture/overview.md)** - Project overview, use case, architecture, timeline
-- **[Design Patterns](architecture/design-patterns.md)** - 13 technical patterns, judge prompts, data models
+- **[Design Patterns](architecture/design-patterns.md)** - 17 technical patterns, reference repos, judge prompts, data models
 
 ### Guides
 - [Setup Guide](guides/setup.md) (coming soon)
