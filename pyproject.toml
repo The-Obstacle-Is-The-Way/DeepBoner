@@ -10,6 +10,10 @@ dependencies = [
     "pydantic-settings>=2.2",      # For BaseSettings (config)
     "pydantic-ai>=0.0.16",          # Agent framework
 
+    # AI Providers
+    "openai>=1.0.0",
+    "anthropic>=0.18.0",
+
     # HTTP & Parsing
     "httpx>=0.27",                   # Async HTTP client
     "beautifulsoup4>=4.12",          # HTML parsing

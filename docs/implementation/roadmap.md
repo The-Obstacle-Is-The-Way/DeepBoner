@@ -115,11 +115,26 @@ tests/
 
 ---
 
+### **Phase 5: Magentic Integration (OPTIONAL - Post-MVP)**
+
+*Goal: Upgrade orchestrator to use Microsoft Agent Framework patterns.*
+
+- [ ] Wrap SearchHandler as `AgentProtocol` (SearchAgent)
+- [ ] Wrap JudgeHandler as `AgentProtocol` (JudgeAgent)
+- [ ] Implement `MagenticOrchestrator` using `MagenticBuilder`
+- [ ] Create factory pattern for switching implementations
+- **Deliverable**: Same API, better multi-agent orchestration engine.
+
+**NOTE**: Only implement Phase 5 if time permits after MVP is shipped.
+
+---
+
 ## Spec Documents
 
 1. **[Phase 1 Spec: Foundation](01_phase_foundation.md)**
 2. **[Phase 2 Spec: Search Slice](02_phase_search.md)**
 3. **[Phase 3 Spec: Judge Slice](03_phase_judge.md)**
 4. **[Phase 4 Spec: UI & Loop](04_phase_ui.md)**
+5. **[Phase 5 Spec: Magentic Integration](05_phase_magentic.md)** *(Optional)*
 
 *Start by reading Phase 1 Spec to initialize the repo.*

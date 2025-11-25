@@ -43,3 +43,50 @@ class SearchResult(BaseModel):
     sources_searched: list[Literal["pubmed", "web"]]
     total_found: int
     errors: list[str] = Field(default_factory=list)
+
+
+class AssessmentDetails(BaseModel):
+    """Detailed assessment of evidence quality."""
+
+    mechanism_score: int = Field(
+        ...,
+        ge=0,
+        le=10,
+        description="How well does the evidence explain the mechanism? 0-10",
+    )
+    mechanism_reasoning: str = Field(
+        ..., min_length=10, description="Explanation of mechanism score"
+    )
+    clinical_evidence_score: int = Field(
+        ...,
+        ge=0,
+        le=10,
+        description="Strength of clinical/preclinical evidence. 0-10",
+    )
+    clinical_reasoning: str = Field(
+        ..., min_length=10, description="Explanation of clinical evidence score"
+    )
+    drug_candidates: list[str] = Field(
+        default_factory=list, description="List of specific drug candidates mentioned"
+    )
+    key_findings: list[str] = Field(
+        default_factory=list, description="Key findings from the evidence"
+    )
+
+
+class JudgeAssessment(BaseModel):
+    """Complete assessment from the Judge."""
+
+    details: AssessmentDetails
+    sufficient: bool = Field(..., description="Is evidence sufficient to provide a recommendation?")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in the assessment (0-1)")
+    recommendation: Literal["continue", "synthesize"] = Field(
+        ...,
+        description="continue = need more evidence, synthesize = ready to answer",
+    )
+    next_search_queries: list[str] = Field(
+        default_factory=list, description="If continue, what queries to search next"
+    )
+    reasoning: str = Field(
+        ..., min_length=20, description="Overall reasoning for the recommendation"
+    )
