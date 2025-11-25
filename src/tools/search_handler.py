@@ -12,11 +12,6 @@ from src.utils.models import Evidence, SearchResult
 logger = structlog.get_logger()
 
 
-def flatten(nested: list[list[Evidence]]) -> list[Evidence]:
-    """Flatten a list of lists into a single list."""
-    return [item for sublist in nested for item in sublist]
-
-
 class SearchHandler:
     """Orchestrates parallel searches across multiple tools."""
 

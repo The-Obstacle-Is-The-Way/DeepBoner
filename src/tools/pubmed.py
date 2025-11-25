@@ -20,7 +20,7 @@ class PubMedTool:
     HTTP_TOO_MANY_REQUESTS = 429
 
     def __init__(self, api_key: str | None = None) -> None:
-        self.api_key = api_key or getattr(settings, "ncbi_api_key", None)
+        self.api_key = api_key or settings.ncbi_api_key
         self._last_request_time = 0.0
 
     @property
@@ -29,11 +29,12 @@ class PubMedTool:
 
     async def _rate_limit(self) -> None:
         """Enforce NCBI rate limiting."""
-        now = asyncio.get_event_loop().time()
+        loop = asyncio.get_running_loop()
+        now = loop.time()
         elapsed = now - self._last_request_time
         if elapsed < self.RATE_LIMIT_DELAY:
             await asyncio.sleep(self.RATE_LIMIT_DELAY - elapsed)
-        self._last_request_time = asyncio.get_event_loop().time()
+        self._last_request_time = loop.time()
 
     def _build_params(self, **kwargs: Any) -> dict[str, Any]:
         """Build request params with optional API key."""
@@ -174,8 +175,11 @@ class PubMedTool:
             if last:
                 authors.append(f"{last} {first}".strip())
 
+        # Truncation rationale: LLM context limits + cost optimization
+        # - Abstract: 2000 chars (~500 tokens) captures key findings
+        # - Title: 500 chars covers even verbose journal titles
         return Evidence(
-            content=abstract[:2000],  # Truncate long abstracts
+            content=abstract[:2000],
             citation=Citation(
                 source="pubmed",
                 title=title[:500],

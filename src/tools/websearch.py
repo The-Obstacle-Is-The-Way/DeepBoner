@@ -25,7 +25,7 @@ class WebTool:
 
         Note: duckduckgo-search is synchronous, so we run it in executor.
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         try:
             results = await loop.run_in_executor(
                 None,
@@ -42,6 +42,9 @@ class WebTool:
         with DDGS() as ddgs:
             results: list[dict[str, Any]] = list(ddgs.text(query, max_results=max_results))
 
+        # Truncation rationale: LLM context limits + cost optimization
+        # - Content: 1000 chars (~250 tokens) - web snippets are shorter than abstracts
+        # - Title: 500 chars covers most web page titles
         for result in results:
             evidence_list.append(
                 Evidence(
