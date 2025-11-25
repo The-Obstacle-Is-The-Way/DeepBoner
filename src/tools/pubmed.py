@@ -42,7 +42,7 @@ class PubMedTool:
             params["api_key"] = self.api_key
         return params
 
-    @retry(  # type: ignore[misc]
+    @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=10),
         reraise=True,
