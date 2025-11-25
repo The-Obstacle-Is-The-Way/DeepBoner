@@ -36,7 +36,11 @@ class TestJudgeHandler:
         mock_result = MagicMock()
         mock_result.data = mock_assessment
 
-        with patch("src.agent_factory.judges.Agent") as mock_agent_class:
+        with (
+            patch("src.agent_factory.judges.get_model") as mock_get_model,
+            patch("src.agent_factory.judges.Agent") as mock_agent_class,
+        ):
+            mock_get_model.return_value = MagicMock()
             mock_agent = AsyncMock()
             mock_agent.run = AsyncMock(return_value=mock_result)
             mock_agent_class.return_value = mock_agent
@@ -86,7 +90,11 @@ class TestJudgeHandler:
         mock_result = MagicMock()
         mock_result.data = mock_assessment
 
-        with patch("src.agent_factory.judges.Agent") as mock_agent_class:
+        with (
+            patch("src.agent_factory.judges.get_model") as mock_get_model,
+            patch("src.agent_factory.judges.Agent") as mock_agent_class,
+        ):
+            mock_get_model.return_value = MagicMock()
             mock_agent = AsyncMock()
             mock_agent.run = AsyncMock(return_value=mock_result)
             mock_agent_class.return_value = mock_agent
@@ -103,7 +111,11 @@ class TestJudgeHandler:
     @pytest.mark.asyncio
     async def test_assess_handles_llm_failure(self):
         """JudgeHandler should return fallback on LLM failure."""
-        with patch("src.agent_factory.judges.Agent") as mock_agent_class:
+        with (
+            patch("src.agent_factory.judges.get_model") as mock_get_model,
+            patch("src.agent_factory.judges.Agent") as mock_agent_class,
+        ):
+            mock_get_model.return_value = MagicMock()
             mock_agent = AsyncMock()
             mock_agent.run = AsyncMock(side_effect=Exception("API Error"))
             mock_agent_class.return_value = mock_agent

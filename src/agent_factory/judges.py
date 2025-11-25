@@ -42,7 +42,7 @@ class JudgeHandler:
             model: Optional PydanticAI model. If None, uses config default.
         """
         self.model = model or get_model()
-        self.agent = Agent(
+        self.agent = Agent(  # type: ignore[call-overload]
             model=self.model,
             result_type=JudgeAssessment,
             system_prompt=SYSTEM_PROMPT,
