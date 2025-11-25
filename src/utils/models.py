@@ -1,6 +1,6 @@
 """Data models for the Search feature."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, Field
@@ -109,7 +109,7 @@ class AgentEvent(BaseModel):
     ]
     message: str
     data: Any = None
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     iteration: int = 0
 
     def to_markdown(self) -> str:
