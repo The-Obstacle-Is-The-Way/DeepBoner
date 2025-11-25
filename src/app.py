@@ -24,10 +24,16 @@ def create_orchestrator(use_mock: bool = False) -> Orchestrator:
     Returns:
         Configured Orchestrator instance
     """
+    # Create orchestrator config
+    config = OrchestratorConfig(
+        max_iterations=5,
+        max_results_per_tool=10,
+    )
+
     # Create search tools
     search_handler = SearchHandler(
         tools=[PubMedTool(), WebTool()],
-        timeout=30.0,
+        timeout=config.search_timeout,
     )
 
     # Create judge (mock or real)
@@ -36,12 +42,6 @@ def create_orchestrator(use_mock: bool = False) -> Orchestrator:
         judge_handler = MockJudgeHandler()
     else:
         judge_handler = JudgeHandler()
-
-    # Create orchestrator
-    config = OrchestratorConfig(
-        max_iterations=5,
-        max_results_per_tool=10,
-    )
 
     return Orchestrator(
         search_handler=search_handler,
