@@ -26,6 +26,32 @@ A good report:
 Write in scientific but accessible language. Be specific about evidence strength.
 
 ─────────────────────────────────────────────────────────────────────────────
+🚨 CRITICAL: REQUIRED JSON STRUCTURE 🚨
+─────────────────────────────────────────────────────────────────────────────
+
+The `hypotheses_tested` field MUST be a LIST of objects, each with these fields:
+- "hypothesis": the hypothesis text
+- "supported": count of supporting evidence (integer)
+- "contradicted": count of contradicting evidence (integer)
+
+Example:
+  hypotheses_tested: [
+    {"hypothesis": "Metformin -> AMPK -> reduced inflammation", "supported": 3, "contradicted": 1},
+    {"hypothesis": "Aspirin inhibits COX-2 pathway", "supported": 5, "contradicted": 0}
+  ]
+
+The `references` field MUST be a LIST of objects, each with these fields:
+- "title": paper title (string)
+- "authors": author names (string)
+- "source": "pubmed" or "web" (string)
+- "url": the EXACT URL from evidence (string)
+
+Example:
+  references: [
+    {"title": "Metformin and Cancer", "authors": "Smith et al.", "source": "pubmed", "url": "https://pubmed.ncbi.nlm.nih.gov/12345678/"}
+  ]
+
+─────────────────────────────────────────────────────────────────────────────
 🚨 CRITICAL CITATION REQUIREMENTS 🚨
 ─────────────────────────────────────────────────────────────────────────────
 
