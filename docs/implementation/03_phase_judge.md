@@ -75,7 +75,7 @@ import structlog
 from pydantic_ai import Agent
 from tenacity import retry, stop_after_attempt
 
-from src.shared.config import settings
+from src.utils.config import settings
 from src.utils.exceptions import JudgeError
 from src.utils.models import JudgeAssessment, Evidence
 from src.prompts.judge import JUDGE_SYSTEM_PROMPT, build_judge_user_prompt
@@ -84,7 +84,7 @@ logger = structlog.get_logger()
 
 # Initialize Agent
 judge_agent = Agent(
-    model=settings.llm_model,  # e.g. 'openai:gpt-4o'
+    model=settings.llm_model,  # e.g. "openai:gpt-4o-mini" or "anthropic:claude-3-haiku"
     result_type=JudgeAssessment,
     system_prompt=JUDGE_SYSTEM_PROMPT,
 )
@@ -150,3 +150,43 @@ class TestJudgeHandler:
 - [ ] Implement `src/agent_factory/judges.py`
 - [ ] Write tests in `tests/unit/agent_factory/test_judges.py`
 - [ ] Run `uv run pytest tests/unit/agent_factory/`
+
+---
+
+## 7. Definition of Done
+
+Phase 3 is **COMPLETE** when:
+
+1. ✅ All unit tests in `tests/unit/agent_factory/` pass.
+2. ✅ `JudgeHandler` returns valid `JudgeAssessment` objects.
+3. ✅ Structured output is enforced (no raw JSON strings leaked).
+4. ✅ Retry/exception handling is covered by tests (mock failures).
+5. ✅ Manual REPL sanity check works:
+
+```python
+import asyncio
+from src.agent_factory.judges import JudgeHandler
+from src.utils.models import Evidence, Citation
+
+async def test():
+    handler = JudgeHandler()
+    evidence = [
+        Evidence(
+            content="Metformin shows neuroprotective properties...",
+            citation=Citation(
+                source="pubmed",
+                title="Metformin Review",
+                url="https://pubmed.ncbi.nlm.nih.gov/123/",
+                date="2024",
+            ),
+        )
+    ]
+    result = await handler.assess("Can metformin treat Alzheimer's?", evidence)
+    print(f"Sufficient: {result.sufficient}")
+    print(f"Recommendation: {result.recommendation}")
+    print(f"Reasoning: {result.reasoning}")
+
+asyncio.run(test())
+```
+
+**Proceed to Phase 4 ONLY after all checkboxes are complete.**

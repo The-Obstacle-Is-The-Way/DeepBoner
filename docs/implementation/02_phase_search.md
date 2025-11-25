@@ -231,3 +231,33 @@ class TestWebTool:
 - [ ] Implement `src/tools/search_handler.py`
 - [ ] Write tests in `tests/unit/tools/test_search.py`
 - [ ] Run `uv run pytest tests/unit/tools/`
+
+---
+
+## 7. Definition of Done
+
+Phase 2 is **COMPLETE** when:
+
+1. ✅ All unit tests in `tests/unit/tools/` pass.
+2. ✅ `SearchHandler` returns combined results when both tools succeed.
+3. ✅ If PubMed fails, WebTool results still return (graceful degradation).
+4. ✅ Rate limiting is enforced (no 429s in integration tests).
+5. ✅ Manual REPL sanity check works:
+
+```python
+import asyncio
+from src.tools.pubmed import PubMedTool
+from src.tools.websearch import WebTool
+from src.tools.search_handler import SearchHandler
+
+async def test():
+    handler = SearchHandler([PubMedTool(), WebTool()])
+    result = await handler.execute("metformin alzheimer")
+    print(f"Found {result.total_found} results")
+    for e in result.evidence[:3]:
+        print(f"- {e.citation.title}")
+
+asyncio.run(test())
+```
+
+**Proceed to Phase 3 ONLY after all checkboxes are complete.**

@@ -48,7 +48,7 @@ class AgentEvent(BaseModel):
 import structlog
 from typing import AsyncGenerator
 
-from src.shared.config import settings
+from src.utils.config import settings
 from src.tools.search_handler import SearchHandler
 from src.agent_factory.judges import JudgeHandler
 from src.utils.models import AgentEvent, AgentState
@@ -118,3 +118,23 @@ class TestOrchestrator:
 - [ ] Implement `src/app.py`
 - [ ] Write tests in `tests/unit/test_orchestrator.py`
 - [ ] Run `uv run python src/app.py`
+
+---
+
+## 7. Definition of Done
+
+Phase 4 is **COMPLETE** when:
+
+1. ✅ Unit test for orchestrator (`tests/unit/test_orchestrator.py`) passes.
+2. ✅ Orchestrator streams `AgentEvent` objects through the loop (search → judge → synthesize/stop).
+3. ✅ Gradio UI renders streaming updates locally (`uv run python src/app.py`).
+4. ✅ Manual smoke test returns a markdown report for a demo query (e.g., "long COVID fatigue").
+5. ✅ Deployment docs are ready (Space README/Dockerfile referenced).
+
+Manual smoke test:
+
+```bash
+uv run python src/app.py
+# open http://localhost:7860 and ask:
+# "What existing drugs might help treat long COVID fatigue?"
+```

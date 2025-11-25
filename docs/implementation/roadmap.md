@@ -104,7 +104,7 @@ deepcritical/
 | Set up directory structure | All `__init__.py` files created |
 | Configure ruff + mypy | Strict settings |
 | Create conftest.py | Shared pytest fixtures |
-| Implement shared/config.py | Settings via pydantic-settings |
+| Implement utils/config.py | Settings via pydantic-settings |
 | Write first test | `test_config.py` passes |
 
 **Deliverable**: `uv run pytest` passes with green output.
