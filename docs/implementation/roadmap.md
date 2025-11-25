@@ -38,9 +38,7 @@ Each slice implements a feature from **Entry Point (UI/API) → Logic → Data/E
 
 We use the **existing scaffolding** from the maintainer, filling in the empty files.
 
-> **Note**: The maintainer created some placeholder files (`agents.py`, `code_execution.py`,
-> `dataloaders.py`, `parsers.py`) that are currently empty. We leave these for future use
-> and focus on the files needed for the MVP.
+> **Note**: The maintainer created some placeholder files (`agents.py`, `code_execution.py`, `dataloaders.py`, `parsers.py`) that are currently empty. We leave these for future use and focus on the files needed for the MVP.
 
 ```
 deepcritical/

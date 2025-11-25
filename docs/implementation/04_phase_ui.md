@@ -10,34 +10,24 @@
 ## 1. The Slice Definition
 
 This slice connects:
-1. **Orchestrator**: The main loop calling `SearchHandler` → `JudgeHandler`.
-2. **Synthesis**: Generate a final markdown report.
-3. **UI**: Gradio streaming chat interface.
-4. **Deployment**: Dockerfile + HuggingFace Spaces config.
+1. **Orchestrator**: The loop calling `SearchHandler` → `JudgeHandler`.
+2. **UI**: Gradio app.
 
 **Files**:
-- `src/utils/models.py`: Add AgentState, AgentEvent
-- `src/orchestrator.py`: Main agent loop
-- `src/app.py`: Gradio UI
-- `Dockerfile`: Container build
-- `README.md`: HuggingFace Space config (at root)
+- `src/utils/models.py`: Add Orchestrator models
+- `src/orchestrator.py`: Main logic
+- `src/app.py`: UI
 
 ---
 
 ## 2. Models (`src/utils/models.py`)
 
-Add these to the existing models file (after JudgeAssessment):
+Add to models file:
 
 ```python
-# Add to src/utils/models.py (after JudgeAssessment class)
-
 from enum import Enum
-from typing import Any
-
 
 class AgentState(str, Enum):
-    """States of the agent during execution."""
-
     INITIALIZING = "initializing"
     SEARCHING = "searching"
     JUDGING = "judging"
@@ -45,92 +35,67 @@ class AgentState(str, Enum):
     COMPLETE = "complete"
     ERROR = "error"
 
-
 class AgentEvent(BaseModel):
-    """An event emitted during agent execution (for streaming UI)."""
-
-    state: AgentState = Field(description="Current agent state")
-    message: str = Field(description="Human-readable status message")
-    iteration: int = Field(default=0, ge=0, description="Current iteration number")
-    data: dict[str, Any] | None = Field(
-        default=None,
-        description="Optional payload (e.g., evidence count, assessment scores)"
-    )
-
+    state: AgentState
+    message: str
+    iteration: int = 0
+    data: dict[str, Any] | None = None
+    
     def to_display(self) -> str:
         """Format for UI display."""
-        icon = {
-            AgentState.INITIALIZING: "🔄",
+        emoji_map = {
+            AgentState.INITIALIZING: "⏳",
             AgentState.SEARCHING: "🔍",
-            AgentState.JUDGING: "⚖️",
+            AgentState.JUDGING: "🧠",
             AgentState.SYNTHESIZING: "📝",
             AgentState.COMPLETE: "✅",
             AgentState.ERROR: "❌",
-        }.get(self.state, "▶️")
-        return f"{icon} **[{self.state.value.upper()}]** {self.message}"
-
+        }
+        emoji = emoji_map.get(self.state, "")
+        return f"{emoji} **[{self.state.value.upper()}]** {self.message}"
 
 class AgentResult(BaseModel):
-    """Final result from the agent."""
-
-    question: str = Field(description="The original research question")
-    report: str = Field(description="The synthesized markdown report")
-    evidence_count: int = Field(description="Total evidence items collected")
-    iterations: int = Field(description="Number of search iterations")
-    candidates: list["DrugCandidate"] = Field(
-        default_factory=list,
-        description="Drug candidates identified"
-    )
-    quality_score: int = Field(default=0, description="Final quality score")
+    """Final result of the agent execution."""
+    question: str
+    report: str
+    evidence_count: int
+    iterations: int
+    candidates: list[Any] = Field(default_factory=list)
+    quality_score: int = 0
 ```
 
 ---
 
+
 ## 3. Orchestrator (`src/orchestrator.py`)
 
 ```python
-"""Main agent orchestrator - coordinates Search → Judge → Synthesize loop."""
+"""Main agent orchestrator."""
 import structlog
+import asyncio
 from typing import AsyncGenerator
-from pydantic_ai import Agent
 
 from src.utils.config import settings
 from src.utils.exceptions import DeepCriticalError
-from src.utils.models import (
-    AgentEvent,
-    AgentState,
-    AgentResult,
-    Evidence,
-    JudgeAssessment,
-)
+from src.tools.search_handler import SearchHandler
 from src.tools.pubmed import PubMedTool
 from src.tools.websearch import WebTool
-from src.tools.search_handler import SearchHandler
 from src.agent_factory.judges import JudgeHandler
-from src.prompts.judge import build_synthesis_prompt
+from src.utils.models import AgentEvent, AgentState, Evidence, JudgeAssessment, AgentResult
 
 logger = structlog.get_logger()
 
+# Placeholder for Synthesis Agent (Phase 5)
+class MockSynthesisAgent:
+    async def run(self, prompt):
+        class Result:
+            data = "Research Report (Synthesis not implemented yet)\n\n" + prompt[:500] + "..."
+        return Result()
 
-def _get_model_string() -> str:
-    """Get the PydanticAI model string from settings."""
-    provider = settings.llm_provider
-    model = settings.llm_model
-    if ":" in model:
-        return model
-    return f"{provider}:{model}"
+synthesis_agent = MockSynthesisAgent()
 
-
-# Synthesis agent for generating the final report
-synthesis_agent = Agent(
-    model=_get_model_string(),
-    result_type=str,
-    system_prompt="""You are a biomedical research report writer.
-Generate comprehensive, well-structured markdown reports on drug repurposing research.
-Include citations, mechanisms of action, and recommendations.
-Be objective and scientific.""",
-)
-
+def build_synthesis_prompt(question, assessment, evidence):
+    return f"Question: {question}\nAssessment: {assessment}\nEvidence: {len(evidence)} items"
 
 class Orchestrator:
     """Main orchestrator for the DeepCritical agent."""
@@ -317,16 +282,7 @@ class Orchestrator:
         evidence: list[Evidence],
         assessment: JudgeAssessment | None,
     ) -> str:
-        """Generate the final research report.
-
-        Args:
-            question: The research question.
-            evidence: All collected evidence.
-            assessment: The final judge assessment.
-
-        Returns:
-            Markdown formatted report.
-        """
+        """Generate the final research report."""
         if not assessment:
             # Fallback assessment
             assessment = JudgeAssessment(
@@ -346,14 +302,7 @@ class Orchestrator:
         return result.data
 
     async def run_to_completion(self, question: str) -> AgentResult:
-        """Run the agent and return final result (non-streaming).
-
-        Args:
-            question: The research question.
-
-        Returns:
-            AgentResult with report and metadata.
-        """
+        """Run the agent and return final result (non-streaming)."""
         report = ""
         evidence_count = 0
         iterations = 0
@@ -384,6 +333,7 @@ class Orchestrator:
 
 ---
 
+
 ## 4. UI (`src/app.py`)
 
 ```python
@@ -393,7 +343,6 @@ from typing import AsyncGenerator
 
 from src.orchestrator import Orchestrator
 from src.utils.models import AgentEvent, AgentState
-
 
 async def chat(
     message: str,
@@ -433,11 +382,7 @@ async def chat(
 
 
 def create_app() -> gr.Blocks:
-    """Create the Gradio application.
-
-    Returns:
-        Configured Gradio Blocks app.
-    """
+    """Create the Gradio application."""
     with gr.Blocks(
         title="DeepCritical - Drug Repurposing Research Agent",
         theme=gr.themes.Soft(),
@@ -537,6 +482,7 @@ if __name__ == "__main__":
 
 ---
 
+
 ## 5. Deployment Files
 
 ### `Dockerfile`
@@ -629,6 +575,7 @@ This tool is for research purposes only. Always consult healthcare professionals
 
 ---
 
+
 ## 6. TDD Workflow
 
 ### Test File: `tests/unit/test_orchestrator.py`
@@ -637,7 +584,6 @@ This tool is for research purposes only. Always consult healthcare professionals
 """Unit tests for Orchestrator."""
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-
 
 class TestOrchestrator:
     """Tests for Orchestrator."""
@@ -879,6 +825,7 @@ class TestAgentEvent:
 
 ---
 
+
 ## 7. Implementation Checklist
 
 - [ ] Add `AgentState`, `AgentEvent`, `AgentResult` models to `src/utils/models.py`
@@ -886,7 +833,6 @@ class TestAgentEvent:
 - [ ] Implement `src/app.py` (complete Gradio UI)
 - [ ] Create `Dockerfile`
 - [ ] Update root `README.md` for HuggingFace Spaces
-- [ ] Write tests in `tests/unit/test_orchestrator.py`
 - [ ] Run `uv run pytest tests/unit/test_orchestrator.py -v` — **ALL TESTS MUST PASS**
 - [ ] Run `uv run ruff check src` — **NO ERRORS**
 - [ ] Run `uv run mypy src` — **NO ERRORS**
@@ -896,6 +842,7 @@ class TestAgentEvent:
 - [ ] Commit: `git commit -m "feat: phase 4 orchestrator and UI complete"`
 
 ---
+
 
 ## 8. Definition of Done
 
@@ -923,54 +870,4 @@ uv run python src/app.py
 # - No errors in console
 ```
 
----
-
-## 9. Deployment to HuggingFace Spaces
-
-### Option A: Via GitHub (Recommended)
-
-1. Push your code to GitHub
-2. Create a new Space on HuggingFace (Gradio SDK)
-3. Connect your GitHub repo
-4. Add secrets in Space settings:
-   - `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY`)
-5. Deploy automatically on push
-
-### Option B: Manual Upload
-
-1. Create new Gradio Space on HuggingFace
-2. Upload all files:
-   - `src/` directory
-   - `pyproject.toml`
-   - `README.md`
-3. Add secrets in Space settings
-4. Wait for build
-
-### Verify Deployment
-
-1. Visit your Space URL
-2. Ask: "What drugs could treat long COVID?"
-3. Verify:
-   - Streaming events appear
-   - Final report is generated
-   - No timeout errors
-
----
-
-## 10. Post-MVP Enhancements (Optional)
-
-After completing the MVP, consider:
-
-1. **RAG Enhancement**: Add vector storage for evidence retrieval
-2. **Clinical Trials**: Integrate ClinicalTrials.gov API
-3. **Drug Database**: Add DrugBank or ChEMBL integration
-4. **Report Export**: Add PDF/DOCX export
-5. **History**: Save research sessions
-6. **Multi-turn**: Allow follow-up questions
-
----
-
-**🎉 Congratulations! Phase 4 is the MVP.**
-
-After completing Phase 4, you have a working drug repurposing research agent
-that can be demonstrated at the hackathon!
+```

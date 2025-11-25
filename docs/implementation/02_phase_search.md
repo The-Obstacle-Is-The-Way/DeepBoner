@@ -19,7 +19,6 @@ This slice covers:
 
 **Files**:
 - `src/utils/models.py`: Data models
-- `src/tools/__init__.py`: SearchTool Protocol
 - `src/tools/pubmed.py`: PubMed implementation
 - `src/tools/websearch.py`: DuckDuckGo implementation
 - `src/tools/search_handler.py`: Orchestration
@@ -32,8 +31,9 @@ This slice covers:
 
 ```python
 """Data models for DeepCritical."""
-from pydantic import BaseModel, Field
-from typing import Literal
+from pydantic import BaseModel, Field, HttpUrl
+from typing import Literal, List, Any
+from datetime import date
 
 
 class Citation(BaseModel):
@@ -102,25 +102,18 @@ class SearchTool(Protocol):
 
 ## 4. Implementations
 
-### 4.1 PubMed Tool (`src/tools/pubmed.py`)
-
-> **NCBI E-utilities API**: Free, no API key required for <3 req/sec.
-> - ESearch: Get PMIDs matching query
-> - EFetch: Get article details by PMID
+### PubMed Tool (`src/tools/pubmed.py`)
 
 ```python
 """PubMed search tool using NCBI E-utilities."""
 import asyncio
 import httpx
 import xmltodict
-from typing import List, Any
-import structlog
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from typing import List
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.utils.exceptions import SearchError, RateLimitError
 from src.utils.models import Evidence, Citation
-
-logger = structlog.get_logger()
 
 
 class PubMedTool:
@@ -130,11 +123,6 @@ class PubMedTool:
     RATE_LIMIT_DELAY = 0.34  # ~3 requests/sec without API key
 
     def __init__(self, api_key: str | None = None):
-        """Initialize PubMed tool.
-
-        Args:
-            api_key: Optional NCBI API key for higher rate limits (10 req/sec).
-        """
         self.api_key = api_key
         self._last_request_time = 0.0
 
@@ -150,393 +138,311 @@ class PubMedTool:
             await asyncio.sleep(self.RATE_LIMIT_DELAY - elapsed)
         self._last_request_time = asyncio.get_event_loop().time()
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type(httpx.HTTPStatusError),
-    )
-    async def _esearch(self, query: str, max_results: int) -> list[str]:
-        """Search PubMed and return PMIDs.
-
-        Args:
-            query: Search query string.
-            max_results: Maximum number of results.
-
-        Returns:
-            List of PMID strings.
-        """
-        await self._rate_limit()
-
-        params = {
-            "db": "pubmed",
-            "term": query,
-            "retmax": max_results,
-            "retmode": "json",
-            "sort": "relevance",
-        }
+    def _build_params(self, **kwargs) -> dict:
+        """Build request params with optional API key."""
+        params = {**kwargs, "retmode": "json"}
         if self.api_key:
             params["api_key"] = self.api_key
-
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(f"{self.BASE_URL}/esearch.fcgi", params=params)
-            response.raise_for_status()
-
-            data = response.json()
-            id_list = data.get("esearchresult", {}).get("idlist", [])
-
-            logger.info("pubmed_esearch_complete", query=query, count=len(id_list))
-            return id_list
+        return params
 
     @retry(
         stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type(httpx.HTTPStatusError),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        reraise=True,
     )
-    async def _efetch(self, pmids: list[str]) -> list[dict[str, Any]]:
-        """Fetch article details by PMIDs.
-
-        Args:
-            pmids: List of PubMed IDs.
-
-        Returns:
-            List of article dictionaries.
-        """
-        if not pmids:
-            return []
-
-        await self._rate_limit()
-
-        params = {
-            "db": "pubmed",
-            "id": ",".join(pmids),
-            "retmode": "xml",
-            "rettype": "abstract",
-        }
-        if self.api_key:
-            params["api_key"] = self.api_key
-
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(f"{self.BASE_URL}/efetch.fcgi", params=params)
-            response.raise_for_status()
-
-            # Parse XML response
-            data = xmltodict.parse(response.text)
-
-            # Handle single vs multiple articles
-            articles = data.get("PubmedArticleSet", {}).get("PubmedArticle", [])
-            if isinstance(articles, dict):
-                articles = [articles]
-
-            logger.info("pubmed_efetch_complete", count=len(articles))
-            return articles
-
-    def _parse_article(self, article: dict[str, Any]) -> Evidence | None:
-        """Parse a PubMed article into Evidence.
-
-        Args:
-            article: Raw article dictionary from XML.
-
-        Returns:
-            Evidence object or None if parsing fails.
-        """
-        try:
-            medline = article.get("MedlineCitation", {})
-            article_data = medline.get("Article", {})
-
-            # Extract PMID
-            pmid = medline.get("PMID", {})
-            if isinstance(pmid, dict):
-                pmid = pmid.get("#text", "")
-
-            # Extract title
-            title = article_data.get("ArticleTitle", "")
-            if isinstance(title, dict):
-                title = title.get("#text", str(title))
-
-            # Extract abstract
-            abstract_data = article_data.get("Abstract", {}).get("AbstractText", "")
-            if isinstance(abstract_data, list):
-                # Handle structured abstracts
-                abstract = " ".join(
-                    item.get("#text", str(item)) if isinstance(item, dict) else str(item)
-                    for item in abstract_data
-                )
-            elif isinstance(abstract_data, dict):
-                abstract = abstract_data.get("#text", str(abstract_data))
-            else:
-                abstract = str(abstract_data)
-
-            # Extract authors
-            author_list = article_data.get("AuthorList", {}).get("Author", [])
-            if isinstance(author_list, dict):
-                author_list = [author_list]
-            authors = []
-            for author in author_list[:5]:  # Limit to 5 authors
-                last = author.get("LastName", "")
-                first = author.get("ForeName", "")
-                if last:
-                    authors.append(f"{last} {first}".strip())
-
-            # Extract date
-            pub_date = article_data.get("Journal", {}).get("JournalIssue", {}).get("PubDate", {})
-            year = pub_date.get("Year", "Unknown")
-            month = pub_date.get("Month", "")
-            day = pub_date.get("Day", "")
-            date_str = f"{year}-{month}-{day}".rstrip("-") if month else year
-
-            # Build URL
-            url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
-
-            if not title or not abstract:
-                return None
-
-            return Evidence(
-                content=abstract[:2000],  # Truncate long abstracts
-                citation=Citation(
-                    source="pubmed",
-                    title=title[:500],
-                    url=url,
-                    date=date_str,
-                    authors=authors,
-                ),
-                relevance=0.8,  # Default high relevance for PubMed results
-            )
-        except Exception as e:
-            logger.warning("pubmed_parse_error", error=str(e))
-            return None
-
     async def search(self, query: str, max_results: int = 10) -> List[Evidence]:
-        """Execute a PubMed search and return evidence.
-
-        Args:
-            query: Search query string.
-            max_results: Maximum number of results (default 10).
-
-        Returns:
-            List of Evidence objects.
-
-        Raises:
-            SearchError: If the search fails after retries.
         """
-        try:
-            # Step 1: ESearch to get PMIDs
-            pmids = await self._esearch(query, max_results)
+        Search PubMed and return evidence.
+
+        1. ESearch: Get PMIDs matching query
+        2. EFetch: Get abstracts for those PMIDs
+        3. Parse and return Evidence objects
+        """
+        await self._rate_limit()
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Step 1: Search for PMIDs
+            search_params = self._build_params(
+                db="pubmed",
+                term=query,
+                retmax=max_results,
+                sort="relevance",
+            )
+
+            try:
+                search_resp = await client.get(
+                    f"{self.BASE_URL}/esearch.fcgi",
+                    params=search_params,
+                )
+                search_resp.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    raise RateLimitError("PubMed rate limit exceeded")
+                raise SearchError(f"PubMed search failed: {e}")
+
+            search_data = search_resp.json()
+            pmids = search_data.get("esearchresult", {}).get("idlist", [])
 
             if not pmids:
-                logger.info("pubmed_no_results", query=query)
                 return []
 
-            # Step 2: EFetch to get article details
-            articles = await self._efetch(pmids)
+            # Step 2: Fetch abstracts
+            await self._rate_limit()
+            fetch_params = self._build_params(
+                db="pubmed",
+                id=",".join(pmids),
+                rettype="abstract",
+            )
+            # Use XML for fetch (more reliable parsing)
+            fetch_params["retmode"] = "xml"
 
-            # Step 3: Parse articles into Evidence
-            evidence = []
-            for article in articles:
-                parsed = self._parse_article(article)
-                if parsed:
-                    evidence.append(parsed)
+            fetch_resp = await client.get(
+                f"{self.BASE_URL}/efetch.fcgi",
+                params=fetch_params,
+            )
+            fetch_resp.raise_for_status()
 
-            logger.info("pubmed_search_complete", query=query, results=len(evidence))
-            return evidence
+            # Step 3: Parse XML to Evidence
+            return self._parse_pubmed_xml(fetch_resp.text)
 
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429:
-                raise RateLimitError(f"PubMed rate limit exceeded: {e}")
-            raise SearchError(f"PubMed search failed: {e}")
+    def _parse_pubmed_xml(self, xml_text: str) -> List[Evidence]:
+        """Parse PubMed XML into Evidence objects."""
+        try:
+            data = xmltodict.parse(xml_text)
         except Exception as e:
-            raise SearchError(f"PubMed search error: {e}")
+            raise SearchError(f"Failed to parse PubMed XML: {e}")
+
+        articles = data.get("PubmedArticleSet", {}).get("PubmedArticle", [])
+
+        # Handle single article (xmltodict returns dict instead of list)
+        if isinstance(articles, dict):
+            articles = [articles]
+
+        evidence_list = []
+        for article in articles:
+            try:
+                evidence = self._article_to_evidence(article)
+                if evidence:
+                    evidence_list.append(evidence)
+            except Exception:
+                continue  # Skip malformed articles
+
+        return evidence_list
+
+    def _article_to_evidence(self, article: dict) -> Evidence | None:
+        """Convert a single PubMed article to Evidence."""
+        medline = article.get("MedlineCitation", {})
+        article_data = medline.get("Article", {})
+
+        # Extract PMID
+        pmid = medline.get("PMID", {})
+        if isinstance(pmid, dict):
+            pmid = pmid.get("#text", "")
+
+        # Extract title
+        title = article_data.get("ArticleTitle", "")
+        if isinstance(title, dict):
+            title = title.get("#text", str(title))
+
+        # Extract abstract
+        abstract_data = article_data.get("Abstract", {}).get("AbstractText", "")
+        if isinstance(abstract_data, list):
+            abstract = " ".join(
+                item.get("#text", str(item)) if isinstance(item, dict) else str(item)
+                for item in abstract_data
+            )
+        elif isinstance(abstract_data, dict):
+            abstract = abstract_data.get("#text", str(abstract_data))
+        else:
+            abstract = str(abstract_data)
+
+        if not abstract or not title:
+            return None
+
+        # Extract date
+        pub_date = article_data.get("Journal", {}).get("JournalIssue", {}).get("PubDate", {})
+        year = pub_date.get("Year", "Unknown")
+        month = pub_date.get("Month", "01")
+        day = pub_date.get("Day", "01")
+        date_str = f"{year}-{month}-{day}" if year != "Unknown" else "Unknown"
+
+        # Extract authors
+        author_list = article_data.get("AuthorList", {}).get("Author", [])
+        if isinstance(author_list, dict):
+            author_list = [author_list]
+        authors = []
+        for author in author_list[:5]:  # Limit to 5 authors
+            last = author.get("LastName", "")
+            first = author.get("ForeName", "")
+            if last:
+                authors.append(f"{last} {first}".strip())
+
+        return Evidence(
+            content=abstract[:2000],  # Truncate long abstracts
+            citation=Citation(
+                source="pubmed",
+                title=title[:500],
+                url=f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
+                date=date_str,
+                authors=authors,
+            ),
+        )
 ```
 
----
-
-### 4.2 DuckDuckGo Tool (`src/tools/websearch.py`)
-
-> **DuckDuckGo**: Free web search, no API key required.
+### DuckDuckGo Tool (`src/tools/websearch.py`)
 
 ```python
 """Web search tool using DuckDuckGo."""
 from typing import List
-import structlog
 from duckduckgo_search import DDGS
-from tenacity import retry, stop_after_attempt, wait_exponential
+import asyncio
 
 from src.utils.exceptions import SearchError
 from src.utils.models import Evidence, Citation
-
-logger = structlog.get_logger()
 
 
 class WebTool:
     """Search tool for general web search via DuckDuckGo."""
 
     def __init__(self):
-        """Initialize web search tool."""
         pass
 
     @property
     def name(self) -> str:
         return "web"
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=5),
-    )
-    def _search_sync(self, query: str, max_results: int) -> list[dict]:
-        """Synchronous search wrapper (DDG library is sync).
-
-        Args:
-            query: Search query.
-            max_results: Maximum results to return.
-
-        Returns:
-            List of result dictionaries.
-        """
-        with DDGS() as ddgs:
-            results = list(ddgs.text(
-                query,
-                max_results=max_results,
-                safesearch="moderate",
-            ))
-        return results
-
     async def search(self, query: str, max_results: int = 10) -> List[Evidence]:
-        """Execute a web search and return evidence.
-
-        Args:
-            query: Search query string.
-            max_results: Maximum number of results (default 10).
-
-        Returns:
-            List of Evidence objects.
-
-        Raises:
-            SearchError: If the search fails after retries.
         """
+        Search DuckDuckGo and return evidence.
+
+        Note: duckduckgo-search is synchronous, so we run it in executor.
+        """
+        loop = asyncio.get_event_loop()
         try:
-            # DuckDuckGo library is synchronous, but we wrap it
-            import asyncio
-            loop = asyncio.get_event_loop()
             results = await loop.run_in_executor(
                 None,
-                lambda: self._search_sync(query, max_results)
+                lambda: self._sync_search(query, max_results),
             )
+            return results
+        except Exception as e:
+            raise SearchError(f"Web search failed: {e}")
 
-            evidence = []
-            for i, result in enumerate(results):
-                title = result.get("title", "")
-                url = result.get("href", result.get("link", ""))
-                body = result.get("body", result.get("snippet", ""))
+    def _sync_search(self, query: str, max_results: int) -> List[Evidence]:
+        """Synchronous search implementation."""
+        evidence_list = []
 
-                if not title or not body:
-                    continue
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=max_results))
 
-                evidence.append(Evidence(
-                    content=body[:1000],
+        for result in results:
+            evidence_list.append(
+                Evidence(
+                    content=result.get("body", "")[:1000],
                     citation=Citation(
                         source="web",
-                        title=title[:500],
-                        url=url,
+                        title=result.get("title", "Unknown")[:500],
+                        url=result.get("href", ""),
                         date="Unknown",
                         authors=[],
                     ),
-                    relevance=max(0.5, 1.0 - (i * 0.05)),  # Decay by position
-                ))
+                )
+            )
 
-            logger.info("web_search_complete", query=query, results=len(evidence))
-            return evidence
-
-        except Exception as e:
-            raise SearchError(f"Web search failed: {e}")
+        return evidence_list
 ```
 
----
-
-### 4.3 Search Handler (`src/tools/search_handler.py`)
+### Search Handler (`src/tools/search_handler.py`)
 
 ```python
 """Search handler - orchestrates multiple search tools."""
 import asyncio
-from typing import List, Sequence
+from typing import List
 import structlog
 
+from src.utils.exceptions import SearchError
 from src.utils.models import Evidence, SearchResult
 from src.tools import SearchTool
 
 logger = structlog.get_logger()
 
 
+def flatten(nested: List[List[Evidence]]) -> List[Evidence]:
+    """Flatten a list of lists into a single list."""
+    return [item for sublist in nested for item in sublist]
+
+
 class SearchHandler:
     """Orchestrates parallel searches across multiple tools."""
 
-    def __init__(self, tools: Sequence[SearchTool]):
-        """Initialize with a list of search tools.
+    def __init__(self, tools: List[SearchTool], timeout: float = 30.0):
+        """
+        Initialize the search handler.
 
         Args:
-            tools: Sequence of SearchTool implementations.
+            tools: List of search tools to use
+            timeout: Timeout for each search in seconds
         """
-        self.tools = list(tools)
+        self.tools = tools
+        self.timeout = timeout
 
     async def execute(self, query: str, max_results_per_tool: int = 10) -> SearchResult:
-        """Execute search across all tools in parallel.
+        """
+        Execute search across all tools in parallel.
 
         Args:
-            query: Search query string.
-            max_results_per_tool: Max results per tool (default 10).
+            query: The search query
+            max_results_per_tool: Max results from each tool
 
         Returns:
-            SearchResult containing combined evidence from all tools.
+            SearchResult containing all evidence and metadata
         """
-        errors: list[str] = []
-        all_evidence: list[Evidence] = []
-        sources_searched: list[str] = []
+        logger.info("Starting search", query=query, tools=[t.name for t in self.tools])
 
-        # Run all searches in parallel
-        async def run_tool(tool: SearchTool) -> tuple[str, list[Evidence], str | None]:
-            """Run a single tool and capture result/error."""
-            try:
-                results = await tool.search(query, max_results_per_tool)
-                return (tool.name, results, None)
-            except Exception as e:
-                logger.warning("search_tool_failed", tool=tool.name, error=str(e))
-                return (tool.name, [], str(e))
+        # Create tasks for parallel execution
+        tasks = [
+            self._search_with_timeout(tool, query, max_results_per_tool)
+            for tool in self.tools
+        ]
 
-        # Execute all tools concurrently
-        tasks = [run_tool(tool) for tool in self.tools]
-        results = await asyncio.gather(*tasks)
+        # Gather results (don't fail if one tool fails)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # Aggregate results
-        for tool_name, evidence, error in results:
-            sources_searched.append(tool_name)
-            all_evidence.extend(evidence)
-            if error:
-                errors.append(f"{tool_name}: {error}")
+        # Process results
+        all_evidence: List[Evidence] = []
+        sources_searched: List[str] = []
+        errors: List[str] = []
 
-        # Sort by relevance (highest first)
-        all_evidence.sort(key=lambda e: e.relevance, reverse=True)
-
-        # Deduplicate by URL
-        seen_urls: set[str] = set()
-        unique_evidence: list[Evidence] = []
-        for e in all_evidence:
-            if e.citation.url not in seen_urls:
-                seen_urls.add(e.citation.url)
-                unique_evidence.append(e)
-
-        logger.info(
-            "search_complete",
-            query=query,
-            total_results=len(unique_evidence),
-            sources=sources_searched,
-            errors=len(errors),
-        )
+        for tool, result in zip(self.tools, results):
+            if isinstance(result, Exception):
+                errors.append(f"{tool.name}: {str(result)}")
+                logger.warning("Search tool failed", tool=tool.name, error=str(result))
+            else:
+                all_evidence.extend(result)
+                sources_searched.append(tool.name)
+                logger.info("Search tool succeeded", tool=tool.name, count=len(result))
 
         return SearchResult(
             query=query,
-            evidence=unique_evidence,
-            sources_searched=sources_searched,  # type: ignore
-            total_found=len(unique_evidence),
+            evidence=all_evidence,
+            sources_searched=sources_searched,
+            total_found=len(all_evidence),
             errors=errors,
         )
+
+    async def _search_with_timeout(
+        self,
+        tool: SearchTool,
+        query: str,
+        max_results: int,
+    ) -> List[Evidence]:
+        """Execute a single tool search with timeout."""
+        try:
+            return await asyncio.wait_for(
+                tool.search(query, max_results),
+                timeout=self.timeout,
+            )
+        except asyncio.TimeoutError:
+            raise SearchError(f"{tool.name} search timed out after {self.timeout}s")
 ```
 
 ---
@@ -548,91 +454,105 @@ class SearchHandler:
 ```python
 """Unit tests for search tools."""
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
+# Sample PubMed XML response for mocking
+SAMPLE_PUBMED_XML = """<?xml version="1.0" ?>
+<PubmedArticleSet>
+    <PubmedArticle>
+        <MedlineCitation>
+            <PMID>12345678</PMID>
+            <Article>
+                <ArticleTitle>Metformin in Alzheimer's Disease: A Systematic Review</ArticleTitle>
+                <Abstract>
+                    <AbstractText>Metformin shows neuroprotective properties...</AbstractText>
+                </Abstract>
+                <AuthorList>
+                    <Author>
+                        <LastName>Smith</LastName>
+                        <ForeName>John</ForeName>
+                    </Author>
+                </AuthorList>
+                <Journal>
+                    <JournalIssue>
+                        <PubDate>
+                            <Year>2024</Year>
+                            <Month>01</Month>
+                        </PubDate>
+                    </JournalIssue>
+                </Journal>
+            </Article>
+        </MedlineCitation>
+    </PubmedArticle>
+</PubmedArticleSet>
+"""
 
 class TestPubMedTool:
     """Tests for PubMedTool."""
 
     @pytest.mark.asyncio
     async def test_search_returns_evidence(self, mocker):
-        """PubMedTool.search should return Evidence objects."""
+        """PubMedTool should return Evidence objects from search."""
         from src.tools.pubmed import PubMedTool
-        from src.utils.models import Evidence
 
-        # Mock the internal methods
+        # Mock the HTTP responses
+        mock_search_response = MagicMock()
+        mock_search_response.json.return_value = {
+            "esearchresult": {"idlist": ["12345678"]}
+        }
+        mock_search_response.raise_for_status = MagicMock()
+
+        mock_fetch_response = MagicMock()
+        mock_fetch_response.text = SAMPLE_PUBMED_XML
+        mock_fetch_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(side_effect=[mock_search_response, mock_fetch_response])
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        mocker.patch("httpx.AsyncClient", return_value=mock_client)
+
+        # Act
         tool = PubMedTool()
+        results = await tool.search("metformin alzheimer")
 
-        mocker.patch.object(
-            tool, "_esearch",
-            new=AsyncMock(return_value=["12345678"])
-        )
-        mocker.patch.object(
-            tool, "_efetch",
-            new=AsyncMock(return_value=[{
-                "MedlineCitation": {
-                    "PMID": {"#text": "12345678"},
-                    "Article": {
-                        "ArticleTitle": "Test Article",
-                        "Abstract": {"AbstractText": "Test abstract content."},
-                        "AuthorList": {"Author": [{"LastName": "Smith", "ForeName": "John"}]},
-                        "Journal": {"JournalIssue": {"PubDate": {"Year": "2024"}}}
-                    }
-                }
-            }])
-        )
-
-        results = await tool.search("test query")
-
+        # Assert
         assert len(results) == 1
-        assert isinstance(results[0], Evidence)
         assert results[0].citation.source == "pubmed"
+        assert "Metformin" in results[0].citation.title
         assert "12345678" in results[0].citation.url
 
     @pytest.mark.asyncio
-    async def test_search_handles_empty_results(self, mocker):
-        """PubMedTool should handle empty results gracefully."""
+    async def test_search_empty_results(self, mocker):
+        """PubMedTool should return empty list when no results."""
         from src.tools.pubmed import PubMedTool
 
-        tool = PubMedTool()
-        mocker.patch.object(tool, "_esearch", new=AsyncMock(return_value=[]))
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"esearchresult": {"idlist": []}}
+        mock_response.raise_for_status = MagicMock()
 
-        results = await tool.search("nonexistent query xyz123")
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        mocker.patch("httpx.AsyncClient", return_value=mock_client)
+
+        tool = PubMedTool()
+        results = await tool.search("xyznonexistentquery123")
+
         assert results == []
-
-    @pytest.mark.asyncio
-    async def test_rate_limiting(self, mocker):
-        """PubMedTool should respect rate limits."""
-        from src.tools.pubmed import PubMedTool
-        import asyncio
-
-        tool = PubMedTool()
-        tool._last_request_time = asyncio.get_event_loop().time()
-
-        # Mock sleep to verify it's called
-        sleep_mock = mocker.patch("asyncio.sleep", new=AsyncMock())
-
-        await tool._rate_limit()
-
-        # Should have slept to respect rate limit
-        sleep_mock.assert_called()
-
 
 class TestWebTool:
     """Tests for WebTool."""
 
     @pytest.mark.asyncio
     async def test_search_returns_evidence(self, mocker):
-        """WebTool.search should return Evidence objects."""
         from src.tools.websearch import WebTool
-        from src.utils.models import Evidence
 
-        mock_results = [
-            {"title": "Test Result", "href": "https://example.com", "body": "Test content"},
-            {"title": "Another Result", "href": "https://example2.com", "body": "More content"},
-        ]
-
-        # Mock the DDGS context manager
+        mock_results = [{"title": "Test", "href": "url", "body": "content"}]
+        
         mock_ddgs = MagicMock()
         mock_ddgs.__enter__ = MagicMock(return_value=mock_ddgs)
         mock_ddgs.__exit__ = MagicMock(return_value=None)
@@ -641,179 +561,55 @@ class TestWebTool:
         mocker.patch("src.tools.websearch.DDGS", return_value=mock_ddgs)
 
         tool = WebTool()
-        results = await tool.search("test query")
-
-        assert len(results) == 2
-        assert all(isinstance(r, Evidence) for r in results)
+        results = await tool.search("query")
+        assert len(results) == 1
         assert results[0].citation.source == "web"
-
-    @pytest.mark.asyncio
-    async def test_search_handles_errors(self, mocker):
-        """WebTool should raise SearchError on failure."""
-        from src.tools.websearch import WebTool
-        from src.utils.exceptions import SearchError
-
-        mock_ddgs = MagicMock()
-        mock_ddgs.__enter__ = MagicMock(side_effect=Exception("API error"))
-        mocker.patch("src.tools.websearch.DDGS", return_value=mock_ddgs)
-
-        tool = WebTool()
-
-        with pytest.raises(SearchError):
-            await tool.search("test query")
-
 
 class TestSearchHandler:
     """Tests for SearchHandler."""
 
     @pytest.mark.asyncio
-    async def test_execute_combines_results(self, mocker):
-        """SearchHandler should combine results from all tools."""
+    async def test_execute_aggregates_results(self, mocker):
+        """SearchHandler should aggregate results from all tools."""
         from src.tools.search_handler import SearchHandler
-        from src.utils.models import Evidence, Citation, SearchResult
+        from src.utils.models import Evidence, Citation
 
         # Create mock tools
-        mock_pubmed = MagicMock()
-        mock_pubmed.name = "pubmed"
-        mock_pubmed.search = AsyncMock(return_value=[
+        mock_tool_1 = AsyncMock()
+        mock_tool_1.name = "mock1"
+        mock_tool_1.search = AsyncMock(return_value=[
             Evidence(
-                content="PubMed result",
-                citation=Citation(
-                    source="pubmed", title="PM Article",
-                    url="https://pubmed.ncbi.nlm.nih.gov/1/", date="2024"
-                ),
-                relevance=0.9
+                content="Result 1",
+                citation=Citation(source="pubmed", title="T1", url="u1", date="2024"),
             )
         ])
 
-        mock_web = MagicMock()
-        mock_web.name = "web"
-        mock_web.search = AsyncMock(return_value=[
+        mock_tool_2 = AsyncMock()
+        mock_tool_2.name = "mock2"
+        mock_tool_2.search = AsyncMock(return_value=[
             Evidence(
-                content="Web result",
-                citation=Citation(
-                    source="web", title="Web Article",
-                    url="https://example.com", date="Unknown"
-                ),
-                relevance=0.7
+                content="Result 2",
+                citation=Citation(source="web", title="T2", url="u2", date="2024"),
             )
         ])
 
-        handler = SearchHandler([mock_pubmed, mock_web])
+        handler = SearchHandler(tools=[mock_tool_1, mock_tool_2])
         result = await handler.execute("test query")
 
-        assert isinstance(result, SearchResult)
-        assert len(result.evidence) == 2
         assert result.total_found == 2
-        assert "pubmed" in result.sources_searched
-        assert "web" in result.sources_searched
-
-    @pytest.mark.asyncio
-    async def test_execute_handles_partial_failures(self, mocker):
-        """SearchHandler should continue if one tool fails."""
-        from src.tools.search_handler import SearchHandler
-        from src.utils.models import Evidence, Citation
-        from src.utils.exceptions import SearchError
-
-        # One tool succeeds, one fails
-        mock_pubmed = MagicMock()
-        mock_pubmed.name = "pubmed"
-        mock_pubmed.search = AsyncMock(side_effect=SearchError("PubMed down"))
-
-        mock_web = MagicMock()
-        mock_web.name = "web"
-        mock_web.search = AsyncMock(return_value=[
-            Evidence(
-                content="Web result",
-                citation=Citation(
-                    source="web", title="Web Article",
-                    url="https://example.com", date="Unknown"
-                ),
-                relevance=0.7
-            )
-        ])
-
-        handler = SearchHandler([mock_pubmed, mock_web])
-        result = await handler.execute("test query")
-
-        # Should still get web results
-        assert len(result.evidence) == 1
-        assert len(result.errors) == 1
-        assert "pubmed" in result.errors[0].lower()
-
-    @pytest.mark.asyncio
-    async def test_execute_deduplicates_by_url(self, mocker):
-        """SearchHandler should deduplicate results by URL."""
-        from src.tools.search_handler import SearchHandler
-        from src.utils.models import Evidence, Citation
-
-        # Both tools return same URL
-        evidence = Evidence(
-            content="Same content",
-            citation=Citation(
-                source="pubmed", title="Article",
-                url="https://example.com/same", date="2024"
-            ),
-            relevance=0.8
-        )
-
-        mock_tool1 = MagicMock()
-        mock_tool1.name = "tool1"
-        mock_tool1.search = AsyncMock(return_value=[evidence])
-
-        mock_tool2 = MagicMock()
-        mock_tool2.name = "tool2"
-        mock_tool2.search = AsyncMock(return_value=[evidence])
-
-        handler = SearchHandler([mock_tool1, mock_tool2])
-        result = await handler.execute("test query")
-
-        # Should deduplicate
-        assert len(result.evidence) == 1
+        assert "mock1" in result.sources_searched
+        assert "mock2" in result.sources_searched
+        assert len(result.errors) == 0
 ```
 
 ---
 
 ## 6. Implementation Checklist
 
-- [ ] Add models to `src/utils/models.py` (Citation, Evidence, SearchResult)
-- [ ] Create `src/tools/__init__.py` (SearchTool Protocol)
-- [ ] Implement `src/tools/pubmed.py` (complete PubMedTool class)
-- [ ] Implement `src/tools/websearch.py` (complete WebTool class)
-- [ ] Implement `src/tools/search_handler.py` (complete SearchHandler class)
+- [ ] Add models to `src/utils/models.py`
+- [ ] Create `src/tools/__init__.py` (Protocol)
+- [ ] Implement `src/tools/pubmed.py`
+- [ ] Implement `src/tools/websearch.py`
+- [ ] Implement `src/tools/search_handler.py`
 - [ ] Write tests in `tests/unit/tools/test_search.py`
-- [ ] Run `uv run pytest tests/unit/tools/ -v` — **ALL TESTS MUST PASS**
-- [ ] Run `uv run ruff check src/tools` — **NO ERRORS**
-- [ ] Run `uv run mypy src/tools` — **NO ERRORS**
-- [ ] Commit: `git commit -m "feat: phase 2 search slice complete"`
-
----
-
-## 7. Definition of Done
-
-Phase 2 is **COMPLETE** when:
-
-1. ✅ All unit tests in `tests/unit/tools/` pass
-2. ✅ `SearchHandler` returns combined results when both tools succeed
-3. ✅ Graceful degradation: if PubMed fails, WebTool results still return
-4. ✅ Rate limiting is enforced (no 429 errors in integration tests)
-5. ✅ Ruff and mypy pass with no errors
-6. ✅ Manual REPL sanity check works:
-
-```python
-import asyncio
-from src.tools.pubmed import PubMedTool
-from src.tools.websearch import WebTool
-from src.tools.search_handler import SearchHandler
-
-async def test():
-    handler = SearchHandler([PubMedTool(), WebTool()])
-    result = await handler.execute("metformin alzheimer")
-    print(f"Found {result.total_found} results")
-    for e in result.evidence[:3]:
-        print(f"- {e.citation.title}")
-
-asyncio.run(test())
-```
-
-**Proceed to Phase 3 ONLY after all checkboxes are complete.**
+- [ ] Run `uv run pytest tests/unit/tools/`
