@@ -21,16 +21,19 @@ COPY README.md .
 # Install dependencies
 RUN uv sync --frozen --no-dev --all-extras
 
-# Set cache directory for HuggingFace models
+# Create non-root user BEFORE downloading models
+RUN useradd --create-home --shell /bin/bash appuser
+
+# Set cache directory for HuggingFace models (must be writable by appuser)
 ENV HF_HOME=/app/.cache
 ENV TRANSFORMERS_CACHE=/app/.cache
 
-# Pre-download the embedding model during build to speed up cold starts
-RUN uv run python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+# Create cache dir with correct ownership
+RUN mkdir -p /app/.cache && chown -R appuser:appuser /app/.cache
 
-# Create non-root user
-RUN useradd --create-home --shell /bin/bash appuser
+# Pre-download the embedding model during build (as appuser to set correct ownership)
 USER appuser
+RUN uv run python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
 # Expose port
 EXPOSE 7860

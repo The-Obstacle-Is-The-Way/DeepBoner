@@ -33,11 +33,13 @@ class EmbeddingService:
 
     def _sync_embed(self, text: str) -> list[float]:
         """Synchronous embedding - DO NOT call directly from async code."""
-        return list(self._model.encode(text).tolist())
+        result: list[float] = self._model.encode(text).tolist()
+        return result
 
     def _sync_batch_embed(self, texts: list[str]) -> list[list[float]]:
         """Batch embedding for efficiency - DO NOT call directly from async code."""
-        return [list(e.tolist()) for e in self._model.encode(texts)]
+        embeddings = self._model.encode(texts)
+        return [e.tolist() for e in embeddings]
 
     # ─────────────────────────────────────────────────────────────────
     # Async public methods (safe for event loop)
@@ -107,17 +109,50 @@ class EmbeddingService:
     async def deduplicate(
         self, new_evidence: list[Evidence], threshold: float = 0.9
     ) -> list[Evidence]:
-        """Remove semantically duplicate evidence (async-safe)."""
+        """Remove semantically duplicate evidence (async-safe).
+
+        Args:
+            new_evidence: List of evidence items to deduplicate
+            threshold: Similarity threshold (0.9 = 90% similar is duplicate).
+                      ChromaDB cosine distance: 0=identical, 2=opposite.
+                      We consider duplicate if distance < (1 - threshold).
+
+        Returns:
+            List of unique evidence items (not already in vector store).
+        """
         unique = []
         for evidence in new_evidence:
-            similar = await self.search_similar(evidence.content, n_results=1)
-            if not similar or similar[0]["distance"] > (1 - threshold):
-                unique.append(evidence)
-                await self.add_evidence(
-                    evidence_id=evidence.citation.url,
-                    content=evidence.content,
-                    metadata={"source": evidence.citation.source},
+            try:
+                similar = await self.search_similar(evidence.content, n_results=1)
+                # ChromaDB cosine distance: 0 = identical, 2 = opposite
+                # threshold=0.9 means distance < 0.1 is considered duplicate
+                is_duplicate = similar and similar[0]["distance"] < (1 - threshold)
+
+                if not is_duplicate:
+                    unique.append(evidence)
+                    # Store FULL citation metadata for reconstruction later
+                    await self.add_evidence(
+                        evidence_id=evidence.citation.url,
+                        content=evidence.content,
+                        metadata={
+                            "source": evidence.citation.source,
+                            "title": evidence.citation.title,
+                            "date": evidence.citation.date,
+                            "authors": ",".join(evidence.citation.authors or []),
+                        },
+                    )
+            except Exception as e:
+                # Log but don't fail entire deduplication for one bad item
+                import structlog
+
+                structlog.get_logger().warning(
+                    "Failed to process evidence in deduplicate",
+                    url=evidence.citation.url,
+                    error=str(e),
                 )
+                # Still add to unique list - better to have duplicates than lose data
+                unique.append(evidence)
+
         return unique
 
 
