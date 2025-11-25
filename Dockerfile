@@ -4,9 +4,10 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (curl needed for HEALTHCHECK)
 RUN apt-get update && apt-get install -y \
     git \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
@@ -18,12 +19,22 @@ COPY uv.lock .
 COPY src/ src/
 COPY README.md .
 
-# Install dependencies
-RUN uv sync --frozen --no-dev
+# Install runtime dependencies only (no dev/test tools)
+RUN uv sync --frozen --no-dev --extra embeddings --extra magentic
 
-# Create non-root user
+# Create non-root user BEFORE downloading models
 RUN useradd --create-home --shell /bin/bash appuser
+
+# Set cache directory for HuggingFace models (must be writable by appuser)
+ENV HF_HOME=/app/.cache
+ENV TRANSFORMERS_CACHE=/app/.cache
+
+# Create cache dir with correct ownership
+RUN mkdir -p /app/.cache && chown -R appuser:appuser /app/.cache
+
+# Pre-download the embedding model during build (as appuser to set correct ownership)
 USER appuser
+RUN uv run python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
 # Expose port
 EXPOSE 7860

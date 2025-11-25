@@ -1,4 +1,9 @@
-"""Magentic-based orchestrator for DeepCritical."""
+"""Magentic-based orchestrator for DeepCritical.
+
+NOTE: Magentic mode currently requires OpenAI API keys. The MagenticBuilder's
+standard manager uses OpenAIChatClient. Anthropic support may be added when
+the agent_framework provides an AnthropicChatClient.
+"""
 
 from collections.abc import AsyncGenerator
 
@@ -17,6 +22,7 @@ from src.agents.judge_agent import JudgeAgent
 from src.agents.search_agent import SearchAgent
 from src.orchestrator import JudgeHandlerProtocol, SearchHandlerProtocol
 from src.utils.config import settings
+from src.utils.exceptions import ConfigurationError
 from src.utils.models import AgentEvent, Evidence
 
 logger = structlog.get_logger()
@@ -27,6 +33,11 @@ class MagenticOrchestrator:
     Magentic-based orchestrator - same API as Orchestrator.
 
     Uses Microsoft Agent Framework's MagenticBuilder for multi-agent coordination.
+
+    Note:
+        Magentic mode requires OPENAI_API_KEY. The MagenticBuilder's standard
+        manager currently only supports OpenAI. If you have only an Anthropic
+        key, use the "simple" orchestrator mode instead.
     """
 
     def __init__(
@@ -54,12 +65,32 @@ class MagenticOrchestrator:
             iteration=0,
         )
 
+        # Initialize embedding service (optional)
+        embedding_service = None
+        try:
+            from src.services.embeddings import get_embedding_service
+
+            embedding_service = get_embedding_service()
+            logger.info("Embedding service enabled")
+        except ImportError:
+            logger.info("Embedding service not available (dependencies missing)")
+        except Exception as e:
+            logger.warning("Failed to initialize embedding service", error=str(e))
+
         # Create agent wrappers
-        search_agent = SearchAgent(self._search_handler, self._evidence_store)
+        search_agent = SearchAgent(
+            self._search_handler, self._evidence_store, embedding_service=embedding_service
+        )
         judge_agent = JudgeAgent(self._judge_handler, self._evidence_store)
 
         # Build Magentic workflow
-        # Note: MagenticBuilder.participants takes named arguments for agent instances
+        # Note: MagenticBuilder requires OpenAI - validate key exists
+        if not settings.openai_api_key:
+            raise ConfigurationError(
+                "Magentic mode requires OPENAI_API_KEY. "
+                "Set the key or use mode='simple' with Anthropic."
+            )
+
         workflow = (
             MagenticBuilder()
             .participants(
@@ -78,8 +109,17 @@ class MagenticOrchestrator:
         )
 
         # Task instruction for the manager
-        task = f"""Research drug repurposing opportunities for: {query}
+        semantic_note = ""
+        if embedding_service:
+            semantic_note = """
+The system has semantic search enabled. When evidence is found:
+1. Related concepts will be automatically surfaced
+2. Duplicates are removed by meaning, not just URL
+3. Use the surfaced related concepts to refine searches
+"""
 
+        task = f"""Research drug repurposing opportunities for: {query}
+{semantic_note}
 Instructions:
 1. Use SearcherAgent to find evidence. SEND ONLY A SIMPLE KEYWORD QUERY (e.g. "metformin aging")
    as the instruction. Complex queries fail.
