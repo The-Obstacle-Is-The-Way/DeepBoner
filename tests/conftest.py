@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from src.utils.models import Citation, Evidence
+
 
 @pytest.fixture
 def mock_httpx_client(mocker):
@@ -24,9 +26,30 @@ def mock_llm_response():
     return _mock
 
 
-# NOTE: sample_evidence fixture will be added in Phase 2 when models.py exists
-# @pytest.fixture
-# def sample_evidence():
-#     """Sample Evidence objects for testing."""
-#     from src.utils.models import Citation, Evidence
-#     return [...]
+@pytest.fixture
+def sample_evidence():
+    """Sample Evidence objects for testing."""
+    return [
+        Evidence(
+            content="Metformin shows neuroprotective properties in Alzheimer's models...",
+            citation=Citation(
+                source="pubmed",
+                title="Metformin and Alzheimer's Disease: A Systematic Review",
+                url="https://pubmed.ncbi.nlm.nih.gov/12345678/",
+                date="2024-01-15",
+                authors=["Smith J", "Johnson M"],
+            ),
+            relevance=0.85,
+        ),
+        Evidence(
+            content="Drug repurposing offers faster path to treatment...",
+            citation=Citation(
+                source="web",
+                title="Drug Repurposing Strategies",
+                url="https://example.com/drug-repurposing",
+                date="Unknown",
+                authors=[],
+            ),
+            relevance=0.72,
+        ),
+    ]
