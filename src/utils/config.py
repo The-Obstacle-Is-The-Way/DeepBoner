@@ -56,6 +56,14 @@ class Settings(BaseSettings):
     modal_token_id: str | None = Field(default=None, description="Modal token ID")
     modal_token_secret: str | None = Field(default=None, description="Modal token secret")
     chroma_db_path: str = Field(default="./chroma_db", description="ChromaDB storage path")
+    enable_modal_analysis: bool = Field(
+        default=False, description="Enable Modal sandbox analysis (Opt-in)"
+    )
+
+    @property
+    def modal_available(self) -> bool:
+        """Check if Modal credentials are configured."""
+        return bool(self.modal_token_id and self.modal_token_secret)
 
     def get_api_key(self) -> str:
         """Get the API key for the configured provider."""
