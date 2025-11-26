@@ -25,21 +25,66 @@ Mario already implemented `src/tools/code_execution.py`:
 
 ### What's Missing
 
-```
+```text
 Current Flow:
   User Query → Orchestrator → Search → Judge → [Report] → Done
 
 With Modal:
-  User Query → Orchestrator → Search → Judge → [Hypothesis] → [Analysis*] → Report → Done
-                                                                    ↓
-                                                          Modal Sandbox Execution
+  User Query → Orchestrator → Search → Judge → [Analysis*] → Report → Done
+                                                    ↓
+                                          Modal Sandbox Execution
 ```
 
 *The AnalysisAgent exists but is NOT called by either orchestrator.
 
 ---
 
-## 2. Prize Opportunity
+## 2. Critical Dependency Analysis
+
+### The Problem (Senior Feedback)
+
+```python
+# src/agents/analysis_agent.py - Line 8
+from agent_framework import (
+    AgentRunResponse,
+    BaseAgent,
+    ...
+)
+```
+
+```toml
+# pyproject.toml - agent-framework is OPTIONAL
+[project.optional-dependencies]
+magentic = [
+    "agent-framework-core",
+]
+```
+
+**If we import `AnalysisAgent` in the simple orchestrator without the `magentic` extra installed, the app CRASHES on startup.**
+
+### The SOLID Solution
+
+**Single Responsibility Principle**: Decouple Modal execution logic from `agent_framework`.
+
+```text
+BEFORE (Coupled):
+  AnalysisAgent (requires agent_framework)
+       ↓
+  ModalCodeExecutor
+
+AFTER (Decoupled):
+  StatisticalAnalyzer (no agent_framework dependency)  ← Simple mode uses this
+       ↓
+  ModalCodeExecutor
+       ↑
+  AnalysisAgent (wraps StatisticalAnalyzer)  ← Magentic mode uses this
+```
+
+**Key insight**: Create `src/services/statistical_analyzer.py` with ZERO agent_framework imports.
+
+---
+
+## 3. Prize Opportunity
 
 ### Modal Innovation Award: $2,500
 
@@ -57,24 +102,19 @@ code = """
 import pandas as pd
 import scipy.stats as stats
 
-# Analyze extracted metrics from evidence
 data = pd.DataFrame({
     'study': ['Study1', 'Study2', 'Study3'],
     'effect_size': [0.45, 0.52, 0.38],
     'sample_size': [120, 85, 200]
 })
 
-# Meta-analysis statistics
 weighted_mean = (data['effect_size'] * data['sample_size']).sum() / data['sample_size'].sum()
 t_stat, p_value = stats.ttest_1samp(data['effect_size'], 0)
 
 print(f"Weighted Effect Size: {weighted_mean:.3f}")
 print(f"P-value: {p_value:.4f}")
 
-if p_value < 0.05:
-    result = "SUPPORTED"
-else:
-    result = "INCONCLUSIVE"
+result = "SUPPORTED" if p_value < 0.05 else "INCONCLUSIVE"
 """
 
 # Executed SAFELY in Modal sandbox
@@ -84,19 +124,19 @@ output = executor.execute(code)  # Runs in isolated container!
 
 ---
 
-## 3. Technical Specification
+## 4. Technical Specification
 
-### 3.1 Dependencies (Already Present)
+### 4.1 Dependencies
 
 ```toml
-# pyproject.toml - already has Modal
-dependencies = [
-    "modal>=0.63.0",
-    # ...
-]
+# pyproject.toml - NO CHANGES to dependencies
+# StatisticalAnalyzer uses only:
+#   - pydantic-ai (already in main deps)
+#   - modal (already in main deps)
+#   - src.tools.code_execution (no agent_framework)
 ```
 
-### 3.2 Environment Variables
+### 4.2 Environment Variables
 
 ```bash
 # .env
@@ -104,20 +144,21 @@ MODAL_TOKEN_ID=your-token-id
 MODAL_TOKEN_SECRET=your-token-secret
 ```
 
-### 3.3 Integration Points
+### 4.3 Integration Points
 
 | Integration Point | File | Change Required |
 |-------------------|------|-----------------|
-| Simple Orchestrator | `src/orchestrator.py` | Add `AnalysisAgent` call |
-| Magentic Orchestrator | `src/orchestrator_magentic.py` | Add `AnalysisAgent` participant |
-| Gradio UI | `src/app.py` | Add toggle for analysis mode |
+| New Service | `src/services/statistical_analyzer.py` | CREATE (no agent_framework) |
+| Simple Orchestrator | `src/orchestrator.py` | Use `StatisticalAnalyzer` |
 | Config | `src/utils/config.py` | Add `enable_modal_analysis` setting |
+| AnalysisAgent | `src/agents/analysis_agent.py` | Refactor to wrap `StatisticalAnalyzer` |
+| MCP Tool | `src/mcp_tools.py` | Add `analyze_hypothesis` tool |
 
 ---
 
-## 4. Implementation
+## 5. Implementation
 
-### 4.1 Configuration Update (`src/utils/config.py`)
+### 5.1 Configuration Update (`src/utils/config.py`)
 
 ```python
 class Settings(BaseSettings):
@@ -134,7 +175,267 @@ class Settings(BaseSettings):
         return bool(self.modal_token_id and self.modal_token_secret)
 ```
 
-### 4.2 Simple Orchestrator Update (`src/orchestrator.py`)
+### 5.2 StatisticalAnalyzer Service (`src/services/statistical_analyzer.py`)
+
+**This is the key fix - NO agent_framework imports.**
+
+```python
+"""Statistical analysis service using Modal code execution.
+
+This module provides Modal-based statistical analysis WITHOUT depending on
+agent_framework. This allows it to be used in the simple orchestrator mode
+without requiring the magentic optional dependency.
+
+The AnalysisAgent (in src/agents/) wraps this service for magentic mode.
+"""
+
+import asyncio
+import re
+from functools import partial
+from typing import Any
+
+from pydantic import BaseModel, Field
+from pydantic_ai import Agent
+
+from src.agent_factory.judges import get_model
+from src.tools.code_execution import (
+    CodeExecutionError,
+    get_code_executor,
+    get_sandbox_library_prompt,
+)
+from src.utils.models import Evidence
+
+
+class AnalysisResult(BaseModel):
+    """Result of statistical analysis."""
+
+    verdict: str = Field(
+        description="SUPPORTED, REFUTED, or INCONCLUSIVE",
+    )
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence in verdict (0-1)")
+    statistical_evidence: str = Field(
+        description="Summary of statistical findings from code execution"
+    )
+    code_generated: str = Field(description="Python code that was executed")
+    execution_output: str = Field(description="Output from code execution")
+    key_findings: list[str] = Field(default_factory=list, description="Key takeaways")
+    limitations: list[str] = Field(default_factory=list, description="Limitations")
+
+
+class StatisticalAnalyzer:
+    """Performs statistical analysis using Modal code execution.
+
+    This service:
+    1. Generates Python code for statistical analysis using LLM
+    2. Executes code in Modal sandbox
+    3. Interprets results
+    4. Returns verdict (SUPPORTED/REFUTED/INCONCLUSIVE)
+
+    Note: This class has NO agent_framework dependency, making it safe
+    to use in the simple orchestrator without the magentic extra.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the analyzer."""
+        self._code_executor: Any = None
+        self._agent: Agent[None, str] | None = None
+
+    def _get_code_executor(self) -> Any:
+        """Lazy initialization of code executor."""
+        if self._code_executor is None:
+            self._code_executor = get_code_executor()
+        return self._code_executor
+
+    def _get_agent(self) -> Agent[None, str]:
+        """Lazy initialization of LLM agent for code generation."""
+        if self._agent is None:
+            library_versions = get_sandbox_library_prompt()
+            self._agent = Agent(
+                model=get_model(),
+                output_type=str,
+                system_prompt=f"""You are a biomedical data scientist.
+
+Generate Python code to analyze research evidence and test hypotheses.
+
+Guidelines:
+1. Use pandas, numpy, scipy.stats for analysis
+2. Print clear, interpretable results
+3. Include statistical tests (t-tests, chi-square, etc.)
+4. Calculate effect sizes and confidence intervals
+5. Keep code concise (<50 lines)
+6. Set 'result' variable to SUPPORTED, REFUTED, or INCONCLUSIVE
+
+Available libraries:
+{library_versions}
+
+Output format: Return ONLY executable Python code, no explanations.""",
+            )
+        return self._agent
+
+    async def analyze(
+        self,
+        query: str,
+        evidence: list[Evidence],
+        hypothesis: dict[str, Any] | None = None,
+    ) -> AnalysisResult:
+        """Run statistical analysis on evidence.
+
+        Args:
+            query: The research question
+            evidence: List of Evidence objects to analyze
+            hypothesis: Optional hypothesis dict with drug, target, pathway, effect
+
+        Returns:
+            AnalysisResult with verdict and statistics
+        """
+        # Build analysis prompt
+        evidence_summary = self._summarize_evidence(evidence[:10])
+        hypothesis_text = ""
+        if hypothesis:
+            hypothesis_text = f"""
+Hypothesis: {hypothesis.get('drug', 'Unknown')} → {hypothesis.get('target', '?')} → {hypothesis.get('pathway', '?')} → {hypothesis.get('effect', '?')}
+Confidence: {hypothesis.get('confidence', 0.5):.0%}
+"""
+
+        prompt = f"""Generate Python code to statistically analyze:
+
+**Research Question**: {query}
+{hypothesis_text}
+
+**Evidence Summary**:
+{evidence_summary}
+
+Generate executable Python code to analyze this evidence."""
+
+        try:
+            # Generate code
+            agent = self._get_agent()
+            code_result = await agent.run(prompt)
+            generated_code = code_result.output
+
+            # Execute in Modal sandbox
+            loop = asyncio.get_running_loop()
+            executor = self._get_code_executor()
+            execution = await loop.run_in_executor(
+                None, partial(executor.execute, generated_code, timeout=120)
+            )
+
+            if not execution["success"]:
+                return AnalysisResult(
+                    verdict="INCONCLUSIVE",
+                    confidence=0.0,
+                    statistical_evidence=f"Execution failed: {execution['error']}",
+                    code_generated=generated_code,
+                    execution_output=execution.get("stderr", ""),
+                    key_findings=[],
+                    limitations=["Code execution failed"],
+                )
+
+            # Interpret results
+            return self._interpret_results(generated_code, execution)
+
+        except CodeExecutionError as e:
+            return AnalysisResult(
+                verdict="INCONCLUSIVE",
+                confidence=0.0,
+                statistical_evidence=str(e),
+                code_generated="",
+                execution_output="",
+                key_findings=[],
+                limitations=[f"Analysis error: {e}"],
+            )
+
+    def _summarize_evidence(self, evidence: list[Evidence]) -> str:
+        """Summarize evidence for code generation prompt."""
+        if not evidence:
+            return "No evidence available."
+
+        lines = []
+        for i, ev in enumerate(evidence[:5], 1):
+            lines.append(f"{i}. {ev.content[:200]}...")
+            lines.append(f"   Source: {ev.citation.title}")
+            lines.append(f"   Relevance: {ev.relevance:.0%}\n")
+
+        return "\n".join(lines)
+
+    def _interpret_results(
+        self,
+        code: str,
+        execution: dict[str, Any],
+    ) -> AnalysisResult:
+        """Interpret code execution results."""
+        stdout = execution["stdout"]
+        stdout_upper = stdout.upper()
+
+        # Extract verdict with robust word-boundary matching
+        verdict = "INCONCLUSIVE"
+        if re.search(r"\bSUPPORTED\b", stdout_upper) and not re.search(
+            r"\b(?:NOT|UN)SUPPORTED\b", stdout_upper
+        ):
+            verdict = "SUPPORTED"
+        elif re.search(r"\bREFUTED\b", stdout_upper):
+            verdict = "REFUTED"
+
+        # Extract key findings
+        key_findings = []
+        for line in stdout.split("\n"):
+            line_lower = line.lower()
+            if any(kw in line_lower for kw in ["p-value", "significant", "effect", "mean"]):
+                key_findings.append(line.strip())
+
+        # Calculate confidence from p-values
+        confidence = self._calculate_confidence(stdout)
+
+        return AnalysisResult(
+            verdict=verdict,
+            confidence=confidence,
+            statistical_evidence=stdout.strip(),
+            code_generated=code,
+            execution_output=stdout,
+            key_findings=key_findings[:5],
+            limitations=[
+                "Analysis based on summary data only",
+                "Limited to available evidence",
+                "Statistical tests assume data independence",
+            ],
+        )
+
+    def _calculate_confidence(self, output: str) -> float:
+        """Calculate confidence based on statistical results."""
+        p_values = re.findall(r"p[-\s]?value[:\s]+(\d+\.?\d*)", output.lower())
+
+        if p_values:
+            try:
+                min_p = min(float(p) for p in p_values)
+                if min_p < 0.001:
+                    return 0.95
+                elif min_p < 0.01:
+                    return 0.90
+                elif min_p < 0.05:
+                    return 0.80
+                else:
+                    return 0.60
+            except ValueError:
+                pass
+
+        return 0.70  # Default
+
+
+# Singleton for reuse
+_analyzer: StatisticalAnalyzer | None = None
+
+
+def get_statistical_analyzer() -> StatisticalAnalyzer:
+    """Get or create singleton StatisticalAnalyzer instance."""
+    global _analyzer
+    if _analyzer is None:
+        _analyzer = StatisticalAnalyzer()
+    return _analyzer
+```
+
+### 5.3 Simple Orchestrator Update (`src/orchestrator.py`)
+
+**Uses `StatisticalAnalyzer` directly - NO agent_framework import.**
 
 ```python
 """Main orchestrator with optional Modal analysis."""
@@ -160,29 +461,20 @@ class Orchestrator:
         self.history: list[dict[str, Any]] = []
         self._enable_analysis = enable_analysis and settings.modal_available
 
-        # Lazy-load analysis components
-        self._hypothesis_agent: Any = None
-        self._analysis_agent: Any = None
+        # Lazy-load analysis (NO agent_framework dependency!)
+        self._analyzer: Any = None
 
-    async def _get_hypothesis_agent(self) -> Any:
-        """Lazy initialization of HypothesisAgent."""
-        if self._hypothesis_agent is None:
-            from src.agents.hypothesis_agent import HypothesisAgent
+    def _get_analyzer(self) -> Any:
+        """Lazy initialization of StatisticalAnalyzer.
 
-            self._hypothesis_agent = HypothesisAgent(
-                evidence_store={"current": []},
-            )
-        return self._hypothesis_agent
+        Note: This imports from src.services, NOT src.agents,
+        so it works without the magentic optional dependency.
+        """
+        if self._analyzer is None:
+            from src.services.statistical_analyzer import get_statistical_analyzer
 
-    async def _get_analysis_agent(self) -> Any:
-        """Lazy initialization of AnalysisAgent."""
-        if self._analysis_agent is None:
-            from src.agents.analysis_agent import AnalysisAgent
-
-            self._analysis_agent = AnalysisAgent(
-                evidence_store={"current": [], "hypotheses": []},
-            )
-        return self._analysis_agent
+            self._analyzer = get_statistical_analyzer()
+        return self._analyzer
 
     async def run(self, query: str) -> AsyncGenerator[AgentEvent, None]:
         """Main orchestration loop with optional Modal analysis."""
@@ -198,24 +490,19 @@ class Orchestrator:
             )
 
             try:
-                # Generate hypotheses first
-                hypothesis_agent = await self._get_hypothesis_agent()
-                hypothesis_agent._evidence_store["current"] = all_evidence
+                analyzer = self._get_analyzer()
 
-                hypothesis_result = await hypothesis_agent.run(query)
-                hypotheses = hypothesis_agent._evidence_store.get("hypotheses", [])
-
-                # Run Modal analysis
-                analysis_agent = await self._get_analysis_agent()
-                analysis_agent._evidence_store["current"] = all_evidence
-                analysis_agent._evidence_store["hypotheses"] = hypotheses
-
-                analysis_result = await analysis_agent.run(query)
+                # Run Modal analysis (no agent_framework needed!)
+                analysis_result = await analyzer.analyze(
+                    query=query,
+                    evidence=all_evidence,
+                    hypothesis=None,  # Could add hypothesis generation later
+                )
 
                 yield AgentEvent(
                     type="analysis_complete",
-                    message="Modal analysis complete",
-                    data=analysis_agent._evidence_store.get("analysis", {}),
+                    message=f"Analysis verdict: {analysis_result.verdict}",
+                    data=analysis_result.model_dump(),
                     iteration=iteration,
                 )
 
@@ -230,9 +517,159 @@ class Orchestrator:
         # Continue to synthesis...
 ```
 
-### 4.3 MCP Tool for Modal Analysis (`src/mcp_tools.py`)
+### 5.4 Refactor AnalysisAgent (`src/agents/analysis_agent.py`)
 
-Add a new MCP tool for direct Modal analysis:
+**Wrap `StatisticalAnalyzer` for magentic mode.**
+
+```python
+"""Analysis agent for statistical analysis using Modal code execution.
+
+This agent wraps StatisticalAnalyzer for use in magentic multi-agent mode.
+The core logic is in src/services/statistical_analyzer.py to avoid
+coupling agent_framework to the simple orchestrator.
+"""
+
+from collections.abc import AsyncIterable
+from typing import TYPE_CHECKING, Any
+
+from agent_framework import (
+    AgentRunResponse,
+    AgentRunResponseUpdate,
+    AgentThread,
+    BaseAgent,
+    ChatMessage,
+    Role,
+)
+
+from src.services.statistical_analyzer import (
+    AnalysisResult,
+    get_statistical_analyzer,
+)
+from src.utils.models import Evidence
+
+if TYPE_CHECKING:
+    from src.services.embeddings import EmbeddingService
+
+
+class AnalysisAgent(BaseAgent):  # type: ignore[misc]
+    """Wraps StatisticalAnalyzer for magentic multi-agent mode."""
+
+    def __init__(
+        self,
+        evidence_store: dict[str, Any],
+        embedding_service: "EmbeddingService | None" = None,
+    ) -> None:
+        super().__init__(
+            name="AnalysisAgent",
+            description="Performs statistical analysis using Modal sandbox",
+        )
+        self._evidence_store = evidence_store
+        self._embeddings = embedding_service
+        self._analyzer = get_statistical_analyzer()
+
+    async def run(
+        self,
+        messages: str | ChatMessage | list[str] | list[ChatMessage] | None = None,
+        *,
+        thread: AgentThread | None = None,
+        **kwargs: Any,
+    ) -> AgentRunResponse:
+        """Analyze evidence and return verdict."""
+        query = self._extract_query(messages)
+        hypotheses = self._evidence_store.get("hypotheses", [])
+        evidence = self._evidence_store.get("current", [])
+
+        if not evidence:
+            return self._error_response("No evidence available.")
+
+        # Get primary hypothesis if available
+        hypothesis_dict = None
+        if hypotheses:
+            h = hypotheses[0]
+            hypothesis_dict = {
+                "drug": getattr(h, "drug", "Unknown"),
+                "target": getattr(h, "target", "?"),
+                "pathway": getattr(h, "pathway", "?"),
+                "effect": getattr(h, "effect", "?"),
+                "confidence": getattr(h, "confidence", 0.5),
+            }
+
+        # Delegate to StatisticalAnalyzer
+        result = await self._analyzer.analyze(
+            query=query,
+            evidence=evidence,
+            hypothesis=hypothesis_dict,
+        )
+
+        # Store in shared context
+        self._evidence_store["analysis"] = result.model_dump()
+
+        # Format response
+        response_text = self._format_response(result)
+
+        return AgentRunResponse(
+            messages=[ChatMessage(role=Role.ASSISTANT, text=response_text)],
+            response_id=f"analysis-{result.verdict.lower()}",
+            additional_properties={"analysis": result.model_dump()},
+        )
+
+    def _format_response(self, result: AnalysisResult) -> str:
+        """Format analysis result as markdown."""
+        lines = [
+            "## Statistical Analysis Complete\n",
+            f"### Verdict: **{result.verdict}**",
+            f"**Confidence**: {result.confidence:.0%}\n",
+            "### Key Findings",
+        ]
+        for finding in result.key_findings:
+            lines.append(f"- {finding}")
+
+        lines.extend([
+            "\n### Statistical Evidence",
+            "```",
+            result.statistical_evidence,
+            "```",
+        ])
+        return "\n".join(lines)
+
+    def _error_response(self, message: str) -> AgentRunResponse:
+        """Create error response."""
+        return AgentRunResponse(
+            messages=[ChatMessage(role=Role.ASSISTANT, text=f"**Error**: {message}")],
+            response_id="analysis-error",
+        )
+
+    def _extract_query(
+        self, messages: str | ChatMessage | list[str] | list[ChatMessage] | None
+    ) -> str:
+        """Extract query from messages."""
+        if isinstance(messages, str):
+            return messages
+        elif isinstance(messages, ChatMessage):
+            return messages.text or ""
+        elif isinstance(messages, list):
+            for msg in reversed(messages):
+                if isinstance(msg, ChatMessage) and msg.role == Role.USER:
+                    return msg.text or ""
+                elif isinstance(msg, str):
+                    return msg
+        return ""
+
+    async def run_stream(
+        self,
+        messages: str | ChatMessage | list[str] | list[ChatMessage] | None = None,
+        *,
+        thread: AgentThread | None = None,
+        **kwargs: Any,
+    ) -> AsyncIterable[AgentRunResponseUpdate]:
+        """Streaming wrapper."""
+        result = await self.run(messages, thread=thread, **kwargs)
+        yield AgentRunResponseUpdate(messages=result.messages, response_id=result.response_id)
+```
+
+### 5.5 MCP Tool for Modal Analysis (`src/mcp_tools.py`)
+
+Add to existing MCP tools:
 
 ```python
 async def analyze_hypothesis(
@@ -253,175 +690,67 @@ async def analyze_hypothesis(
     Returns:
         Analysis result with verdict (SUPPORTED/REFUTED/INCONCLUSIVE) and statistics
     """
-    from src.tools.code_execution import get_code_executor, CodeExecutionError
-    from src.agent_factory.judges import get_model
-    from pydantic_ai import Agent
-
-    # Check Modal availability
+    from src.services.statistical_analyzer import get_statistical_analyzer
     from src.utils.config import settings
+    from src.utils.models import Citation, Evidence
+
     if not settings.modal_available:
         return "Error: Modal credentials not configured. Set MODAL_TOKEN_ID and MODAL_TOKEN_SECRET."
 
-    # Generate analysis code using LLM
-    code_agent = Agent(
-        model=get_model(),
-        output_type=str,
-        system_prompt="""Generate Python code to analyze drug repurposing evidence.
-Use pandas, numpy, scipy.stats. Output executable code only.
-Set 'result' variable to SUPPORTED, REFUTED, or INCONCLUSIVE.
-Print key statistics and p-values.""",
+    # Create evidence from summary
+    evidence = [
+        Evidence(
+            content=evidence_summary,
+            citation=Citation(
+                source="pubmed",
+                title=f"Evidence for {drug} in {condition}",
+                url="https://example.com",
+                date="2024-01-01",
+                authors=["User Provided"],
+            ),
+            relevance=0.9,
+        )
+    ]
+
+    analyzer = get_statistical_analyzer()
+    result = await analyzer.analyze(
+        query=f"Can {drug} treat {condition}?",
+        evidence=evidence,
+        hypothesis={"drug": drug, "target": "unknown", "pathway": "unknown", "effect": condition},
     )
 
-    prompt = f"""Analyze this hypothesis:
-Drug: {drug}
-Condition: {condition}
+    return f"""## Statistical Analysis: {drug} for {condition}
 
-Evidence:
-{evidence_summary}
+### Verdict: **{result.verdict}**
+**Confidence**: {result.confidence:.0%}
 
-Generate statistical analysis code."""
-
-    try:
-        code_result = await code_agent.run(prompt)
-        generated_code = code_result.output
-
-        # Execute in Modal sandbox
-        executor = get_code_executor()
-        import asyncio
-        loop = asyncio.get_running_loop()
-        from functools import partial
-        execution = await loop.run_in_executor(
-            None, partial(executor.execute, generated_code, timeout=60)
-        )
-
-        if not execution["success"]:
-            return f"## Analysis Failed\n\nError: {execution['error']}"
-
-        # Format output
-        return f"""## Statistical Analysis: {drug} for {condition}
+### Key Findings
+{chr(10).join(f"- {f}" for f in result.key_findings) or "- No specific findings extracted"}
 
 ### Execution Output
 ```
-{execution['stdout']}
+{result.execution_output}
 ```
 
 ### Generated Code
 ```python
-{generated_code}
+{result.code_generated}
 ```
 
 **Executed in Modal Sandbox** - Isolated, secure, reproducible.
 """
-
-    except CodeExecutionError as e:
-        return f"## Analysis Error\n\n{e}"
-    except Exception as e:
-        return f"## Unexpected Error\n\n{e}"
 ```
 
-### 4.4 Demo Script (`examples/modal_demo/run_analysis.py`)
+### 5.6 Demo Scripts
 
-```python
-#!/usr/bin/env python3
-"""Demo: Modal-powered statistical analysis of drug repurposing evidence.
-
-This script demonstrates:
-1. Gathering evidence from PubMed
-2. Generating analysis code with LLM
-3. Executing in Modal sandbox
-4. Returning statistical insights
-
-Usage:
-    export OPENAI_API_KEY=...
-    export MODAL_TOKEN_ID=...
-    export MODAL_TOKEN_SECRET=...
-    uv run python examples/modal_demo/run_analysis.py "metformin alzheimer"
-"""
-
-import argparse
-import asyncio
-import os
-import sys
-
-from src.agents.analysis_agent import AnalysisAgent
-from src.agents.hypothesis_agent import HypothesisAgent
-from src.tools.pubmed import PubMedTool
-from src.utils.config import settings
-
-
-async def main() -> None:
-    """Run the Modal analysis demo."""
-    parser = argparse.ArgumentParser(description="Modal Analysis Demo")
-    parser.add_argument("query", help="Research query (e.g., 'metformin alzheimer')")
-    args = parser.parse_args()
-
-    # Check credentials
-    if not settings.modal_available:
-        print("Error: Modal credentials not configured.")
-        print("Set MODAL_TOKEN_ID and MODAL_TOKEN_SECRET in .env")
-        sys.exit(1)
-
-    if not (os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")):
-        print("Error: No LLM API key found.")
-        sys.exit(1)
-
-    print(f"\n{'='*60}")
-    print("DeepCritical Modal Analysis Demo")
-    print(f"Query: {args.query}")
-    print(f"{'='*60}\n")
-
-    # Step 1: Gather Evidence
-    print("Step 1: Gathering evidence from PubMed...")
-    pubmed = PubMedTool()
-    evidence = await pubmed.search(args.query, max_results=5)
-    print(f"  Found {len(evidence)} papers\n")
-
-    # Step 2: Generate Hypotheses
-    print("Step 2: Generating mechanistic hypotheses...")
-    evidence_store: dict = {"current": evidence, "hypotheses": []}
-    hypothesis_agent = HypothesisAgent(evidence_store=evidence_store)
-    await hypothesis_agent.run(args.query)
-    hypotheses = evidence_store.get("hypotheses", [])
-    print(f"  Generated {len(hypotheses)} hypotheses\n")
-
-    if hypotheses:
-        print(f"  Primary: {hypotheses[0].drug} → {hypotheses[0].target}")
-
-    # Step 3: Run Modal Analysis
-    print("\nStep 3: Running statistical analysis in Modal sandbox...")
-    print("  (This executes LLM-generated code in an isolated container)\n")
-
-    analysis_agent = AnalysisAgent(evidence_store=evidence_store)
-    result = await analysis_agent.run(args.query)
-
-    # Step 4: Display Results
-    print("\n" + "="*60)
-    print("ANALYSIS RESULTS")
-    print("="*60)
-
-    if result.messages:
-        print(result.messages[0].text)
-
-    analysis = evidence_store.get("analysis", {})
-    if analysis:
-        print(f"\nVerdict: {analysis.get('verdict', 'N/A')}")
-        print(f"Confidence: {analysis.get('confidence', 0):.0%}")
-
-    print("\n[Demo Complete - Code was executed in Modal, not locally]")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-### 4.5 Verification Script (`examples/modal_demo/verify_sandbox.py`)
+#### `examples/modal_demo/verify_sandbox.py`
 
 ```python
 #!/usr/bin/env python3
 """Verify that Modal sandbox is properly isolated.
 
 This script proves to judges that code runs in Modal, not locally.
-It attempts operations that would succeed locally but fail in sandbox.
+NO agent_framework dependency - uses only src.tools.code_execution.
 
 Usage:
     uv run python examples/modal_demo/verify_sandbox.py
@@ -438,26 +767,23 @@ async def main() -> None:
     """Verify Modal sandbox isolation."""
     if not settings.modal_available:
         print("Error: Modal credentials not configured.")
+        print("Set MODAL_TOKEN_ID and MODAL_TOKEN_SECRET in .env")
         return
 
     executor = get_code_executor()
     loop = asyncio.get_running_loop()
 
-    print("="*60)
+    print("=" * 60)
     print("Modal Sandbox Isolation Verification")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
-    # Test 1: Prove it's not running locally
+    # Test 1: Hostname
     print("Test 1: Check hostname (should NOT be your machine)")
-    code1 = """
-import socket
-print(f"Hostname: {socket.gethostname()}")
-"""
+    code1 = "import socket; print(f'Hostname: {socket.gethostname()}')"
     result1 = await loop.run_in_executor(None, partial(executor.execute, code1))
-    print(f"  Result: {result1['stdout'].strip()}")
-    print(f"  (Your local hostname would be different)\n")
+    print(f"  {result1['stdout'].strip()}\n")
 
-    # Test 2: Verify scientific libraries available
+    # Test 2: Scientific libraries
     print("Test 2: Verify scientific libraries")
     code2 = """
 import pandas as pd
@@ -470,45 +796,108 @@ print(f"scipy: {scipy.__version__}")
     result2 = await loop.run_in_executor(None, partial(executor.execute, code2))
     print(f"  {result2['stdout'].strip()}\n")
 
-    # Test 3: Verify network is blocked (security)
-    print("Test 3: Verify network isolation (should fail)")
+    # Test 3: Network blocked
+    print("Test 3: Verify network isolation")
     code3 = """
 import urllib.request
 try:
     urllib.request.urlopen("https://google.com", timeout=2)
-    print("Network: ALLOWED (unexpected)")
-except Exception as e:
-    print(f"Network: BLOCKED (as expected)")
+    print("Network: ALLOWED (unexpected!)")
+except Exception:
+    print("Network: BLOCKED (as expected)")
 """
     result3 = await loop.run_in_executor(None, partial(executor.execute, code3))
     print(f"  {result3['stdout'].strip()}\n")
 
-    # Test 4: Run actual statistical analysis
-    print("Test 4: Execute real statistical analysis")
+    # Test 4: Real statistics
+    print("Test 4: Execute statistical analysis")
     code4 = """
 import pandas as pd
 import scipy.stats as stats
 
-data = pd.DataFrame({
-    'drug': ['Metformin'] * 3,
-    'effect': [0.42, 0.38, 0.51],
-    'n': [100, 150, 80]
-})
-
-mean_effect = data['effect'].mean()
-sem = data['effect'].sem()
+data = pd.DataFrame({'effect': [0.42, 0.38, 0.51]})
+mean = data['effect'].mean()
 t_stat, p_val = stats.ttest_1samp(data['effect'], 0)
 
-print(f"Mean Effect: {mean_effect:.3f} (SE: {sem:.3f})")
-print(f"t-statistic: {t_stat:.2f}, p-value: {p_val:.4f}")
+print(f"Mean Effect: {mean:.3f}")
+print(f"P-value: {p_val:.4f}")
 print(f"Verdict: {'SUPPORTED' if p_val < 0.05 else 'INCONCLUSIVE'}")
 """
     result4 = await loop.run_in_executor(None, partial(executor.execute, code4))
     print(f"  {result4['stdout'].strip()}\n")
 
-    print("="*60)
+    print("=" * 60)
     print("All tests complete - Modal sandbox verified!")
-    print("="*60)
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+#### `examples/modal_demo/run_analysis.py`
+
+```python
+#!/usr/bin/env python3
+"""Demo: Modal-powered statistical analysis.
+
+This script uses StatisticalAnalyzer directly (NO agent_framework dependency).
+
+Usage:
+    uv run python examples/modal_demo/run_analysis.py "metformin alzheimer"
+"""
+
+import argparse
+import asyncio
+import os
+import sys
+
+from src.services.statistical_analyzer import get_statistical_analyzer
+from src.tools.pubmed import PubMedTool
+from src.utils.config import settings
+
+
+async def main() -> None:
+    """Run the Modal analysis demo."""
+    parser = argparse.ArgumentParser(description="Modal Analysis Demo")
+    parser.add_argument("query", help="Research query")
+    args = parser.parse_args()
+
+    if not settings.modal_available:
+        print("Error: Modal credentials not configured.")
+        sys.exit(1)
+
+    if not (os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")):
+        print("Error: No LLM API key found.")
+        sys.exit(1)
+
+    print(f"\n{'=' * 60}")
+    print("DeepCritical Modal Analysis Demo")
+    print(f"Query: {args.query}")
+    print(f"{'=' * 60}\n")
+
+    # Step 1: Gather Evidence
+    print("Step 1: Gathering evidence from PubMed...")
+    pubmed = PubMedTool()
+    evidence = await pubmed.search(args.query, max_results=5)
+    print(f"  Found {len(evidence)} papers\n")
+
+    # Step 2: Run Modal Analysis
+    print("Step 2: Running statistical analysis in Modal sandbox...")
+    analyzer = get_statistical_analyzer()
+    result = await analyzer.analyze(query=args.query, evidence=evidence)
+
+    # Step 3: Display Results
+    print("\n" + "=" * 60)
+    print("ANALYSIS RESULTS")
+    print("=" * 60)
+    print(f"\nVerdict: {result.verdict}")
+    print(f"Confidence: {result.confidence:.0%}")
+    print("\nKey Findings:")
+    for finding in result.key_findings:
+        print(f"  - {finding}")
+
+    print("\n[Demo Complete - Code executed in Modal, not locally]")
 
 
 if __name__ == "__main__":
@@ -517,18 +906,23 @@ if __name__ == "__main__":
 
 ---
 
-## 5. TDD Test Suite
+## 6. TDD Test Suite
 
-### 5.1 Unit Tests (`tests/unit/tools/test_modal_integration.py`)
+### 6.1 Unit Tests (`tests/unit/services/test_statistical_analyzer.py`)
 
 ```python
-"""Unit tests for Modal pipeline integration."""
+"""Unit tests for StatisticalAnalyzer service."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.utils.models import Evidence, Citation
+from src.services.statistical_analyzer import (
+    AnalysisResult,
+    StatisticalAnalyzer,
+    get_statistical_analyzer,
+)
+from src.utils.models import Citation, Evidence
 
 
 @pytest.fixture
@@ -536,7 +930,7 @@ def sample_evidence() -> list[Evidence]:
     """Sample evidence for testing."""
     return [
         Evidence(
-            content="Metformin shows effect size of 0.45 in Alzheimer's model.",
+            content="Metformin shows effect size of 0.45.",
             citation=Citation(
                 source="pubmed",
                 title="Metformin Study",
@@ -549,128 +943,83 @@ def sample_evidence() -> list[Evidence]:
     ]
 
 
-class TestAnalysisAgentIntegration:
-    """Tests for AnalysisAgent integration."""
+class TestStatisticalAnalyzer:
+    """Tests for StatisticalAnalyzer (no agent_framework dependency)."""
+
+    def test_no_agent_framework_import(self) -> None:
+        """StatisticalAnalyzer must NOT import agent_framework."""
+        import src.services.statistical_analyzer as module
+
+        # Check module doesn't import agent_framework
+        source = open(module.__file__).read()
+        assert "agent_framework" not in source
+        assert "BaseAgent" not in source
 
     @pytest.mark.asyncio
-    async def test_analysis_agent_generates_code(
+    async def test_analyze_returns_result(
         self, sample_evidence: list[Evidence]
     ) -> None:
-        """AnalysisAgent should generate Python code for analysis."""
-        from src.agents.analysis_agent import AnalysisAgent
+        """analyze() should return AnalysisResult."""
+        analyzer = StatisticalAnalyzer()
 
-        evidence_store = {
-            "current": sample_evidence,
-            "hypotheses": [
-                MagicMock(
-                    drug="metformin",
-                    target="AMPK",
-                    pathway="autophagy",
-                    effect="neuroprotection",
-                    confidence=0.8,
-                )
-            ],
-        }
+        with patch.object(analyzer, "_get_agent") as mock_agent, \
+             patch.object(analyzer, "_get_code_executor") as mock_executor:
 
-        with patch("src.agents.analysis_agent.get_code_executor") as mock_executor, \
-             patch("src.agents.analysis_agent.get_model") as mock_model:
+            # Mock LLM
+            mock_agent.return_value.run = AsyncMock(
+                return_value=MagicMock(output="print('SUPPORTED')")
+            )
 
-            # Mock LLM to return code
-            mock_agent = AsyncMock()
-            mock_agent.run = AsyncMock(return_value=MagicMock(
-                output="import pandas as pd\nresult = 'SUPPORTED'"
-            ))
-
-            # Mock Modal execution
+            # Mock Modal
             mock_executor.return_value.execute.return_value = {
-                "stdout": "SUPPORTED",
+                "stdout": "SUPPORTED\np-value: 0.01",
                 "stderr": "",
                 "success": True,
-                "error": None,
             }
 
-            agent = AnalysisAgent(evidence_store=evidence_store)
-            agent._agent = mock_agent
+            result = await analyzer.analyze("test query", sample_evidence)
 
-            result = await agent.run("metformin alzheimer")
+            assert isinstance(result, AnalysisResult)
+            assert result.verdict == "SUPPORTED"
 
-            assert result.messages[0].text is not None
-            assert "analysis" in evidence_store
-
-
-class TestModalExecutorUnit:
-    """Unit tests for ModalCodeExecutor."""
-
-    def test_executor_checks_credentials(self) -> None:
-        """Executor should warn if credentials missing."""
-        import os
-        from unittest.mock import patch
-
-        with patch.dict(os.environ, {}, clear=True):
-            from src.tools.code_execution import ModalCodeExecutor
-
-            # Should not raise, but should log warning
-            executor = ModalCodeExecutor()
-            assert executor.modal_token_id is None
-
-    def test_get_sandbox_library_list(self) -> None:
-        """Should return list of library==version strings."""
-        from src.tools.code_execution import get_sandbox_library_list
-
-        libs = get_sandbox_library_list()
-
-        assert isinstance(libs, list)
-        assert "pandas==2.2.0" in libs
-        assert "numpy==1.26.4" in libs
+    def test_singleton(self) -> None:
+        """get_statistical_analyzer should return singleton."""
+        a1 = get_statistical_analyzer()
+        a2 = get_statistical_analyzer()
+        assert a1 is a2
 
 
-class TestOrchestratorWithAnalysis:
-    """Tests for orchestrator with Modal analysis enabled."""
+class TestAnalysisResult:
+    """Tests for AnalysisResult model."""
 
-    @pytest.mark.asyncio
-    async def test_orchestrator_calls_analysis_when_enabled(self) -> None:
-        """Orchestrator should call AnalysisAgent when enabled and Modal available."""
-        from src.orchestrator import Orchestrator
-        from src.utils.models import OrchestratorConfig
-
-        with patch("src.orchestrator.settings") as mock_settings:
-            mock_settings.modal_available = True
-
-            mock_search = AsyncMock()
-            mock_search.search.return_value = MagicMock(
-                evidence=[],
-                errors=[],
+    def test_verdict_values(self) -> None:
+        """Verdict should be one of the expected values."""
+        for verdict in ["SUPPORTED", "REFUTED", "INCONCLUSIVE"]:
+            result = AnalysisResult(
+                verdict=verdict,
+                confidence=0.8,
+                statistical_evidence="test",
+                code_generated="print('test')",
+                execution_output="test",
             )
+            assert result.verdict == verdict
 
-            mock_judge = AsyncMock()
-            mock_judge.assess.return_value = MagicMock(
-                sufficient=True,
-                recommendation="synthesize",
-                next_search_queries=[],
+    def test_confidence_bounds(self) -> None:
+        """Confidence must be 0.0-1.0."""
+        with pytest.raises(ValueError):
+            AnalysisResult(
+                verdict="SUPPORTED",
+                confidence=1.5,  # Invalid
+                statistical_evidence="test",
+                code_generated="test",
+                execution_output="test",
             )
-
-            config = OrchestratorConfig(max_iterations=1)
-            orchestrator = Orchestrator(
-                search_handler=mock_search,
-                judge_handler=mock_judge,
-                config=config,
-                enable_analysis=True,
-            )
-
-            # Collect events
-            events = []
-            async for event in orchestrator.run("test query"):
-                events.append(event)
-
-            # Should have analyzing event if Modal enabled
-            event_types = [e.type for e in events]
-            # Note: This test verifies the flow, actual Modal call is mocked
 ```
 
-### 5.2 Integration Test (`tests/integration/test_modal.py`)
+### 6.2 Integration Test (`tests/integration/test_modal.py`)
 
 ```python
-"""Integration tests for Modal code execution (requires Modal credentials)."""
+"""Integration tests for Modal (requires credentials)."""
 
 import pytest
 
@@ -678,27 +1027,20 @@ from src.utils.config import settings
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not settings.modal_available,
-    reason="Modal credentials not configured"
-)
+@pytest.mark.skipif(not settings.modal_available, reason="Modal not configured")
 class TestModalIntegration:
-    """Integration tests for Modal (requires credentials)."""
+    """Integration tests requiring Modal credentials."""
 
     @pytest.mark.asyncio
-    async def test_modal_executes_real_code(self) -> None:
-        """Test actual code execution in Modal sandbox."""
+    async def test_sandbox_executes_code(self) -> None:
+        """Modal sandbox should execute Python code."""
         import asyncio
         from functools import partial
 
         from src.tools.code_execution import get_code_executor
 
         executor = get_code_executor()
-        code = """
-import pandas as pd
-result = pd.DataFrame({'a': [1,2,3]})['a'].sum()
-print(f"Sum: {result}")
-"""
+        code = "import pandas as pd; print(pd.DataFrame({'a': [1,2,3]})['a'].sum())"
 
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
@@ -706,174 +1048,148 @@ print(f"Sum: {result}")
         )
 
         assert result["success"]
-        assert "Sum: 6" in result["stdout"]
+        assert "6" in result["stdout"]
 
     @pytest.mark.asyncio
-    async def test_modal_blocks_network(self) -> None:
-        """Verify network is blocked in sandbox."""
-        import asyncio
-        from functools import partial
+    async def test_statistical_analyzer_works(self) -> None:
+        """StatisticalAnalyzer should work end-to-end."""
+        from src.services.statistical_analyzer import get_statistical_analyzer
+        from src.utils.models import Citation, Evidence
 
-        from src.tools.code_execution import get_code_executor
+        evidence = [
+            Evidence(
+                content="Drug shows 40% improvement in trial.",
+                citation=Citation(
+                    source="pubmed",
+                    title="Test",
+                    url="https://test.com",
+                    date="2024-01-01",
+                    authors=["Test"],
+                ),
+                relevance=0.9,
+            )
+        ]
 
-        executor = get_code_executor()
-        code = """
-import urllib.request
-try:
-    urllib.request.urlopen("https://google.com", timeout=2)
-    print("NETWORK_ALLOWED")
-except Exception:
-    print("NETWORK_BLOCKED")
-"""
+        analyzer = get_statistical_analyzer()
+        result = await analyzer.analyze("test drug efficacy", evidence)
 
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None, partial(executor.execute, code, timeout=30)
-        )
-
-        assert "NETWORK_BLOCKED" in result["stdout"]
+        assert result.verdict in ["SUPPORTED", "REFUTED", "INCONCLUSIVE"]
+        assert 0.0 <= result.confidence <= 1.0
 ```
 
 ---
 
-## 6. Verification Commands
+## 7. Verification Commands
 
 ```bash
-# 1. Set Modal credentials
-export MODAL_TOKEN_ID=your-token-id
-export MODAL_TOKEN_SECRET=your-token-secret
+# 1. Verify NO agent_framework in StatisticalAnalyzer
+grep -r "agent_framework" src/services/statistical_analyzer.py
+# Should return nothing!
 
-# Or via modal CLI
-modal setup
+# 2. Run unit tests (no Modal needed)
+uv run pytest tests/unit/services/test_statistical_analyzer.py -v
 
-# 2. Run unit tests
-uv run pytest tests/unit/tools/test_modal_integration.py -v
-
-# 3. Run verification script (proves sandbox works)
+# 3. Run verification script (requires Modal)
 uv run python examples/modal_demo/verify_sandbox.py
 
-# 4. Run full demo
+# 4. Run analysis demo (requires Modal + LLM)
 uv run python examples/modal_demo/run_analysis.py "metformin alzheimer"
 
-# 5. Run integration tests (requires Modal creds)
+# 5. Run integration tests
 uv run pytest tests/integration/test_modal.py -v -m integration
 
-# 6. Run full test suite
+# 6. Full test suite
 make check
 ```
 
 ---
 
-## 7. Definition of Done
+## 8. Definition of Done
 
 Phase 13 is **COMPLETE** when:
 
-- [ ] `src/utils/config.py` updated with `enable_modal_analysis` setting
-- [ ] `src/orchestrator.py` optionally calls `AnalysisAgent`
-- [ ] `src/mcp_tools.py` has `analyze_hypothesis` MCP tool
-- [ ] `examples/modal_demo/run_analysis.py` working demo
-- [ ] `examples/modal_demo/verify_sandbox.py` verification script
-- [ ] Unit tests in `tests/unit/tools/test_modal_integration.py`
-- [ ] Integration tests in `tests/integration/test_modal.py`
-- [ ] Verification script proves sandbox isolation
-- [ ] All unit tests pass
-- [ ] Lints pass
+- [ ] `src/services/statistical_analyzer.py` created (NO agent_framework)
+- [ ] `src/utils/config.py` has `enable_modal_analysis` setting
+- [ ] `src/orchestrator.py` uses `StatisticalAnalyzer` directly
+- [ ] `src/agents/analysis_agent.py` refactored to wrap `StatisticalAnalyzer`
+- [ ] `src/mcp_tools.py` has `analyze_hypothesis` tool
+- [ ] `examples/modal_demo/verify_sandbox.py` working
+- [ ] `examples/modal_demo/run_analysis.py` working
+- [ ] Unit tests pass WITHOUT magentic extra installed
+- [ ] Integration tests pass WITH Modal credentials
+- [ ] All lints pass
 
 ---
 
-## 8. Demo Script for Judges
+## 9. Architecture After Phase 13
 
-### Show Modal Innovation
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                        MCP Clients                               │
+│              (Claude Desktop, Cursor, etc.)                      │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ MCP Protocol
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     Gradio App + MCP Server                      │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  MCP Tools: search_pubmed, search_trials, search_biorxiv │   │
+│  │             search_all, analyze_hypothesis               │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+        ┌───────────────────┴───────────────────┐
+        │                                       │
+        ▼                                       ▼
+┌───────────────────────┐            ┌───────────────────────────┐
+│   Simple Orchestrator │            │   Magentic Orchestrator   │
+│  (no agent_framework) │            │   (with agent_framework)  │
+│                       │            │                           │
+│  SearchHandler        │            │  SearchAgent              │
+│  JudgeHandler         │            │  JudgeAgent               │
+│  StatisticalAnalyzer ─┼────────────┼→ AnalysisAgent ───────────┤
+│                       │            │  (wraps StatisticalAnalyzer)
+└───────────┬───────────┘            └───────────────────────────┘
+            │
+            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    StatisticalAnalyzer                           │
+│              (src/services/statistical_analyzer.py)              │
+│                    NO agent_framework dependency                 │
+│                                                                  │
+│  1. Generate code with pydantic-ai                               │
+│  2. Execute in Modal sandbox                                     │
+│  3. Return AnalysisResult                                        │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       Modal Sandbox                              │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │  - pandas, numpy, scipy, sklearn, statsmodels           │    │
+│  │  - Network: BLOCKED                                     │    │
+│  │  - Filesystem: ISOLATED                                 │    │
+│  │  - Timeout: ENFORCED                                    │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-1. **Run verification script** (proves sandbox):
-   ```bash
-   uv run python examples/modal_demo/verify_sandbox.py
-   ```
-   - Shows hostname is NOT local machine
-   - Shows scientific libraries available
-   - Shows network is BLOCKED (security)
-   - Shows real statistics execution
-
-2. **Run analysis demo**:
-   ```bash
-   uv run python examples/modal_demo/run_analysis.py "metformin cancer"
-   ```
-   - Shows evidence gathering
-   - Shows hypothesis generation
-   - Shows code execution in Modal
-   - Shows statistical verdict
-
-3. **Show the key differentiator**:
-   > "LLM-generated code executes in an isolated Modal container. This is enterprise-grade safety for AI-powered scientific computing."
+**This is the dependency-safe Modal stack.**
 
 ---
 
-## 9. Value Delivered
-
-| Before | After |
-|--------|-------|
-| Code execution exists but unused | Integrated into pipeline |
-| No demo of sandbox isolation | Verification script proves it |
-| No MCP tool for analysis | `analyze_hypothesis` MCP tool |
-| No judge-friendly demo | Clear demo script |
-
-**Prize Impact**:
-- With Modal Integration: **Eligible for $2,500 Modal Innovation Award**
-
----
-
-## 10. Files to Create/Modify
+## 10. Files Summary
 
 | File | Action | Purpose |
 |------|--------|---------|
+| `src/services/statistical_analyzer.py` | **CREATE** | Core analysis (no agent_framework) |
 | `src/utils/config.py` | MODIFY | Add `enable_modal_analysis` |
-| `src/orchestrator.py` | MODIFY | Add optional AnalysisAgent call |
-| `src/mcp_tools.py` | MODIFY | Add `analyze_hypothesis` MCP tool |
+| `src/orchestrator.py` | MODIFY | Use `StatisticalAnalyzer` |
+| `src/agents/analysis_agent.py` | MODIFY | Wrap `StatisticalAnalyzer` |
+| `src/mcp_tools.py` | MODIFY | Add `analyze_hypothesis` |
+| `examples/modal_demo/verify_sandbox.py` | CREATE | Sandbox verification |
 | `examples/modal_demo/run_analysis.py` | CREATE | Demo script |
-| `examples/modal_demo/verify_sandbox.py` | CREATE | Verification script |
-| `tests/unit/tools/test_modal_integration.py` | CREATE | Unit tests |
+| `tests/unit/services/test_statistical_analyzer.py` | CREATE | Unit tests |
 | `tests/integration/test_modal.py` | CREATE | Integration tests |
 
----
-
-## 11. Architecture After Phase 13
-
-```
-User Query
-    ↓
-Orchestrator
-    ↓
-┌────────────────────────────────────────────────────────────────┐
-│ Search Phase                                                    │
-│   PubMedTool → ClinicalTrialsTool → BioRxivTool                │
-└────────────────────────────────────────────────────────────────┘
-    ↓
-┌────────────────────────────────────────────────────────────────┐
-│ Judge Phase                                                     │
-│   JudgeHandler → "sufficient" → continue to synthesis          │
-└────────────────────────────────────────────────────────────────┘
-    ↓ (if enable_modal_analysis=True)
-┌────────────────────────────────────────────────────────────────┐
-│ Analysis Phase (NEW)                                            │
-│   HypothesisAgent → Generate mechanistic hypotheses             │
-│        ↓                                                        │
-│   AnalysisAgent → Generate Python code                          │
-│        ↓                                                        │
-│   ┌──────────────────────────────────────────────┐              │
-│   │         Modal Sandbox Container               │              │
-│   │  - pandas, numpy, scipy, sklearn             │              │
-│   │  - Network BLOCKED                           │              │
-│   │  - Filesystem ISOLATED                       │              │
-│   │  - Execute → Return stdout                   │              │
-│   └──────────────────────────────────────────────┘              │
-│        ↓                                                        │
-│   AnalysisResult → SUPPORTED/REFUTED/INCONCLUSIVE              │
-└────────────────────────────────────────────────────────────────┘
-    ↓
-┌────────────────────────────────────────────────────────────────┐
-│ Report Phase                                                    │
-│   ReportAgent → Structured scientific report                    │
-└────────────────────────────────────────────────────────────────┘
-```
-
-**This is the Modal-powered analytics stack.**
+**Key Fix**: `StatisticalAnalyzer` has ZERO agent_framework imports, making it safe for the simple orchestrator.
