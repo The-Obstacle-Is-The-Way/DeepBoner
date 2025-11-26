@@ -21,6 +21,7 @@ Requirements:
 import asyncio
 import sys
 
+from src.tools.biorxiv import BioRxivTool
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.pubmed import PubMedTool
 from src.tools.search_handler import SearchHandler
@@ -36,10 +37,11 @@ async def main(query: str) -> None:
     # Initialize tools
     pubmed = PubMedTool()
     trials = ClinicalTrialsTool()
-    handler = SearchHandler(tools=[pubmed, trials], timeout=30.0)
+    preprints = BioRxivTool()
+    handler = SearchHandler(tools=[pubmed, trials, preprints], timeout=30.0)
 
     # Execute search
-    print("Searching PubMed and ClinicalTrials.gov in parallel...")
+    print("Searching PubMed, ClinicalTrials.gov, and bioRxiv in parallel...")
     result = await handler.execute(query, max_results_per_tool=5)
 
     # Display results
