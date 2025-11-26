@@ -7,25 +7,22 @@ requires-python = ">=3.11"
 dependencies = [
     # Core
     "pydantic>=2.7",
-    "pydantic-settings>=2.2",      # For BaseSettings (config)
-    "pydantic-ai>=0.0.16",          # Agent framework
-
+    "pydantic-settings>=2.2", # For BaseSettings (config)
+    "pydantic-ai>=0.0.16", # Agent framework
     # AI Providers
     "openai>=1.0.0",
     "anthropic>=0.18.0",
-
     # HTTP & Parsing
-    "httpx>=0.27",                   # Async HTTP client
-    "beautifulsoup4>=4.12",          # HTML parsing
-    "xmltodict>=0.13",               # PubMed XML -> dict
-
+    "httpx>=0.27", # Async HTTP client (PubMed)
+    "beautifulsoup4>=4.12", # HTML parsing
+    "xmltodict>=0.13", # PubMed XML -> dict
     # UI
-    "gradio>=5.0",                   # Chat interface
-
+    "gradio>=5.0", # Chat interface
     # Utils
-    "python-dotenv>=1.0",            # .env loading
-    "tenacity>=8.2",                 # Retry logic
-    "structlog>=24.1",               # Structured logging
+    "python-dotenv>=1.0", # .env loading
+    "tenacity>=8.2", # Retry logic
+    "structlog>=24.1", # Structured logging
+    "requests>=2.32.5", # ClinicalTrials.gov (httpx blocked by WAF)
 ]
 
 [project.optional-dependencies]

@@ -1,13 +1,13 @@
 """Search handler - orchestrates multiple search tools."""
 
 import asyncio
-from typing import Literal, cast
+from typing import cast
 
 import structlog
 
 from src.tools.base import SearchTool
 from src.utils.exceptions import SearchError
-from src.utils.models import Evidence, SearchResult
+from src.utils.models import Evidence, SearchResult, SourceName
 
 logger = structlog.get_logger()
 
@@ -49,7 +49,7 @@ class SearchHandler:
 
         # Process results
         all_evidence: list[Evidence] = []
-        sources_searched: list[Literal["pubmed"]] = []
+        sources_searched: list[SourceName] = []
         errors: list[str] = []
 
         for tool, result in zip(self.tools, results, strict=True):
@@ -61,8 +61,8 @@ class SearchHandler:
                 success_result = cast(list[Evidence], result)
                 all_evidence.extend(success_result)
 
-                # Cast tool.name to the expected Literal
-                tool_name = cast(Literal["pubmed"], tool.name)
+                # Cast tool.name to SourceName (centralized type from models)
+                tool_name = cast(SourceName, tool.name)
                 sources_searched.append(tool_name)
                 logger.info("Search tool succeeded", tool=tool.name, count=len(success_result))
 

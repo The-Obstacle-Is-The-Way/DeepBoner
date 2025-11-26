@@ -2,8 +2,9 @@
 """
 Demo: Search for drug repurposing evidence.
 
-This script demonstrates Phase 2 functionality:
+This script demonstrates multi-source search functionality:
 - PubMed search (biomedical literature)
+- ClinicalTrials.gov search (clinical trial evidence)
 - SearchHandler (parallel scatter-gather orchestration)
 
 Usage:
@@ -20,6 +21,7 @@ Requirements:
 import asyncio
 import sys
 
+from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.pubmed import PubMedTool
 from src.tools.search_handler import SearchHandler
 
@@ -33,10 +35,11 @@ async def main(query: str) -> None:
 
     # Initialize tools
     pubmed = PubMedTool()
-    handler = SearchHandler(tools=[pubmed], timeout=30.0)
+    trials = ClinicalTrialsTool()
+    handler = SearchHandler(tools=[pubmed, trials], timeout=30.0)
 
     # Execute search
-    print("Searching PubMed in parallel...")
+    print("Searching PubMed and ClinicalTrials.gov in parallel...")
     result = await handler.execute(query, max_results_per_tool=5)
 
     # Display results
