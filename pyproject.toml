@@ -34,6 +34,7 @@ dev = [
     "pytest-cov>=5.0",
     "pytest-mock>=3.12",
     "respx>=0.21",                   # Mock httpx requests
+    "typer>=0.9.0",                  # Gradio CLI dependency for smoke tests
 
     # Quality
     "ruff>=0.4.0",
@@ -129,6 +130,11 @@ exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
+]
+
+[dependency-groups]
+dev = [
+    "typer>=0.20.0",
 ]
 
 # Note: agent-framework-core is optional and installed locally for magentic mode

@@ -129,7 +129,6 @@ def create_demo() -> Any:
     """
     with gr.Blocks(
         title="DeepCritical - Drug Repurposing Research Agent",
-        theme=gr.themes.Soft(),
     ) as demo:
         gr.Markdown("""
         # 🧬 DeepCritical
@@ -147,7 +146,6 @@ def create_demo() -> Any:
         # Main chat interface (existing)
         gr.ChatInterface(
             fn=research_agent,
-            type="messages",  # type: ignore
             title="",
             examples=[
                 ["What drugs could be repurposed for Alzheimer's disease?", "simple"],
