@@ -2,8 +2,9 @@
 """
 Demo: Search for drug repurposing evidence.
 
-This script demonstrates Phase 2 functionality:
+This script demonstrates multi-source search functionality:
 - PubMed search (biomedical literature)
+- ClinicalTrials.gov search (clinical trial evidence)
 - SearchHandler (parallel scatter-gather orchestration)
 
 Usage:

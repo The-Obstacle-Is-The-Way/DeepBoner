@@ -128,7 +128,7 @@ def create_demo() -> Any:
         ## AI-Powered Drug Repurposing Research Agent
 
         Ask questions about potential drug repurposing opportunities.
-        The agent will search PubMed, evaluate evidence, and provide recommendations.
+        The agent searches PubMed & ClinicalTrials.gov to provide recommendations.
 
         **Example questions:**
         - "What drugs could be repurposed for Alzheimer's disease?"

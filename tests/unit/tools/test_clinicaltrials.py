@@ -1,5 +1,7 @@
 """Unit tests for ClinicalTrials.gov tool."""
 
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,7 +13,7 @@ from src.utils.models import Evidence
 
 
 @pytest.fixture
-def mock_clinicaltrials_response() -> dict:
+def mock_clinicaltrials_response() -> dict[str, Any]:
     """Mock ClinicalTrials.gov API response."""
     return {
         "studies": [
@@ -39,6 +41,19 @@ def mock_clinicaltrials_response() -> dict:
     }
 
 
+@pytest.fixture
+def mock_requests_get(
+    mock_clinicaltrials_response: dict[str, Any],
+) -> Generator[MagicMock, None, None]:
+    """Fixture to mock requests.get with a successful response."""
+    with patch("src.tools.clinicaltrials.requests.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.json.return_value = mock_clinicaltrials_response
+        mock_response.raise_for_status = MagicMock()
+        mock_get.return_value = mock_response
+        yield mock_get
+
+
 class TestClinicalTrialsTool:
     """Tests for ClinicalTrialsTool."""
 
@@ -48,50 +63,32 @@ class TestClinicalTrialsTool:
         assert tool.name == "clinicaltrials"
 
     @pytest.mark.asyncio
-    async def test_search_returns_evidence(self, mock_clinicaltrials_response: dict) -> None:
+    async def test_search_returns_evidence(self, mock_requests_get: MagicMock) -> None:
         """Search should return Evidence objects."""
-        with patch("src.tools.clinicaltrials.requests.get") as mock_get:
-            mock_response = MagicMock()
-            mock_response.json.return_value = mock_clinicaltrials_response
-            mock_response.raise_for_status = MagicMock()
-            mock_get.return_value = mock_response
+        tool = ClinicalTrialsTool()
+        results = await tool.search("metformin alzheimer", max_results=5)
 
-            tool = ClinicalTrialsTool()
-            results = await tool.search("metformin alzheimer", max_results=5)
-
-            assert len(results) == 1
-            assert isinstance(results[0], Evidence)
-            assert results[0].citation.source == "clinicaltrials"
-            assert "NCT04098666" in results[0].citation.url
-            assert "Metformin" in results[0].citation.title
+        assert len(results) == 1
+        assert isinstance(results[0], Evidence)
+        assert results[0].citation.source == "clinicaltrials"
+        assert "NCT04098666" in results[0].citation.url
+        assert "Metformin" in results[0].citation.title
 
     @pytest.mark.asyncio
-    async def test_search_extracts_phase(self, mock_clinicaltrials_response: dict) -> None:
+    async def test_search_extracts_phase(self, mock_requests_get: MagicMock) -> None:
         """Search should extract trial phase."""
-        with patch("src.tools.clinicaltrials.requests.get") as mock_get:
-            mock_response = MagicMock()
-            mock_response.json.return_value = mock_clinicaltrials_response
-            mock_response.raise_for_status = MagicMock()
-            mock_get.return_value = mock_response
+        tool = ClinicalTrialsTool()
+        results = await tool.search("metformin alzheimer")
 
-            tool = ClinicalTrialsTool()
-            results = await tool.search("metformin alzheimer")
-
-            assert "PHASE2" in results[0].content
+        assert "PHASE2" in results[0].content
 
     @pytest.mark.asyncio
-    async def test_search_extracts_status(self, mock_clinicaltrials_response: dict) -> None:
+    async def test_search_extracts_status(self, mock_requests_get: MagicMock) -> None:
         """Search should extract trial status."""
-        with patch("src.tools.clinicaltrials.requests.get") as mock_get:
-            mock_response = MagicMock()
-            mock_response.json.return_value = mock_clinicaltrials_response
-            mock_response.raise_for_status = MagicMock()
-            mock_get.return_value = mock_response
+        tool = ClinicalTrialsTool()
+        results = await tool.search("metformin alzheimer")
 
-            tool = ClinicalTrialsTool()
-            results = await tool.search("metformin alzheimer")
-
-            assert "Recruiting" in results[0].content
+        assert "Recruiting" in results[0].content
 
     @pytest.mark.asyncio
     async def test_search_empty_results(self) -> None:
@@ -109,13 +106,18 @@ class TestClinicalTrialsTool:
 
     @pytest.mark.asyncio
     async def test_search_api_error(self) -> None:
-        """Search should raise SearchError on API failure."""
+        """Search should raise SearchError on API failure.
+
+        Note: We patch the retry decorator to avoid 3x backoff delay in tests.
+        """
         with patch("src.tools.clinicaltrials.requests.get") as mock_get:
             mock_response = MagicMock()
             mock_response.raise_for_status.side_effect = requests.HTTPError("500 Server Error")
             mock_get.return_value = mock_response
 
             tool = ClinicalTrialsTool()
+            # Patch the retry decorator's stop condition to fail immediately
+            tool.search.retry.stop = lambda _: True  # type: ignore[attr-defined]
 
             with pytest.raises(SearchError):
                 await tool.search("metformin alzheimer")

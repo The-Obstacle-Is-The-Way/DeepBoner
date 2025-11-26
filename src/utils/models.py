@@ -5,11 +5,14 @@ from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, Field
 
+# Centralized source type - add new sources here (e.g., "biorxiv" in Phase 11)
+SourceName = Literal["pubmed", "clinicaltrials"]
+
 
 class Citation(BaseModel):
     """A citation to a source document."""
 
-    source: Literal["pubmed", "clinicaltrials"] = Field(description="Where this came from")
+    source: SourceName = Field(description="Where this came from")
     title: str = Field(min_length=1, max_length=500)
     url: str = Field(description="URL to the source")
     date: str = Field(description="Publication date (YYYY-MM-DD or 'Unknown')")
@@ -41,7 +44,7 @@ class SearchResult(BaseModel):
 
     query: str
     evidence: list[Evidence]
-    sources_searched: list[Literal["pubmed", "clinicaltrials"]]
+    sources_searched: list[SourceName]
     total_found: int
     errors: list[str] = Field(default_factory=list)
 
