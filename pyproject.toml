@@ -20,8 +20,7 @@ dependencies = [
     "xmltodict>=0.13",               # PubMed XML -> dict
 
     # Search
-    "duckduckgo-search>=6.0",        # Free web search
-
+    "tenacity>=8.2",
     # UI
     "gradio>=5.0",                   # Chat interface
 

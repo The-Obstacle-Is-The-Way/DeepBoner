@@ -45,7 +45,7 @@ def create_sample_evidence() -> list[Evidence]:
         Evidence(
             content="Sildenafil increases nitric oxide signaling for vasodilation.",
             citation=Citation(
-                source="web",
+                source="pubmed",
                 title="How Viagra Works",
                 url="https://example.com/viagra-mechanism",
                 date="2023",
@@ -137,9 +137,9 @@ async def demo_semantic_search() -> None:
     docs = [
         ("doc1", "Metformin activates AMPK enzyme in liver cells", {"source": "pubmed"}),
         ("doc2", "Aspirin inhibits COX-2 to reduce inflammation", {"source": "pubmed"}),
-        ("doc3", "Statins lower cholesterol by inhibiting HMG-CoA reductase", {"source": "web"}),
+        ("doc3", "Statins lower cholesterol by inhibiting HMG-CoA reductase", {"source": "pubmed"}),
         ("doc4", "AMPK activation leads to improved glucose metabolism", {"source": "pubmed"}),
-        ("doc5", "Sildenafil works via nitric oxide pathway", {"source": "web"}),
+        ("doc5", "Sildenafil works via nitric oxide pathway", {"source": "pubmed"}),
     ]
 
     print("\nIndexing documents...")

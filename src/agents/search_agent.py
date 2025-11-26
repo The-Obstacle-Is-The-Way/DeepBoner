@@ -95,7 +95,7 @@ class SearchAgent(BaseAgent):  # type: ignore[misc]
                         citation=Citation(
                             title=meta.get("title", "Related Evidence"),
                             url=item["id"],
-                            source=meta.get("source", "vector_db"),
+                            source=meta.get("source", "pubmed"),
                             date=meta.get("date", "n.d."),
                             authors=authors,
                         ),
