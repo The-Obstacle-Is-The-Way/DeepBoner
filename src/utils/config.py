@@ -26,8 +26,10 @@ class Settings(BaseSettings):
     llm_provider: Literal["openai", "anthropic"] = Field(
         default="openai", description="Which LLM provider to use"
     )
-    openai_model: str = Field(default="gpt-4o", description="OpenAI model name")
-    anthropic_model: str = Field(default="claude-sonnet-4-20250514", description="Anthropic model")
+    openai_model: str = Field(default="gpt-5.1", description="OpenAI model name")
+    anthropic_model: str = Field(
+        default="claude-sonnet-4-5-20250929", description="Anthropic model"
+    )
 
     # Embedding Configuration
     # Note: OpenAI embeddings require OPENAI_API_KEY (Anthropic has no embeddings API)
@@ -52,23 +54,14 @@ class Settings(BaseSettings):
     # Logging
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
-    # Partner Service Configuration (Mario's Modal Integration)
+    # External Services
     modal_token_id: str | None = Field(default=None, description="Modal token ID")
     modal_token_secret: str | None = Field(default=None, description="Modal token secret")
     chroma_db_path: str = Field(default="./chroma_db", description="ChromaDB storage path")
-    enable_modal_analysis: bool = Field(
-        default=False,
-        description="Opt-in flag to enable Modal analysis. Must also have modal_available=True.",
-    )
 
     @property
     def modal_available(self) -> bool:
-        """Check if Modal credentials are configured (credentials check only).
-
-        Note: This is a credentials check, NOT an opt-in flag.
-        Use `enable_modal_analysis` to opt-in, then check `modal_available` for credentials.
-        Typical usage: `if settings.enable_modal_analysis and settings.modal_available`
-        """
+        """Check if Modal credentials are configured."""
         return bool(self.modal_token_id and self.modal_token_secret)
 
     def get_api_key(self) -> str:

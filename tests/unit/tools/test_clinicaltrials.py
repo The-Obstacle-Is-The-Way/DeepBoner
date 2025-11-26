@@ -123,26 +123,21 @@ class TestClinicalTrialsTool:
                 await tool.search("metformin alzheimer")
 
 
-def _can_reach_clinicaltrials() -> bool:
-    """Check if ClinicalTrials.gov API is reachable."""
-    try:
-        resp = requests.get("https://clinicaltrials.gov/api/v2/studies", timeout=5)
-        return resp.status_code < 500
-    except (requests.RequestException, OSError):
-        return False
-
-
 class TestClinicalTrialsIntegration:
     """Integration tests (marked for separate run)."""
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        not _can_reach_clinicaltrials(),
-        reason="ClinicalTrials.gov API not reachable (network/SSL issue)",
-    )
     async def test_real_api_call(self) -> None:
         """Test actual API call (requires network)."""
+        # Skip at runtime if API unreachable (avoids network call at collection time)
+        try:
+            resp = requests.get("https://clinicaltrials.gov/api/v2/studies", timeout=5)
+            if resp.status_code >= 500:
+                pytest.skip("ClinicalTrials.gov API not reachable (server error)")
+        except (requests.RequestException, OSError):
+            pytest.skip("ClinicalTrials.gov API not reachable (network/SSL issue)")
+
         tool = ClinicalTrialsTool()
         results = await tool.search("metformin diabetes", max_results=3)
 

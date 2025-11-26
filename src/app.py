@@ -68,9 +68,11 @@ def configure_orchestrator(
             if api_provider == "anthropic":
                 anthropic_provider = AnthropicProvider(api_key=user_api_key)
                 model = AnthropicModel(settings.anthropic_model, provider=anthropic_provider)
-            else:
+            elif api_provider == "openai":
                 openai_provider = OpenAIProvider(api_key=user_api_key)
                 model = OpenAIModel(settings.openai_model, provider=openai_provider)
+            else:
+                raise ValueError(f"Unsupported API provider: {api_provider}")
         judge_handler = JudgeHandler(model=model)
 
     return create_orchestrator(
