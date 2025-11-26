@@ -5,7 +5,7 @@ import pytest
 
 
 def test_examples_no_webtool_imports():
-    """No example files should import WebTool."""
+    """No example files should import WebTool or the websearch module."""
     examples_dir = pathlib.Path("examples")
 
     for py_file in examples_dir.rglob("*.py"):
@@ -14,9 +14,14 @@ def test_examples_no_webtool_imports():
 
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
-                if node.module and "websearch" in node.module:
+                module = node.module or ""
+                if "websearch" in module:
                     pytest.fail(f"{py_file} imports websearch (should be removed)")
-            if isinstance(node, ast.Import):
+                # Also check for `from src.tools import WebTool`
+                for alias in node.names:
+                    if alias.name == "WebTool":
+                        pytest.fail(f"{py_file} imports WebTool (should be removed)")
+            elif isinstance(node, ast.Import):
                 for alias in node.names:
                     if "websearch" in alias.name:
                         pytest.fail(f"{py_file} imports websearch (should be removed)")
