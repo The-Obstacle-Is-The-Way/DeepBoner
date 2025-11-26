@@ -183,6 +183,8 @@ Structured Research Report
 
 ## Spec Documents
 
+### Core Platform (Phases 1-8)
+
 1. **[Phase 1 Spec: Foundation](01_phase_foundation.md)** ✅
 2. **[Phase 2 Spec: Search Slice](02_phase_search.md)** ✅
 3. **[Phase 3 Spec: Judge Slice](03_phase_judge.md)** ✅
@@ -191,9 +193,18 @@ Structured Research Report
 6. **[Phase 6 Spec: Embeddings & Semantic Search](06_phase_embeddings.md)** ✅
 7. **[Phase 7 Spec: Hypothesis Agent](07_phase_hypothesis.md)** ✅
 8. **[Phase 8 Spec: Report Agent](08_phase_report.md)** ✅
-9. **[Phase 9 Spec: Remove DuckDuckGo](09_phase_source_cleanup.md)** 📝
-10. **[Phase 10 Spec: ClinicalTrials.gov](10_phase_clinicaltrials.md)** 📝
-11. **[Phase 11 Spec: bioRxiv Preprints](11_phase_biorxiv.md)** 📝
+
+### Multi-Source Search (Phases 9-11)
+
+9. **[Phase 9 Spec: Remove DuckDuckGo](09_phase_source_cleanup.md)** ✅
+10. **[Phase 10 Spec: ClinicalTrials.gov](10_phase_clinicaltrials.md)** ✅
+11. **[Phase 11 Spec: bioRxiv Preprints](11_phase_biorxiv.md)** ✅
+
+### Hackathon Integration (Phases 12-14)
+
+12. **[Phase 12 Spec: MCP Server](12_phase_mcp_server.md)** 📝 P0 - REQUIRED
+13. **[Phase 13 Spec: Modal Pipeline](13_phase_modal_integration.md)** 📝 P1 - $2,500
+14. **[Phase 14 Spec: Demo & Submission](14_phase_demo_submission.md)** 📝 P0 - REQUIRED
 
 ---
 
@@ -209,8 +220,25 @@ Structured Research Report
 | Phase 6: Embeddings | ✅ COMPLETE | Semantic search + ChromaDB |
 | Phase 7: Hypothesis | ✅ COMPLETE | Mechanistic reasoning chains |
 | Phase 8: Report | ✅ COMPLETE | Structured scientific reports |
-| Phase 9: Source Cleanup | 📝 SPEC READY | Remove DuckDuckGo |
-| Phase 10: ClinicalTrials | 📝 SPEC READY | ClinicalTrials.gov API |
-| Phase 11: bioRxiv | 📝 SPEC READY | Preprint search |
+| Phase 9: Source Cleanup | ✅ COMPLETE | Remove DuckDuckGo |
+| Phase 10: ClinicalTrials | ✅ COMPLETE | ClinicalTrials.gov API |
+| Phase 11: bioRxiv | ✅ COMPLETE | Preprint search |
+| Phase 12: MCP Server | 📝 SPEC READY | MCP protocol integration |
+| Phase 13: Modal Pipeline | 📝 SPEC READY | Sandboxed code execution |
+| Phase 14: Demo & Submit | 📝 SPEC READY | Hackathon submission |
 
-*Phases 1-8 COMPLETE. Phases 9-11 will add multi-source credibility.*
+*Phases 1-11 COMPLETE. Phases 12-14 for hackathon compliance.*
+
+---
+
+## Hackathon Prize Potential
+
+| Award | Amount | Requirement | Phase |
+|-------|--------|-------------|-------|
+| Track 2: MCP in Action (1st) | $2,500 | MCP server working | 12 |
+| Modal Innovation | $2,500 | Sandbox demo ready | 13 |
+| LlamaIndex | $1,000 | Using RAG | ✅ Done |
+| Community Choice | $1,000 | Great demo video | 14 |
+| **Total Potential** | **$7,000** | | |
+
+**Deadline: November 30, 2025 11:59 PM UTC**
