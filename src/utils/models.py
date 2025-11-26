@@ -6,13 +6,16 @@ from typing import Any, ClassVar, Literal
 from pydantic import BaseModel, Field
 
 # Centralized source type - add new sources here (e.g., "biorxiv" in Phase 11)
-SourceName = Literal["pubmed", "clinicaltrials"]
+SourceName = Literal["pubmed", "clinicaltrials", "biorxiv"]
 
 
 class Citation(BaseModel):
     """A citation to a source document."""
 
-    source: SourceName = Field(description="Where this came from")
+    source: Literal["pubmed", "clinicaltrials", "biorxiv"] = Field(
+        description="Where this came from"
+    )
+
     title: str = Field(min_length=1, max_length=500)
     url: str = Field(description="URL to the source")
     date: str = Field(description="Publication date (YYYY-MM-DD or 'Unknown')")
