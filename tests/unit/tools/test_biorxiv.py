@@ -127,6 +127,25 @@ class TestBioRxivTool:
         with pytest.raises(SearchError):
             await tool.search("metformin")
 
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_search_network_error(self):
+        """Search should raise SearchError on network failure."""
+        import httpx
+
+        from src.utils.exceptions import SearchError
+
+        respx.get(url__startswith="https://api.biorxiv.org/details").mock(
+            side_effect=httpx.RequestError("Network connection failed")
+        )
+
+        tool = BioRxivTool()
+
+        with pytest.raises(SearchError) as exc_info:
+            await tool.search("metformin")
+
+        assert "connection failed" in str(exc_info.value)
+
     def test_extract_terms(self):
         """Should extract meaningful search terms."""
         tool = BioRxivTool()

@@ -12,9 +12,7 @@ SourceName = Literal["pubmed", "clinicaltrials", "biorxiv"]
 class Citation(BaseModel):
     """A citation to a source document."""
 
-    source: Literal["pubmed", "clinicaltrials", "biorxiv"] = Field(
-        description="Where this came from"
-    )
+    source: SourceName = Field(description="Where this came from")
 
     title: str = Field(min_length=1, max_length=500)
     url: str = Field(description="URL to the source")

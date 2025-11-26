@@ -68,6 +68,8 @@ class BioRxivTool:
                 response.raise_for_status()
             except httpx.HTTPStatusError as e:
                 raise SearchError(f"bioRxiv search failed: {e}") from e
+            except httpx.RequestError as e:
+                raise SearchError(f"bioRxiv connection failed: {e}") from e
 
             data = response.json()
             papers = data.get("collection", [])
@@ -120,9 +122,13 @@ class BioRxivTool:
         # Parse authors (format: "Smith, J; Jones, A")
         authors = [a.strip() for a in authors_str.split(";")][:5]
 
+        # Truncate abstract if needed
+        truncated_abstract = abstract[:1800]
+        suffix = "..." if len(abstract) > 1800 else ""
+
         # Note this is a preprint in the content
         content = (
-            f"[PREPRINT - Not peer-reviewed] " f"{abstract[:1800]}... " f"Category: {category}."
+            f"[PREPRINT - Not peer-reviewed] {truncated_abstract}{suffix} Category: {category}."
         )
 
         return Evidence(
