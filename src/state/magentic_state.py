@@ -88,3 +88,10 @@ def get_magentic_state() -> MagenticState:
         # Auto-initialize if missing (e.g. during tests or simple scripts)
         return init_magentic_state()
     return state
+
+
+def reset_magentic_state() -> None:
+    """Reset state for the current context, preserving embedding service if present."""
+    current = _magentic_state_var.get()
+    service = current.embedding_service if current else None
+    init_magentic_state(service)
