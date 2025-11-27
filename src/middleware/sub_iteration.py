@@ -1,6 +1,6 @@
 """Middleware for orchestrating sub-iterations with research teams and judges."""
 
-from typing import Any, Protocol, TypeVar
+from typing import Any, Protocol
 
 import structlog
 
@@ -8,23 +8,19 @@ from src.utils.models import AgentEvent, JudgeAssessment
 
 logger = structlog.get_logger()
 
-TResult = TypeVar("TResult")
 
-
-class SubIterationTeam(Protocol[TResult]):  # type: ignore[misc]
+class SubIterationTeam(Protocol):
     """Protocol for a research team that executes a sub-task."""
 
-    async def execute(self, task: str) -> TResult:
+    async def execute(self, task: str) -> Any:
         """Execute the sub-task and return a result."""
         ...
 
 
-class SubIterationJudge(Protocol[TResult]):  # type: ignore[misc]
+class SubIterationJudge(Protocol):
     """Protocol for a judge that evaluates the sub-task result."""
 
-    async def assess(  # type: ignore[misc]
-        self, task: str, result: TResult, history: list[TResult]
-    ) -> JudgeAssessment:
+    async def assess(self, task: str, result: Any, history: list[Any]) -> JudgeAssessment:
         """Assess the quality of the result."""
         ...
 
@@ -40,8 +36,8 @@ class SubIterationMiddleware:
 
     def __init__(
         self,
-        team: SubIterationTeam[TResult],
-        judge: SubIterationJudge[TResult],
+        team: SubIterationTeam,
+        judge: SubIterationJudge,
         max_iterations: int = 3,
     ):
         self.team = team
@@ -52,7 +48,7 @@ class SubIterationMiddleware:
         self,
         task: str,
         event_callback: Any = None,  # Optional callback for streaming events
-    ) -> tuple[TResult | None, JudgeAssessment | None]:
+    ) -> tuple[Any, JudgeAssessment | None]:
         """
         Run the sub-iteration loop.
 
@@ -63,9 +59,9 @@ class SubIterationMiddleware:
         Returns:
             Tuple of (best_result, final_assessment).
         """
-        history: list[TResult] = []
-        best_result = None
-        final_assessment = None
+        history: list[Any] = []
+        best_result: Any = None
+        final_assessment: JudgeAssessment | None = None
 
         for i in range(1, self.max_iterations + 1):
             logger.info("Sub-iteration starting", iteration=i, task=task)
@@ -117,7 +113,7 @@ class SubIterationMiddleware:
                 logger.info("Sub-iteration sufficient", iteration=i)
                 return best_result, assessment
 
-            # If not sufficient, we might refine the task for the next iteration based on feedback
+            # If not sufficient, we might refine the task for the next iteration
             # For this implementation, we assume the team is smart enough or the task stays same
             # but we could append feedback to the task.
 

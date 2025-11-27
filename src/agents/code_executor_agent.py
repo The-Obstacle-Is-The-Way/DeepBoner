@@ -12,7 +12,7 @@ from src.utils.config import settings
 logger = structlog.get_logger()
 
 
-@ai_function  # type: ignore[misc]
+@ai_function  # type: ignore[arg-type, misc]
 async def execute_python_code(code: str) -> str:
     """Execute Python code in a secure sandbox.
 

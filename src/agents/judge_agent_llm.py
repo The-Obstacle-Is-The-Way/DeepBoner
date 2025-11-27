@@ -6,13 +6,12 @@ import structlog
 from pydantic_ai import Agent
 
 from src.agent_factory.judges import get_model
-from src.middleware.sub_iteration import SubIterationJudge
 from src.utils.models import JudgeAssessment
 
 logger = structlog.get_logger()
 
 
-class LLMSubIterationJudge(SubIterationJudge[Any]):
+class LLMSubIterationJudge:
     """Judge that uses an LLM to assess sub-iteration results."""
 
     def __init__(self) -> None:

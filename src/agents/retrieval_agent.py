@@ -13,7 +13,7 @@ logger = structlog.get_logger()
 _web_search = WebSearchTool()
 
 
-@ai_function  # type: ignore[misc]
+@ai_function  # type: ignore[arg-type, misc]
 async def search_web(query: str, max_results: int = 10) -> str:
     """Search the web using DuckDuckGo.
 
