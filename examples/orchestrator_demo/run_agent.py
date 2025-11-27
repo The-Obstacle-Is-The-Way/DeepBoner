@@ -71,12 +71,12 @@ Examples:
         print("=" * 60)
         sys.exit(1)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("DeepCritical Agent Demo (REAL)")
     print(f"Query: {args.query}")
     print(f"Max Iterations: {args.iterations}")
     print("Mode: REAL (All live API calls)")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     # Setup REAL components
     search_handler = SearchHandler(

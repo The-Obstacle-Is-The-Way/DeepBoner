@@ -34,7 +34,7 @@ async def main() -> None:
     print(f"\n{'=' * 60}")
     print("DeepCritical Modal Analysis Demo")
     print(f"Query: {args.query}")
-    print(f"{ '=' * 60}\n")
+    print(f"{'=' * 60}\n")
 
     # Step 1: Gather Evidence
     print("Step 1: Gathering evidence from PubMed...")

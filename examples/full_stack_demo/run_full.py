@@ -29,9 +29,9 @@ from src.utils.models import Evidence
 
 def print_header(title: str) -> None:
     """Print a formatted section header."""
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"  {title}")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
 
 def print_step(step: int, name: str) -> None:
@@ -98,9 +98,7 @@ async def _handle_judge_step(
         print(f"\n[Judge] Need more evidence. Next queries: {next_queries}")
         return False, next_queries[0]
 
-    print(
-        "\n[Judge] Need more evidence but no suggested queries. " "Continuing with original query."
-    )
+    print("\n[Judge] Need more evidence but no suggested queries. Continuing with original query.")
     return False, query
 
 

@@ -52,7 +52,7 @@ class MagenticOrchestrator:
         """
         if not settings.openai_api_key:
             raise ConfigurationError(
-                "Magentic mode requires OPENAI_API_KEY. " "Set the key or use mode='simple'."
+                "Magentic mode requires OPENAI_API_KEY. Set the key or use mode='simple'."
             )
 
         self._max_rounds = max_rounds

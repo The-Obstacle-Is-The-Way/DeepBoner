@@ -37,11 +37,11 @@ async def main() -> None:
         print("Error: No API key found. Magentic requires real LLM.")
         sys.exit(1)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("DeepCritical Magentic Agent Demo")
     print(f"Query: {args.query}")
     print("Mode: MAGENTIC (Multi-Agent)")
-    print(f"{ '='*60}\n")
+    print(f"{'=' * 60}\n")
 
     # 1. Setup Search Tools
     search_handler = SearchHandler(

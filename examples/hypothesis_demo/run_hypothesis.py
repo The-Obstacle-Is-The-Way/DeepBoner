@@ -30,11 +30,11 @@ from src.tools.search_handler import SearchHandler
 async def run_hypothesis_demo(query: str) -> None:
     """Run the REAL hypothesis generation pipeline."""
     try:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("DeepCritical Hypothesis Agent Demo (Phase 7)")
         print(f"Query: {query}")
         print("Mode: REAL (Live API calls)")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         # Step 1: REAL Search
         print("[Step 1] Searching PubMed + ClinicalTrials + bioRxiv...")

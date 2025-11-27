@@ -29,10 +29,10 @@ from src.tools.search_handler import SearchHandler
 
 async def main(query: str) -> None:
     """Run search demo with the given query."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("DeepCritical Search Demo")
     print(f"Query: {query}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     # Initialize tools
     pubmed = PubMedTool()
@@ -45,12 +45,12 @@ async def main(query: str) -> None:
     result = await handler.execute(query, max_results_per_tool=5)
 
     # Display results
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Results: {result.total_found} pieces of evidence")
     print(f"Sources: {', '.join(result.sources_searched)}")
     if result.errors:
         print(f"Errors: {result.errors}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     for i, evidence in enumerate(result.evidence, 1):
         print(f"[{i}] {evidence.citation.source.upper()}: {evidence.citation.title[:80]}...")
