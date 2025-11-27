@@ -22,7 +22,7 @@ def create_search_agent(chat_client: OpenAIChatClient | None = None) -> ChatAgen
         ChatAgent configured for biomedical search
     """
     client = chat_client or OpenAIChatClient(
-        model_id="gpt-4o-mini",  # Fast, cheap for tool orchestration
+        model_id=settings.openai_model,  # Use configured model
         api_key=settings.openai_api_key,
     )
 
@@ -60,7 +60,7 @@ def create_judge_agent(chat_client: OpenAIChatClient | None = None) -> ChatAgent
         ChatAgent configured for evidence assessment
     """
     client = chat_client or OpenAIChatClient(
-        model_id="gpt-4o",  # Better model for nuanced judgment
+        model_id=settings.openai_model,
         api_key=settings.openai_api_key,
     )
 
@@ -99,7 +99,7 @@ def create_hypothesis_agent(chat_client: OpenAIChatClient | None = None) -> Chat
         ChatAgent configured for hypothesis generation
     """
     client = chat_client or OpenAIChatClient(
-        model_id="gpt-4o",
+        model_id=settings.openai_model,
         api_key=settings.openai_api_key,
     )
 
@@ -136,7 +136,7 @@ def create_report_agent(chat_client: OpenAIChatClient | None = None) -> ChatAgen
         ChatAgent configured for report generation
     """
     client = chat_client or OpenAIChatClient(
-        model_id="gpt-4o",
+        model_id=settings.openai_model,
         api_key=settings.openai_api_key,
     )
 
