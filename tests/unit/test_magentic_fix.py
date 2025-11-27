@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from agent_framework import MagenticFinalResultEvent
 
 from src.orchestrator_magentic import MagenticOrchestrator
@@ -31,10 +32,17 @@ class MockChatMessage:
         return "<ChatMessage object at 0xMOCK>"
 
 
+@pytest.fixture
+def mock_magentic_requirements():
+    """Mock the API key check so tests run in CI without OPENAI_API_KEY."""
+    with patch("src.orchestrator_magentic.check_magentic_requirements"):
+        yield
+
+
 class TestMagenticFixes:
     """Tests for the Magentic mode fixes."""
 
-    def test_process_event_extracts_text_correctly(self) -> None:
+    def test_process_event_extracts_text_correctly(self, mock_magentic_requirements) -> None:
         """
         Test that _process_event correctly extracts text from a ChatMessage.
 
@@ -54,7 +62,7 @@ class TestMagenticFixes:
         assert result_event.type == "complete"
         assert result_event.message == "Final Report Content"
 
-    def test_max_rounds_configuration(self) -> None:
+    def test_max_rounds_configuration(self, mock_magentic_requirements) -> None:
         """Test that max_rounds is correctly passed to the orchestrator."""
         orchestrator = MagenticOrchestrator(max_rounds=25)
         assert orchestrator._max_rounds == 25

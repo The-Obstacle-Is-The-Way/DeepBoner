@@ -5,7 +5,7 @@ from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, Field
 
-# Centralized source type - add new sources here (e.g., "biorxiv" in Phase 11)
+# Centralized source type - add new sources here (e.g., new databases)
 SourceName = Literal["pubmed", "clinicaltrials", "europepmc", "preprint"]
 
 
