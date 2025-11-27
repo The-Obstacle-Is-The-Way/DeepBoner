@@ -182,3 +182,24 @@ Be comprehensive but concise. Cite evidence for all claims.""",
         tools=[get_bibliography],
         temperature=0.3,
     )
+
+def create_sub_judge_agent(chat_client: OpenAIChatClient | None = None) -> ChatAgent:
+    """Create a judge agent for sub-iterations."""
+    client = chat_client or OpenAIChatClient(
+        model_id=settings.openai_model,
+        api_key=settings.openai_api_key,
+    )
+
+    return ChatAgent(
+        name="SubJudge",
+        description="Evaluates progress on a sub-task.",
+        instructions="""You are a sub-task evaluator.
+
+Review the conversation and determine if the sub-task is complete and sufficient.
+
+If sufficient, reply with 'SUFFICIENT' and a brief summary.
+If not, reply with 'CONTINUE' and what is missing.
+""",
+        chat_client=client,
+        temperature=0.1,
+    )

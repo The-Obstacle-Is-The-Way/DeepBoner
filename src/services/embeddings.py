@@ -5,6 +5,7 @@ The sentence-transformers model is CPU-bound, so we use run_in_executor().
 """
 
 import asyncio
+import os
 from typing import Any
 
 import chromadb
@@ -29,8 +30,12 @@ class EmbeddingService:
     def __init__(self, model_name: str | None = None):
         self._model_name = model_name or settings.local_embedding_model
         self._model = SentenceTransformer(self._model_name)
-        self._client = chromadb.Client()  # In-memory for hackathon
-        self._collection = self._client.create_collection(
+
+        # Use persistent storage
+        db_path = os.getenv("CHROMA_DB_PATH", "./data/chroma_db")
+        self._client = chromadb.PersistentClient(path=db_path)
+
+        self._collection = self._client.get_or_create_collection(
             name="evidence", metadata={"hnsw:space": "cosine"}
         )
 

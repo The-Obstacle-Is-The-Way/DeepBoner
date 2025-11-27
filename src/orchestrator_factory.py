@@ -10,7 +10,7 @@ def create_orchestrator(
     search_handler: SearchHandlerProtocol | None = None,
     judge_handler: JudgeHandlerProtocol | None = None,
     config: OrchestratorConfig | None = None,
-    mode: Literal["simple", "magentic"] = "simple",
+    mode: Literal["simple", "magentic", "hierarchical"] = "simple",
 ) -> Any:
     """
     Create an orchestrator instance.
@@ -19,13 +19,13 @@ def create_orchestrator(
         search_handler: The search handler (required for simple mode)
         judge_handler: The judge handler (required for simple mode)
         config: Optional configuration
-        mode: "simple" for Phase 4 loop, "magentic" for ChatAgent-based multi-agent
+        mode: "simple", "magentic", or "hierarchical"
 
     Returns:
         Orchestrator instance
 
     Note:
-        Magentic mode does NOT use search_handler/judge_handler.
+        Magentic/Hierarchical mode does NOT use search_handler/judge_handler.
         It creates ChatAgent instances with internal LLMs that call tools directly.
     """
     if mode == "magentic":
@@ -37,6 +37,16 @@ def create_orchestrator(
             )
         except ImportError:
             # Fallback to simple if agent-framework not installed
+            pass
+
+    if mode == "hierarchical":
+        try:
+            from src.orchestrator_hierarchical import HierarchicalOrchestrator
+
+            return HierarchicalOrchestrator(
+                max_rounds=config.max_iterations if config else 10,
+            )
+        except ImportError:
             pass
 
     # Simple mode requires handlers

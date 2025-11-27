@@ -6,15 +6,17 @@ They also interact with the thread-safe MagenticState to persist evidence.
 
 from agent_framework import ai_function
 
-from src.agents.state import get_magentic_state
+from src.state import get_magentic_state
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
 from src.tools.pubmed import PubMedTool
+from src.tools.websearch import WebSearchTool
 
 # Singleton tool instances (stateless wrappers)
 _pubmed = PubMedTool()
 _clinicaltrials = ClinicalTrialsTool()
 _europepmc = EuropePMCTool()
+_websearch = WebSearchTool()
 
 
 @ai_function  # type: ignore[arg-type, misc]
@@ -149,6 +151,44 @@ async def search_preprints(query: str, max_results: int = 10) -> str:
         output.append(f"   Source: {source} | Date: {date}")
         output.append(f"   {content_clean}...")
         output.append(f"   URL: {url}\n")
+
+    return "\n".join(output)
+
+
+@ai_function  # type: ignore[arg-type, misc]
+async def search_web(query: str, max_results: int = 10) -> str:
+    """Search the web for general information.
+
+    Use this tool to find information not available in biomedical databases,
+    such as news, company information, or general scientific context.
+
+    Args:
+        query: Search keywords
+        max_results: Maximum results to return (default 10)
+
+    Returns:
+        Formatted list of web results
+    """
+    state = get_magentic_state()
+
+    results = await _websearch.search(query, max_results)
+    if not results:
+        return f"No web results found for: {query}"
+
+    # Update state (add to evidence store)
+    new_count = state.add_evidence(results)
+
+    output = [f"Found {len(results)} web results ({new_count} new stored):\n"]
+    for i, r in enumerate(results[:max_results], 1):
+        title = r.citation.title
+        source = r.citation.source
+        content_clean = r.content[:300].replace("\n", " ")
+        url = r.citation.url
+
+        output.append(f"{i}. **{title}**")
+        output.append(f"   Source: {source} | {url}")
+        output.append(f"   {content_clean}...")
+        output.append("")
 
     return "\n".join(output)
 

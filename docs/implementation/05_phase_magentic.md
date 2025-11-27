@@ -107,7 +107,7 @@ search_agent = ChatAgent(
 
 ## 3. Correct Implementation
 
-### 3.1 Shared State Module (`src/agents/state.py`)
+### 3.1 Shared State Module (`src/state/magentic_state.py`)
 
 **CRITICAL**: Tools must update shared state so:
 1. EmbeddingService can deduplicate across searches
@@ -285,7 +285,7 @@ This preserves semantic deduplication and structured citation access.
 """
 from agent_framework import AIFunction
 
-from src.agents.state import get_magentic_state
+from src.state import get_magentic_state
 from src.tools.biorxiv import BioRxivTool
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.pubmed import PubMedTool
@@ -693,7 +693,7 @@ from src.agents.magentic_agents import (
     create_report_agent,
     create_search_agent,
 )
-from src.agents.state import get_magentic_state, reset_magentic_state
+from src.state import get_magentic_state, reset_magentic_state
 from src.utils.config import settings
 from src.utils.exceptions import ConfigurationError
 from src.utils.models import AgentEvent
@@ -976,9 +976,11 @@ PubMed doesn't understand English instructions → garbage results or error
 src/
 ├── agents/
 │   ├── __init__.py
-│   ├── state.py                 # MagenticState (evidence_store + embeddings)
 │   ├── tools.py                 # AIFunction tool definitions (update state)
 │   └── magentic_agents.py       # ChatAgent factory functions
+├── state/
+│   ├── __init__.py
+│   └── magentic_state.py        # MagenticState (evidence_store + embeddings)
 ├── services/
 │   └── embeddings.py            # EmbeddingService (semantic dedup)
 ├── orchestrator.py              # Simple mode (unchanged)
@@ -1015,7 +1017,7 @@ This is enforced in `MagenticOrchestrator.__init__`.
 
 ## 7. Implementation Checklist
 
-- [ ] Create `src/agents/state.py` with MagenticState class
+- [ ] Create `src/state/magentic_state.py` with MagenticState class
 - [ ] Create `src/agents/tools.py` with AIFunction search tools + state updates
 - [ ] Create `src/agents/magentic_agents.py` with ChatAgent factories
 - [ ] Rewrite `src/orchestrator_magentic.py` to use ChatAgent pattern
