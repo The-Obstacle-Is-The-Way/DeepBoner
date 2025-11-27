@@ -1108,7 +1108,7 @@ modal = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agent-framework-core", marker = "extra == 'magentic'" },
+    { name = "agent-framework-core", marker = "extra == 'magentic'", specifier = ">=1.0.0b251120,<2.0.0" },
     { name = "anthropic", specifier = ">=0.18.0" },
     { name = "beautifulsoup4", specifier = ">=4.12" },
     { name = "chromadb", marker = "extra == 'embeddings'", specifier = ">=0.4.0" },

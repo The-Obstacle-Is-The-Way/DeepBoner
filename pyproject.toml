@@ -43,7 +43,7 @@ dev = [
     "pre-commit>=3.7",
 ]
 magentic = [
-    "agent-framework-core",
+    "agent-framework-core>=1.0.0b251120,<2.0.0",  # Pin to avoid breaking changes
 ]
 embeddings = [
     "chromadb>=0.4.0",
@@ -133,5 +133,5 @@ exclude_lines = [
     "raise NotImplementedError",
 ]
 
-# Note: agent-framework-core is optional and installed locally for magentic mode
-# CI skips tests that require it via pytest.importorskip
+# Note: agent-framework-core is optional for magentic mode (multi-agent orchestration)
+# Version pinned to 1.0.0b* to avoid breaking changes. CI skips tests via pytest.importorskip
