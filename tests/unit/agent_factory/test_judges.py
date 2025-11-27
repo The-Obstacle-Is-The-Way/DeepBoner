@@ -4,12 +4,25 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.agent_factory.judges import JudgeHandler, MockJudgeHandler
+from src.agent_factory.judges import JudgeHandler, MockJudgeHandler, get_model
 from src.utils.models import AssessmentDetails, Citation, Evidence, JudgeAssessment
 
 
 class TestJudgeHandler:
     """Tests for JudgeHandler."""
+
+    @patch("src.agent_factory.judges.settings")
+    def test_get_model_huggingface(self, mock_settings):
+        """get_model should return HuggingFaceModel when provider is huggingface."""
+        mock_settings.llm_provider = "huggingface"
+        mock_settings.huggingface_model = "test-model"
+
+        model = get_model()
+
+        from pydantic_ai.models.huggingface import HuggingFaceModel
+
+        assert isinstance(model, HuggingFaceModel)
+        assert model.model_name == "test-model"
 
     @pytest.mark.asyncio
     async def test_assess_returns_assessment(self):

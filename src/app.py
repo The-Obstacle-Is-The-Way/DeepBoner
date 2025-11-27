@@ -6,11 +6,12 @@ from typing import Any
 
 import gradio as gr
 from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.models.huggingface import HuggingFaceModel
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from src.agent_factory.judges import HFInferenceJudgeHandler, JudgeHandler, MockJudgeHandler
+from src.agent_factory.judges import JudgeHandler, MockJudgeHandler
 from src.orchestrator_factory import create_orchestrator
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
@@ -22,7 +23,6 @@ from src.utils.models import OrchestratorConfig
 
 def configure_orchestrator(
     use_mock: bool = False,
-    mode: str = "simple",
     user_api_key: str | None = None,
     api_provider: str = "openai",
 ) -> tuple[Any, str]:
@@ -31,7 +31,6 @@ def configure_orchestrator(
 
     Args:
         use_mock: If True, use MockJudgeHandler (no API key needed)
-        mode: Orchestrator mode ("simple" or "magentic")
         user_api_key: Optional user-provided API key (BYOK)
         api_provider: API provider ("openai" or "anthropic")
 
@@ -51,7 +50,7 @@ def configure_orchestrator(
     )
 
     # Create judge (mock, real, or free tier)
-    judge_handler: JudgeHandler | MockJudgeHandler | HFInferenceJudgeHandler
+    judge_handler: JudgeHandler | MockJudgeHandler
     backend_info = "Unknown"
 
     # 1. Forced Mock (Unit Testing)
@@ -65,7 +64,7 @@ def configure_orchestrator(
         or (api_provider == "openai" and os.getenv("OPENAI_API_KEY"))
         or (api_provider == "anthropic" and os.getenv("ANTHROPIC_API_KEY"))
     ):
-        model: AnthropicModel | OpenAIModel | None = None
+        model: AnthropicModel | OpenAIModel | HuggingFaceModel | None = None
         if user_api_key:
             # Validate key/provider match to prevent silent auth failures
             if api_provider == "openai" and user_api_key.startswith("sk-ant-"):
@@ -83,20 +82,31 @@ def configure_orchestrator(
                 model = OpenAIModel(settings.openai_model, provider=openai_provider)
             backend_info = f"Paid API ({api_provider.upper()})"
         else:
+            # Falls back to env config logic in JudgeHandler if passed None,
+            # but here we want to be explicit for the backend info.
+            # Since JudgeHandler handles default envs, we can pass None
+            # IF we didn't want to display backend info.
+            # But we do.
+            if api_provider == "openai":
+                model = OpenAIModel(settings.openai_model)
+            elif api_provider == "anthropic":
+                model = AnthropicModel(settings.anthropic_model)
             backend_info = "Paid API (Env Config)"
 
         judge_handler = JudgeHandler(model=model)
 
     # 3. Free Tier (HuggingFace Inference)
     else:
-        judge_handler = HFInferenceJudgeHandler()
-        backend_info = "Free Tier (Llama 3.1 / Mistral)"
+        # Use Pydantic AI's native HF support
+        # Will use HF_TOKEN from env if available
+        model = HuggingFaceModel(settings.huggingface_model or "meta-llama/Llama-3.1-70B-Instruct")
+        judge_handler = JudgeHandler(model=model)
+        backend_info = "Free Tier (Llama 3.1 via HuggingFace)"
 
     orchestrator = create_orchestrator(
         search_handler=search_handler,
         judge_handler=judge_handler,
         config=config,
-        mode=mode,  # type: ignore
     )
 
     return orchestrator, backend_info
@@ -105,7 +115,6 @@ def configure_orchestrator(
 async def research_agent(
     message: str,
     history: list[dict[str, Any]],
-    mode: str = "simple",
     api_key: str = "",
     api_provider: str = "openai",
 ) -> AsyncGenerator[str, None]:
@@ -115,7 +124,6 @@ async def research_agent(
     Args:
         message: User's research question
         history: Chat history (Gradio format)
-        mode: Orchestrator mode ("simple" or "magentic")
         api_key: Optional user-provided API key (BYOK - Bring Your Own Key)
         api_provider: API provider ("openai" or "anthropic")
 
@@ -135,13 +143,6 @@ async def research_agent(
     has_user_key = bool(user_api_key)
     has_paid_key = has_openai or has_anthropic or has_user_key
 
-    # Magentic mode requires OpenAI specifically
-    if mode == "magentic" and not (has_openai or (has_user_key and api_provider == "openai")):
-        yield (
-            "⚠️ **Warning**: Magentic mode requires OpenAI API key. Falling back to simple mode.\n\n"
-        )
-        mode = "simple"
-
     # Inform user about their key being used
     if has_user_key:
         yield (
@@ -151,7 +152,7 @@ async def research_agent(
     elif not has_paid_key:
         # No paid keys - will use FREE HuggingFace Inference
         yield (
-            "🤗 **Free Tier**: Using HuggingFace Inference (Llama 3.1 / Mistral) for AI analysis.\n"
+            "🤗 **Free Tier**: Using HuggingFace Inference (Llama 3.1) for AI analysis.\n"
             "For premium models, enter an OpenAI or Anthropic API key below.\n\n"
         )
 
@@ -163,7 +164,6 @@ async def research_agent(
         # It will use: Paid API > HF Inference (free tier)
         orchestrator, backend_name = configure_orchestrator(
             use_mock=False,  # Never use mock in production - HF Inference is the free fallback
-            mode=mode,
             user_api_key=user_api_key,
             api_provider=api_provider,
         )
@@ -207,31 +207,22 @@ def create_demo() -> gr.ChatInterface:
         examples=[
             [
                 "What drugs could be repurposed for Alzheimer's disease?",
-                "simple",
                 "",
                 "openai",
             ],
             [
                 "Is metformin effective for treating cancer?",
-                "simple",
                 "",
                 "openai",
             ],
             [
                 "What medications show promise for Long COVID treatment?",
-                "simple",
                 "",
                 "openai",
             ],
         ],
         additional_inputs_accordion=gr.Accordion(label="⚙️ Settings", open=False),
         additional_inputs=[
-            gr.Radio(
-                choices=["simple", "magentic"],
-                value="simple",
-                label="Orchestrator Mode",
-                info="Simple: Linear | Magentic: Multi-Agent (OpenAI)",
-            ),
             gr.Textbox(
                 label="🔑 API Key (Optional - BYOK)",
                 placeholder="sk-... or sk-ant-...",

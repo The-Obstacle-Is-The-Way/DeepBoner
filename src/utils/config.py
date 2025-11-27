@@ -23,12 +23,16 @@ class Settings(BaseSettings):
     # LLM Configuration
     openai_api_key: str | None = Field(default=None, description="OpenAI API key")
     anthropic_api_key: str | None = Field(default=None, description="Anthropic API key")
-    llm_provider: Literal["openai", "anthropic"] = Field(
+    llm_provider: Literal["openai", "anthropic", "huggingface"] = Field(
         default="openai", description="Which LLM provider to use"
     )
     openai_model: str = Field(default="gpt-5.1", description="OpenAI model name")
     anthropic_model: str = Field(
         default="claude-sonnet-4-5-20250929", description="Anthropic model"
+    )
+    huggingface_model: str | None = Field(
+        default="meta-llama/Llama-3.1-70B-Instruct",
+        description="Hugging Face model (free tier)",
     )
 
     # Embedding Configuration
@@ -76,16 +80,11 @@ class Settings(BaseSettings):
                 raise ConfigurationError("ANTHROPIC_API_KEY not set")
             return self.anthropic_api_key
 
-        raise ConfigurationError(f"Unknown LLM provider: {self.llm_provider}")
+        if self.llm_provider == "huggingface":
+            # HF_TOKEN is optional for some public models, handled by env
+            return ""
 
-    def get_openai_api_key(self) -> str:
-        """Get OpenAI API key (required for Magentic function calling)."""
-        if not self.openai_api_key:
-            raise ConfigurationError(
-                "OPENAI_API_KEY not set. Magentic mode requires OpenAI for function calling. "
-                "Use mode='simple' for other providers."
-            )
-        return self.openai_api_key
+        raise ConfigurationError(f"Unknown LLM provider: {self.llm_provider}")
 
     @property
     def has_openai_key(self) -> bool:
