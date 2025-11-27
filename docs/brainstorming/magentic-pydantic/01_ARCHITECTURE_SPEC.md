@@ -8,7 +8,7 @@
 
 ## 1. Core Concept: Two Operating Modes
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        USER REQUEST                                 │
 │                            │                                        │
@@ -45,7 +45,7 @@
 
 | Aspect | Simple Mode | Advanced Mode |
 |--------|-------------|---------------|
-| **Trigger** | No API key OR `LLM_PROVIDER=huggingface` | OpenAI/Anthropic API key present |
+| **Trigger** | No API key OR `LLM_PROVIDER=huggingface` | OpenAI API key present (currently OpenAI only) |
 | **Framework** | pydantic-ai only | Microsoft Agent Framework + pydantic-ai |
 | **Architecture** | Single orchestrator loop | Multi-agent coordination |
 | **Agents** | One agent does Search→Judge→Report | SearchAgent, JudgeAgent, ReportAgent, AnalysisAgent |
@@ -58,7 +58,7 @@
 
 ## 3. Simple Mode Architecture (pydantic-ai Only)
 
-```
+```text
 ┌─────────────────────────────────────────────────────┐
 │                  Orchestrator                       │
 │                                                     │
@@ -82,7 +82,7 @@
 
 ## 4. Advanced Mode Architecture (MS Agent Framework + pydantic-ai)
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │              Microsoft Agent Framework Orchestrator                 │
 │                                                                     │
