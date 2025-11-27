@@ -425,7 +425,7 @@ class MockJudgeHandler:
                 clinical_evidence_score=clinical_score,
                 clinical_reasoning=(
                     f"Demo mode: {evidence_count} sources retrieved from PubMed, "
-                    "ClinicalTrials.gov, and bioRxiv. Full analysis requires LLM API key."
+                    "ClinicalTrials.gov, and Europe PMC. Full analysis requires LLM API key."
                 ),
                 drug_candidates=drug_candidates,
                 key_findings=key_findings,

@@ -199,7 +199,7 @@ def create_demo() -> Any:
         # 1. Minimal Header (Option A: 2 lines max)
         gr.Markdown(
             "# 🧬 DeepCritical\n"
-            "*AI-Powered Drug Repurposing Agent — searches PubMed, ClinicalTrials.gov & bioRxiv*"
+            "*AI-Powered Drug Repurposing Agent — searches PubMed, ClinicalTrials.gov & Europe PMC*"
         )
 
         # 2. Main Chat Interface
