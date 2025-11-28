@@ -35,7 +35,7 @@ class LongWriterOutput(BaseModel):
 # System prompt for the long writer agent
 SYSTEM_PROMPT = f"""
 You are an expert report writer tasked with iteratively writing each section of a report. 
-Today's date is {datetime.now().strftime('%Y-%m-%d')}.
+Today's date is {datetime.now().strftime("%Y-%m-%d")}.
 You will be provided with:
 1. The original research query
 2. A final draft of the report containing the table of contents and all sections written up until this point (in the first iteration there will be no sections written yet)
@@ -274,7 +274,7 @@ class LongWriterAgent:
             f"# {report_title}\n\n## Table of Contents\n\n"
             + "\n".join(
                 [
-                    f"{i+1}. {section.section_title}"
+                    f"{i + 1}. {section.section_title}"
                     for i, section in enumerate(report_draft.sections)
                 ]
             )

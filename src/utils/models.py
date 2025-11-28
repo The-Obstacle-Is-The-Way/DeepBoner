@@ -417,10 +417,7 @@ class Conversation(BaseModel):
     def get_task_string(self, iteration_num: int) -> str:
         """Get the task for the specified iteration."""
         if iteration_num < len(self.history) and self.history[iteration_num].gap:
-            return (
-                f"<task>\nAddress this knowledge gap: "
-                f"{self.history[iteration_num].gap}\n</task>"
-            )
+            return f"<task>\nAddress this knowledge gap: {self.history[iteration_num].gap}\n</task>"
         return ""
 
     def get_action_string(self, iteration_num: int) -> str:

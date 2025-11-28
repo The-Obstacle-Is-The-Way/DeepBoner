@@ -163,7 +163,7 @@ class TestPubMedTool:
         # Make first 3 requests - should all succeed without sleep (within rate limit)
         with patch("asyncio.sleep") as mock_sleep_first:
             for i in range(3):
-                await tool.search(f"test query {i+1}")
+                await tool.search(f"test query {i + 1}")
             # First 3 requests should not sleep (within 3/second limit)
             assert mock_sleep_first.call_count == 0
 

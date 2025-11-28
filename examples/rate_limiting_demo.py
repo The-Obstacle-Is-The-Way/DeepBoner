@@ -22,7 +22,7 @@ async def test_basic_limiter():
     for i in range(6):
         await limiter.acquire()
         elapsed = time.monotonic() - start
-        print(f"  Request {i+1} at {elapsed:.2f}s")
+        print(f"  Request {i + 1} at {elapsed:.2f}s")
 
     total = time.monotonic() - start
     print(f"  Total time for 6 requests: {total:.2f}s (expected ~2s)")

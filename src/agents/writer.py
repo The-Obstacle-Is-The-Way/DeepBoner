@@ -18,7 +18,7 @@ logger = structlog.get_logger()
 # System prompt for the writer agent
 SYSTEM_PROMPT = f"""
 You are a senior researcher tasked with comprehensively answering a research query. 
-Today's date is {datetime.now().strftime('%Y-%m-%d')}.
+Today's date is {datetime.now().strftime("%Y-%m-%d")}.
 You will be provided with the original query along with research findings put together by a research assistant.
 Your objective is to generate the final response in markdown format.
 The response should be as lengthy and detailed as possible with the information provided, focusing on answering the original query.
