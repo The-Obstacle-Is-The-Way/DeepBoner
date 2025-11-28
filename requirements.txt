@@ -3,6 +3,7 @@ pydantic>=2.7
 pydantic-settings>=2.2
 pydantic-ai>=0.0.16
 
+
 # AI Providers
 openai>=1.0.0
 anthropic>=0.18.0
