@@ -266,7 +266,7 @@ class TestResearchGraph:
         graph.add_node(unreachable)
         graph.add_edge(SequentialEdge(from_node="start", to_node="end"))
 
-        errors = graph.validate()
+        errors = graph.validate_structure()
         assert len(errors) > 0
         assert any("unreachable" in error.lower() for error in errors)
 
