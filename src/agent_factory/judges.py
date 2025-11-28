@@ -40,15 +40,21 @@ def get_model() -> Any:
 
     if llm_provider == "huggingface":
         # Free tier - uses HF_TOKEN from environment if available
-        model_name = settings.huggingface_model or "meta-llama/Llama-3.1-70B-Instruct"
+        model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
         hf_provider = HuggingFaceProvider(api_key=settings.hf_token)
         return HuggingFaceModel(model_name, provider=hf_provider)
 
-    if llm_provider != "openai":
-        logger.warning("Unknown LLM provider, defaulting to OpenAI", provider=llm_provider)
+    if llm_provider == "openai":
+        openai_provider = OpenAIProvider(api_key=settings.openai_api_key)
+        return OpenAIModel(settings.openai_model, provider=openai_provider)
 
-    openai_provider = OpenAIProvider(api_key=settings.openai_api_key)
-    return OpenAIModel(settings.openai_model, provider=openai_provider)
+    # Default to HuggingFace if provider is unknown or not specified
+    if llm_provider != "huggingface":
+        logger.warning("Unknown LLM provider, defaulting to HuggingFace", provider=llm_provider)
+
+    model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
+    hf_provider = HuggingFaceProvider(api_key=settings.hf_token)
+    return HuggingFaceModel(model_name, provider=hf_provider)
 
 
 class JudgeHandler:

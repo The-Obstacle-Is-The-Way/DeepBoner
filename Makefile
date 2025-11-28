@@ -8,15 +8,21 @@ install:
 	uv run pre-commit install
 
 test:
-	uv run pytest tests/unit/ -v
+	uv run pytest tests/unit/ -v -m "not openai" -p no:logfire
+
+test-hf:
+	uv run pytest tests/ -v -m "huggingface" -p no:logfire
+
+test-all:
+	uv run pytest tests/ -v -p no:logfire
 
 # Coverage aliases
 cov: test-cov
 test-cov:
-	uv run pytest --cov=src --cov-report=term-missing
+	uv run pytest --cov=src --cov-report=term-missing -m "not openai" -p no:logfire
 
 cov-html:
-	uv run pytest --cov=src --cov-report=html
+	uv run pytest --cov=src --cov-report=html -p no:logfire
 	@echo "Coverage report: open htmlcov/index.html"
 
 lint:

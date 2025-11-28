@@ -12,7 +12,6 @@ from agent_framework import (
     MagenticOrchestratorMessageEvent,
     WorkflowOutputEvent,
 )
-from agent_framework.openai import OpenAIChatClient
 
 from src.agents.magentic_agents import (
     create_hypothesis_agent,
@@ -21,8 +20,7 @@ from src.agents.magentic_agents import (
     create_search_agent,
 )
 from src.agents.state import init_magentic_state
-from src.utils.config import settings
-from src.utils.llm_factory import check_magentic_requirements
+from src.utils.llm_factory import check_magentic_requirements, get_chat_client_for_agent
 from src.utils.models import AgentEvent
 
 if TYPE_CHECKING:
@@ -42,13 +40,14 @@ class MagenticOrchestrator:
     def __init__(
         self,
         max_rounds: int = 10,
-        chat_client: OpenAIChatClient | None = None,
+        chat_client: Any | None = None,
     ) -> None:
         """Initialize orchestrator.
 
         Args:
             max_rounds: Maximum coordination rounds
-            chat_client: Optional shared chat client for agents
+            chat_client: Optional shared chat client for agents.
+                        If None, uses factory default (HuggingFace preferred, OpenAI fallback)
         """
         # Validate requirements via centralized factory
         check_magentic_requirements()
@@ -79,10 +78,8 @@ class MagenticOrchestrator:
         report_agent = create_report_agent(self._chat_client)
 
         # Manager chat client (orchestrates the agents)
-        manager_client = OpenAIChatClient(
-            model_id=settings.openai_model,  # Use configured model
-            api_key=settings.openai_api_key,
-        )
+        # Use same client type as agents for consistency
+        manager_client = self._chat_client or get_chat_client_for_agent()
 
         return (
             MagenticBuilder()

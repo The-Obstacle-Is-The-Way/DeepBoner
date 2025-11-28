@@ -20,3 +20,44 @@ repos:
           - tenacity>=8.2
           - pydantic-ai>=0.0.16
         args: [--ignore-missing-imports]
+
+  - repo: local
+    hooks:
+      - id: pytest-unit
+        name: pytest unit tests (no OpenAI)
+        entry: uv
+        language: system
+        types: [python]
+        args: [
+          "run",
+          "pytest",
+          "tests/unit/",
+          "-v",
+          "-m",
+          "not openai and not embedding_provider",
+          "--tb=short",
+          "-p",
+          "no:logfire",
+        ]
+        pass_filenames: false
+        always_run: true
+        require_serial: false
+      - id: pytest-local-embeddings
+        name: pytest local embeddings tests
+        entry: uv
+        language: system
+        types: [python]
+        args: [
+          "run",
+          "pytest",
+          "tests/",
+          "-v",
+          "-m",
+          "local_embeddings",
+          "--tb=short",
+          "-p",
+          "no:logfire",
+        ]
+        pass_filenames: false
+        always_run: true
+        require_serial: false

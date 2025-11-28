@@ -20,6 +20,7 @@ except OSError:
 from src.services.embeddings import EmbeddingService
 
 
+@pytest.mark.local_embeddings
 class TestEmbeddingService:
     @pytest.fixture
     def mock_sentence_transformer(self):

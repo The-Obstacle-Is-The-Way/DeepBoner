@@ -52,11 +52,18 @@ class RAGTool:
             try:
                 from src.services.llamaindex_rag import get_rag_service
 
-                self._rag_service = get_rag_service()
-                self.logger.info("RAG service initialized")
+                # Use local embeddings by default (no API key required)
+                # Use in-memory ChromaDB to avoid file system issues
+                self._rag_service = get_rag_service(
+                    use_openai_embeddings=False,
+                    use_in_memory=True,  # Use in-memory for better reliability
+                )
+                self.logger.info("RAG service initialized with local embeddings")
             except (ConfigurationError, ImportError) as e:
                 self.logger.error("Failed to initialize RAG service", error=str(e))
-                raise ConfigurationError("RAG service unavailable. OPENAI_API_KEY required.") from e
+                raise ConfigurationError(
+                    "RAG service unavailable. Check LlamaIndex dependencies are installed."
+                ) from e
 
         return self._rag_service
 

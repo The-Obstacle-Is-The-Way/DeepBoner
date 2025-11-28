@@ -1,7 +1,8 @@
 """Magentic-compatible agents using ChatAgent pattern."""
 
+from typing import Any
+
 from agent_framework import ChatAgent
-from agent_framework.openai import OpenAIChatClient
 
 from src.agents.tools import (
     get_bibliography,
@@ -9,22 +10,20 @@ from src.agents.tools import (
     search_preprints,
     search_pubmed,
 )
-from src.utils.config import settings
+from src.utils.llm_factory import get_chat_client_for_agent
 
 
-def create_search_agent(chat_client: OpenAIChatClient | None = None) -> ChatAgent:
+def create_search_agent(chat_client: Any | None = None) -> ChatAgent:
     """Create a search agent with internal LLM and search tools.
 
     Args:
-        chat_client: Optional custom chat client. If None, uses default.
+        chat_client: Optional custom chat client. If None, uses factory default
+                    (HuggingFace preferred, OpenAI fallback).
 
     Returns:
         ChatAgent configured for biomedical search
     """
-    client = chat_client or OpenAIChatClient(
-        model_id=settings.openai_model,  # Use configured model
-        api_key=settings.openai_api_key,
-    )
+    client = chat_client or get_chat_client_for_agent()
 
     return ChatAgent(
         name="SearchAgent",
@@ -50,19 +49,17 @@ Focus on finding: mechanisms of action, clinical evidence, and specific drug can
     )
 
 
-def create_judge_agent(chat_client: OpenAIChatClient | None = None) -> ChatAgent:
+def create_judge_agent(chat_client: Any | None = None) -> ChatAgent:
     """Create a judge agent that evaluates evidence quality.
 
     Args:
-        chat_client: Optional custom chat client. If None, uses default.
+        chat_client: Optional custom chat client. If None, uses factory default
+                    (HuggingFace preferred, OpenAI fallback).
 
     Returns:
         ChatAgent configured for evidence assessment
     """
-    client = chat_client or OpenAIChatClient(
-        model_id=settings.openai_model,
-        api_key=settings.openai_api_key,
-    )
+    client = chat_client or get_chat_client_for_agent()
 
     return ChatAgent(
         name="JudgeAgent",
@@ -89,19 +86,17 @@ Be rigorous but fair. Look for:
     )
 
 
-def create_hypothesis_agent(chat_client: OpenAIChatClient | None = None) -> ChatAgent:
+def create_hypothesis_agent(chat_client: Any | None = None) -> ChatAgent:
     """Create a hypothesis generation agent.
 
     Args:
-        chat_client: Optional custom chat client. If None, uses default.
+        chat_client: Optional custom chat client. If None, uses factory default
+                    (HuggingFace preferred, OpenAI fallback).
 
     Returns:
         ChatAgent configured for hypothesis generation
     """
-    client = chat_client or OpenAIChatClient(
-        model_id=settings.openai_model,
-        api_key=settings.openai_api_key,
-    )
+    client = chat_client or get_chat_client_for_agent()
 
     return ChatAgent(
         name="HypothesisAgent",
@@ -126,19 +121,17 @@ Focus on mechanistic plausibility and existing evidence.""",
     )
 
 
-def create_report_agent(chat_client: OpenAIChatClient | None = None) -> ChatAgent:
+def create_report_agent(chat_client: Any | None = None) -> ChatAgent:
     """Create a report synthesis agent.
 
     Args:
-        chat_client: Optional custom chat client. If None, uses default.
+        chat_client: Optional custom chat client. If None, uses factory default
+                    (HuggingFace preferred, OpenAI fallback).
 
     Returns:
         ChatAgent configured for report generation
     """
-    client = chat_client or OpenAIChatClient(
-        model_id=settings.openai_model,
-        api_key=settings.openai_api_key,
-    )
+    client = chat_client or get_chat_client_for_agent()
 
     return ChatAgent(
         name="ReportAgent",

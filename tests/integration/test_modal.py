@@ -4,8 +4,8 @@ import pytest
 
 from src.utils.config import settings
 
-# Check if any LLM API key is available
-_llm_available = bool(settings.openai_api_key or settings.anthropic_api_key)
+# Check if any LLM API key is available (HuggingFace preferred, OpenAI/Anthropic fallback)
+_llm_available = settings.has_any_llm_key
 
 # Check if modal package is installed
 try:

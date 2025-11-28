@@ -54,7 +54,7 @@ class SearchHandler:
         except ConfigurationError:
             logger.warning(
                 "RAG tool unavailable, not adding to search handler",
-                hint="OPENAI_API_KEY required",
+                hint="LlamaIndex dependencies required",
             )
         except Exception as e:
             logger.error("Failed to add RAG tool", error=str(e))
@@ -65,8 +65,13 @@ class SearchHandler:
             try:
                 from src.services.llamaindex_rag import get_rag_service
 
-                self._rag_service = get_rag_service()
-                logger.info("RAG service initialized for ingestion")
+                # Use local embeddings by default (no API key required)
+                # Use in-memory ChromaDB to avoid file system issues
+                self._rag_service = get_rag_service(
+                    use_openai_embeddings=False,
+                    use_in_memory=True,  # Use in-memory for better reliability
+                )
+                logger.info("RAG service initialized for ingestion with local embeddings")
             except (ConfigurationError, ImportError):
                 logger.warning("RAG service unavailable for ingestion")
                 return None

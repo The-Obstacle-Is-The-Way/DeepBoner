@@ -1,13 +1,13 @@
 """Code execution agent using Modal."""
 
 import asyncio
+from typing import Any
 
 import structlog
 from agent_framework import ChatAgent, ai_function
-from agent_framework.openai import OpenAIChatClient
 
 from src.tools.code_execution import get_code_executor
-from src.utils.config import settings
+from src.utils.llm_factory import get_chat_client_for_agent
 
 logger = structlog.get_logger()
 
@@ -40,19 +40,17 @@ async def execute_python_code(code: str) -> str:
         return f"Execution failed: {e}"
 
 
-def create_code_executor_agent(chat_client: OpenAIChatClient | None = None) -> ChatAgent:
+def create_code_executor_agent(chat_client: Any | None = None) -> ChatAgent:
     """Create a code executor agent.
 
     Args:
-        chat_client: Optional custom chat client.
+        chat_client: Optional custom chat client. If None, uses factory default
+                    (HuggingFace preferred, OpenAI fallback).
 
     Returns:
         ChatAgent configured for code execution.
     """
-    client = chat_client or OpenAIChatClient(
-        model_id=settings.openai_model,
-        api_key=settings.openai_api_key,
-    )
+    client = chat_client or get_chat_client_for_agent()
 
     return ChatAgent(
         name="CodeExecutorAgent",

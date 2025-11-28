@@ -6,8 +6,10 @@ from typing import Any
 
 import gradio as gr
 from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.models.huggingface import HuggingFaceModel
 from pydantic_ai.models.openai import OpenAIChatModel as OpenAIModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
+from pydantic_ai.providers.huggingface import HuggingFaceProvider
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from src.agent_factory.judges import HFInferenceJudgeHandler, JudgeHandler, MockJudgeHandler
@@ -24,7 +26,7 @@ def configure_orchestrator(
     use_mock: bool = False,
     mode: str = "simple",
     user_api_key: str | None = None,
-    api_provider: str = "openai",
+    api_provider: str = "huggingface",
 ) -> tuple[Any, str]:
     """
     Create an orchestrator instance.
@@ -33,7 +35,7 @@ def configure_orchestrator(
         use_mock: If True, use MockJudgeHandler (no API key needed)
         mode: Orchestrator mode ("simple" or "advanced")
         user_api_key: Optional user-provided API key (BYOK)
-        api_provider: API provider ("openai" or "anthropic")
+        api_provider: API provider ("huggingface", "openai", or "anthropic")
 
     Returns:
         Tuple of (Orchestrator instance, backend_name)
@@ -59,13 +61,17 @@ def configure_orchestrator(
         judge_handler = MockJudgeHandler()
         backend_info = "Mock (Testing)"
 
-    # 2. Paid API Key (User provided or Env)
+    # 2. API Key (User provided or Env) - HuggingFace, OpenAI, or Anthropic
     elif (
         user_api_key
+        or (
+            api_provider == "huggingface"
+            and (os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY"))
+        )
         or (api_provider == "openai" and os.getenv("OPENAI_API_KEY"))
         or (api_provider == "anthropic" and os.getenv("ANTHROPIC_API_KEY"))
     ):
-        model: AnthropicModel | OpenAIModel | None = None
+        model: AnthropicModel | HuggingFaceModel | OpenAIModel | None = None
         if user_api_key:
             # Validate key/provider match to prevent silent auth failures
             if api_provider == "openai" and user_api_key.startswith("sk-ant-"):
@@ -75,15 +81,19 @@ def configure_orchestrator(
             )
             if api_provider == "anthropic" and is_openai_key:
                 raise ValueError("OpenAI key provided but Anthropic provider selected")
-            if api_provider == "anthropic":
+            if api_provider == "huggingface":
+                model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
+                hf_provider = HuggingFaceProvider(api_key=user_api_key)
+                model = HuggingFaceModel(model_name, provider=hf_provider)
+            elif api_provider == "anthropic":
                 anthropic_provider = AnthropicProvider(api_key=user_api_key)
                 model = AnthropicModel(settings.anthropic_model, provider=anthropic_provider)
             elif api_provider == "openai":
                 openai_provider = OpenAIProvider(api_key=user_api_key)
                 model = OpenAIModel(settings.openai_model, provider=openai_provider)
-            backend_info = f"Paid API ({api_provider.upper()})"
+            backend_info = f"API ({api_provider.upper()})"
         else:
-            backend_info = "Paid API (Env Config)"
+            backend_info = "API (Env Config)"
 
         judge_handler = JudgeHandler(model=model)
 
@@ -107,7 +117,7 @@ async def research_agent(
     history: list[dict[str, Any]],
     mode: str = "simple",
     api_key: str = "",
-    api_provider: str = "openai",
+    api_provider: str = "huggingface",
 ) -> AsyncGenerator[str, None]:
     """
     Gradio chat function that runs the research agent.
@@ -117,7 +127,7 @@ async def research_agent(
         history: Chat history (Gradio format)
         mode: Orchestrator mode ("simple" or "advanced")
         api_key: Optional user-provided API key (BYOK - Bring Your Own Key)
-        api_provider: API provider ("openai" or "anthropic")
+        api_provider: API provider ("huggingface", "openai", or "anthropic")
 
     Yields:
         Markdown-formatted responses for streaming
@@ -130,6 +140,7 @@ async def research_agent(
     user_api_key = api_key.strip() if api_key else None
 
     # Check available keys
+    has_huggingface = bool(os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY"))
     has_openai = bool(os.getenv("OPENAI_API_KEY"))
     has_anthropic = bool(os.getenv("ANTHROPIC_API_KEY"))
     has_user_key = bool(user_api_key)
@@ -149,11 +160,11 @@ async def research_agent(
             f"🔑 **Using your {api_provider.upper()} API key** - "
             "Your key is used only for this session and is never stored.\n\n"
         )
-    elif not has_paid_key:
-        # No paid keys - will use FREE HuggingFace Inference
+    elif not has_paid_key and not has_huggingface:
+        # No keys at all - will use FREE HuggingFace Inference (public models)
         yield (
             "🤗 **Free Tier**: Using HuggingFace Inference (Llama 3.1 / Mistral) for AI analysis.\n"
-            "For premium models, enter an OpenAI or Anthropic API key below.\n\n"
+            "For premium models or higher rate limits, enter a HuggingFace, OpenAI, or Anthropic API key below.\n\n"
         )
 
     # Run the agent and stream events
@@ -242,10 +253,10 @@ def create_demo() -> gr.ChatInterface:
                 info="Enter your own API key. Never stored.",
             ),
             gr.Radio(
-                choices=["openai", "anthropic"],
-                value="openai",
+                choices=["huggingface", "openai", "anthropic"],
+                value="huggingface",
                 label="API Provider",
-                info="Select the provider for your API key",
+                info="Select the provider for your API key (HuggingFace is default and free)",
             ),
         ],
     )

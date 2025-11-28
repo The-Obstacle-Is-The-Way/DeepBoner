@@ -27,6 +27,10 @@ dependencies = [
     "pydantic-graph>=1.22.0",
     "limits>=3.0", # Rate limiting
     "duckduckgo-search>=5.0", # Web search
+    "llama-index-llms-huggingface>=0.6.1",
+    "llama-index-llms-huggingface-api>=0.6.1",
+    "llama-index-vector-stores-chroma>=0.5.3",
+    "llama-index>=0.14.8",
 ]
 
 [project.optional-dependencies]
@@ -51,6 +55,7 @@ magentic = [
 embeddings = [
     "chromadb>=0.4.0",
     "sentence-transformers>=2.2.0",
+    "numpy<2.0",  # chromadb compatibility: uses np.float_ removed in NumPy 2.0
 ]
 modal = [
     # Mario's Modal code execution + LlamaIndex RAG
@@ -60,6 +65,7 @@ modal = [
     "llama-index-embeddings-openai",
     "llama-index-vector-stores-chroma",
     "chromadb>=0.4.0",
+    "numpy<2.0",  # chromadb compatibility: uses np.float_ removed in NumPy 2.0
 ]
 
 [build-system]
@@ -125,11 +131,17 @@ addopts = [
     "-v",
     "--tb=short",
     "--strict-markers",
+    "-p",
+    "no:logfire",
 ]
 markers = [
     "unit: Unit tests (mocked)",
     "integration: Integration tests (real APIs)",
     "slow: Slow tests",
+    "openai: Tests that require OpenAI API key",
+    "huggingface: Tests that require HuggingFace API key or use HuggingFace models",
+    "embedding_provider: Tests that require API-based embedding providers (OpenAI, etc.)",
+    "local_embeddings: Tests that use local embeddings (sentence-transformers, ChromaDB)",
 ]
 
 # ============== COVERAGE CONFIG ==============

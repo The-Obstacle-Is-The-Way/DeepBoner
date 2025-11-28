@@ -67,7 +67,9 @@ async def test_advanced_mode_explicit_instantiation():
     """
     with patch("src.orchestrator_factory.settings") as mock_settings:
         # Settings patch ensures factory checks pass (even though mode is explicit)
-        mock_settings.has_openai_key = True
+        # Mock to allow any LLM key (HuggingFace preferred)
+        mock_settings.has_any_llm_key = True
+        mock_settings.has_huggingface_key = True
 
         with patch("src.agents.magentic_agents.OpenAIChatClient"):
             # Mock agent creation to avoid real API calls during init

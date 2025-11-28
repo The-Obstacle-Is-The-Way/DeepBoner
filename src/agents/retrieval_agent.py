@@ -1,12 +1,13 @@
 """Retrieval agent for web search and context management."""
 
+from typing import Any
+
 import structlog
 from agent_framework import ChatAgent, ai_function
-from agent_framework.openai import OpenAIChatClient
 
-from src.state import get_magentic_state
+from src.agents.state import get_magentic_state
 from src.tools.web_search import WebSearchTool
-from src.utils.config import settings
+from src.utils.llm_factory import get_chat_client_for_agent
 
 logger = structlog.get_logger()
 
@@ -56,19 +57,17 @@ async def search_web(query: str, max_results: int = 10) -> str:
     return "\n".join(output)
 
 
-def create_retrieval_agent(chat_client: OpenAIChatClient | None = None) -> ChatAgent:
+def create_retrieval_agent(chat_client: Any | None = None) -> ChatAgent:
     """Create a retrieval agent.
 
     Args:
-        chat_client: Optional custom chat client.
+        chat_client: Optional custom chat client. If None, uses factory default
+                    (HuggingFace preferred, OpenAI fallback).
 
     Returns:
         ChatAgent configured for retrieval.
     """
-    client = chat_client or OpenAIChatClient(
-        model_id=settings.openai_model,
-        api_key=settings.openai_api_key,
-    )
+    client = chat_client or get_chat_client_for_agent()
 
     return ChatAgent(
         name="RetrievalAgent",

@@ -3,6 +3,9 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# Skip all tests if agent_framework not installed (optional dep)
+pytest.importorskip("agent_framework")
 from agent_framework import MagenticFinalResultEvent
 
 from src.orchestrator_magentic import MagenticOrchestrator
@@ -68,13 +71,14 @@ class TestMagenticFixes:
         assert orchestrator._max_rounds == 25
 
         # Also verify it's used in _build_workflow
-        # Mock all the agent creation and OpenAI client calls
+        # Mock all the agent creation and chat client factory calls
+        # Patch get_chat_client_for_agent where it's imported and used
         with (
             patch("src.orchestrator_magentic.create_search_agent") as mock_search,
             patch("src.orchestrator_magentic.create_judge_agent") as mock_judge,
             patch("src.orchestrator_magentic.create_hypothesis_agent") as mock_hypo,
             patch("src.orchestrator_magentic.create_report_agent") as mock_report,
-            patch("src.orchestrator_magentic.OpenAIChatClient") as mock_client,
+            patch("src.orchestrator_magentic.get_chat_client_for_agent") as mock_get_client,
             patch("src.orchestrator_magentic.MagenticBuilder") as mock_builder,
         ):
             # Setup mocks
@@ -82,7 +86,7 @@ class TestMagenticFixes:
             mock_judge.return_value = MagicMock()
             mock_hypo.return_value = MagicMock()
             mock_report.return_value = MagicMock()
-            mock_client.return_value = MagicMock()
+            mock_get_client.return_value = MagicMock()
 
             # Mock the builder chain
             mock_chain = mock_builder.return_value.participants.return_value

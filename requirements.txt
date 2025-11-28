@@ -35,6 +35,7 @@ modal>=0.63.0
 # Optional: LlamaIndex RAG
 llama-index>=0.11.0
 llama-index-llms-openai
+llama-index-llms-huggingface  # Optional: For HuggingFace LLM support in RAG
 llama-index-embeddings-openai
 llama-index-vector-stores-chroma
 chromadb>=0.4.0

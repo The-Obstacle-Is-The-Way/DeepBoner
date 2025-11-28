@@ -55,10 +55,10 @@ def test_get_model_huggingface(mock_settings):
 
 
 def test_get_model_default_fallback(mock_settings):
-    """Test fallback to OpenAI if provider is unknown."""
+    """Test fallback to HuggingFace if provider is unknown."""
     mock_settings.llm_provider = "unknown_provider"
-    mock_settings.openai_api_key = "sk-test"
-    mock_settings.openai_model = "gpt-5.1"
+    mock_settings.hf_token = "hf_test_token"
+    mock_settings.huggingface_model = "meta-llama/Llama-3.1-8B-Instruct"
 
     model = get_model()
-    assert isinstance(model, OpenAIModel)
+    assert isinstance(model, HuggingFaceModel)

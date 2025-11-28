@@ -3,6 +3,8 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+pytest.importorskip("agent_framework")
 from agent_framework import AgentRunResponse
 
 from src.agents.hypothesis_agent import HypothesisAgent
