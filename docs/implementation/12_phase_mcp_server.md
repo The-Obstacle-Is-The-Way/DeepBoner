@@ -1,6 +1,6 @@
 # Phase 12 Implementation Spec: MCP Server Integration
 
-**Goal**: Expose DeepCritical search tools as MCP servers for Track 2 compliance.
+**Goal**: Expose DeepBoner search tools as MCP servers for Track 2 compliance.
 **Philosophy**: "MCP is the bridge between tools and LLMs."
 **Prerequisite**: Phase 11 complete (all search tools working)
 **Priority**: P0 - REQUIRED FOR HACKATHON TRACK 2
@@ -121,7 +121,7 @@ https://[space-id].hf.space/gradio_api/mcp/
 ### 4.1 MCP Tool Wrappers (`src/mcp_tools.py`)
 
 ```python
-"""MCP tool wrappers for DeepCritical search tools.
+"""MCP tool wrappers for DeepBoner search tools.
 
 These functions expose our search tools via MCP protocol.
 Each function follows the MCP tool contract:
@@ -283,7 +283,7 @@ async def search_all_sources(query: str, max_per_source: int = 5) -> str:
 ### 4.2 Update Gradio App (`src/app.py`)
 
 ```python
-"""Gradio UI for DeepCritical agent with MCP server support."""
+"""Gradio UI for DeepBoner agent with MCP server support."""
 
 import os
 from collections.abc import AsyncGenerator
@@ -317,11 +317,11 @@ def create_demo() -> Any:
         Configured Gradio Blocks interface with MCP server enabled
     """
     with gr.Blocks(
-        title="DeepCritical - Drug Repurposing Research Agent",
+        title="DeepBoner - Drug Repurposing Research Agent",
         theme=gr.themes.Soft(),
     ) as demo:
         gr.Markdown("""
-        # DeepCritical
+        # DeepBoner
         ## AI-Powered Drug Repurposing Research Agent
 
         Ask questions about potential drug repurposing opportunities.
@@ -761,7 +761,7 @@ Phase 12 is **COMPLETE** when:
    ```
 
 2. **Show Claude Desktop using our tools**:
-   - Open Claude Desktop with DeepCritical MCP configured
+   - Open Claude Desktop with DeepBoner MCP configured
    - Ask: "Search PubMed for metformin Alzheimer's"
    - Show real results appearing
    - Ask: "Now search clinical trials for the same"

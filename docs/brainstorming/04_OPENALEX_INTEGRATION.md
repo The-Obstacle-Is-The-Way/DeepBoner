@@ -2,7 +2,7 @@
 
 **Status**: NOT Implemented (Candidate for Addition)
 **Priority**: HIGH - Could Replace Multiple Tools
-**Reference**: Already implemented in `reference_repos/DeepCritical`
+**Reference**: Already implemented in `reference_repos/DeepBoner`
 
 ---
 
@@ -20,7 +20,7 @@ OpenAlex is a **fully open** index of the global research system:
 
 ---
 
-## Why OpenAlex for DeepCritical?
+## Why OpenAlex for DeepBoner?
 
 ### Current Architecture
 
@@ -60,7 +60,7 @@ Orchestrator (enrich with CT.gov for trials)
 
 ## Reference Implementation
 
-From `reference_repos/DeepCritical/DeepResearch/src/tools/openalex_tools.py`:
+From `reference_repos/DeepBoner/DeepResearch/src/tools/openalex_tools.py`:
 
 ```python
 class OpenAlexFetchTool(ToolRunner):

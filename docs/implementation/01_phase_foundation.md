@@ -401,25 +401,25 @@ settings = get_settings()
 ### `src/utils/exceptions.py`
 
 ```python
-"""Custom exceptions for DeepCritical."""
+"""Custom exceptions for DeepBoner."""
 
 
-class DeepCriticalError(Exception):
-    """Base exception for all DeepCritical errors."""
+class DeepBonerError(Exception):
+    """Base exception for all DeepBoner errors."""
     pass
 
 
-class SearchError(DeepCriticalError):
+class SearchError(DeepBonerError):
     """Raised when a search operation fails."""
     pass
 
 
-class JudgeError(DeepCriticalError):
+class JudgeError(DeepBonerError):
     """Raised when the judge fails to assess evidence."""
     pass
 
 
-class ConfigurationError(DeepCriticalError):
+class ConfigurationError(DeepBonerError):
     """Raised when configuration is invalid."""
     pass
 

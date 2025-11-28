@@ -1,6 +1,6 @@
 # Deep Research Roadmap
 
-> How to properly add GPT-Researcher-style deep research to DeepCritical
+> How to properly add GPT-Researcher-style deep research to DeepBoner
 > using the EXISTING Magentic + Pydantic AI architecture.
 
 ## Current State

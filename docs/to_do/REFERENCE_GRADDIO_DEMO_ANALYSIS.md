@@ -1,6 +1,6 @@
 # Reference: GradioDemo Analysis
 
-> Analysis of code from https://github.com/DeepCritical/GradioDemo
+> Analysis of code from https://github.com/DeepBoner/GradioDemo
 > Purpose: Extract good ideas, understand patterns, avoid mistakes
 
 ## Overview
