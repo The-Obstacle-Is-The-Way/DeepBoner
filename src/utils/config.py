@@ -30,10 +30,6 @@ class Settings(BaseSettings):
     anthropic_model: str = Field(
         default="claude-sonnet-4-5-20250929", description="Anthropic model"
     )
-    # HuggingFace (free tier)
-    huggingface_model: str | None = Field(
-        default="meta-llama/Llama-3.1-70B-Instruct", description="HuggingFace model name"
-    )
     hf_token: str | None = Field(
         default=None, alias="HF_TOKEN", description="HuggingFace API token"
     )
@@ -184,18 +180,13 @@ class Settings(BaseSettings):
 
     @property
     def has_huggingface_key(self) -> bool:
-        """Check if HuggingFace token is available."""
-        return bool(self.hf_token)
+        """Check if HuggingFace API key is available."""
+        return bool(self.huggingface_api_key or self.hf_token)
 
     @property
     def has_any_llm_key(self) -> bool:
         """Check if any LLM API key is available."""
         return self.has_openai_key or self.has_anthropic_key or self.has_huggingface_key
-
-    @property
-    def has_huggingface_key(self) -> bool:
-        """Check if HuggingFace API key is available."""
-        return bool(self.huggingface_api_key)
 
     @property
     def web_search_available(self) -> bool:

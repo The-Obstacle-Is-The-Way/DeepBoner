@@ -2,14 +2,15 @@
 
 from typing import Any, Literal
 
+import structlog
+
 from src.legacy_orchestrator import (
     JudgeHandlerProtocol,
     Orchestrator,
     SearchHandlerProtocol,
 )
+from src.utils.config import settings
 from src.utils.models import OrchestratorConfig
-
-import structlog
 
 logger = structlog.get_logger()
 
