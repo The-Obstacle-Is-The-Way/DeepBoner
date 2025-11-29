@@ -1,0 +1,157 @@
+# SPEC 02: End-to-End Testing
+
+## Priority: P1 (Validation Before Features)
+
+## Problem Statement
+
+We have 142 unit tests that verify individual components work, but **no test that proves the full pipeline produces useful research output**.
+
+We don't know if:
+1. Simple mode produces a valid report
+2. Advanced mode produces a valid report
+3. The output is actually useful (has citations, mechanisms, etc.)
+
+**Golden Rule**: Don't add features (OpenAlex, persistence) until we prove current features work.
+
+## What We Need to Test
+
+### Level 1: Smoke Test (Does it run?)
+
+```python
+@pytest.mark.e2e
+async def test_simple_mode_completes():
+    """Verify Simple mode runs without crashing."""
+    from src.orchestrator import Orchestrator
+
+    # Mock the search tools to avoid real API calls
+    orchestrator = create_test_orchestrator(mode="simple")
+
+    events = []
+    async for event in orchestrator.run("test query"):
+        events.append(event)
+
+    # Must complete
+    assert any(e.type == "complete" for e in events)
+    # Must not error
+    assert not any(e.type == "error" for e in events)
+```
+
+### Level 2: Structure Test (Is output valid?)
+
+```python
+@pytest.mark.e2e
+async def test_output_has_required_fields():
+    """Verify output contains expected structure."""
+    result = await run_research("metformin for PCOS")
+
+    # Must have citations
+    assert len(result.citations) >= 1
+
+    # Must have some text
+    assert len(result.report) > 100
+
+    # Must mention the query topic
+    assert "metformin" in result.report.lower() or "pcos" in result.report.lower()
+```
+
+### Level 3: Quality Test (Is output useful?)
+
+```python
+@pytest.mark.e2e
+async def test_output_quality():
+    """Verify output contains actionable research."""
+    result = await run_research("drugs for female libido")
+
+    # Should have PMIDs or NCT IDs
+    has_citations = any(
+        "PMID" in str(c) or "NCT" in str(c)
+        for c in result.citations
+    )
+    assert has_citations, "No real citations found"
+
+    # Should discuss mechanism
+    mechanism_words = ["mechanism", "pathway", "receptor", "target"]
+    has_mechanism = any(w in result.report.lower() for w in mechanism_words)
+    assert has_mechanism, "No mechanism discussion found"
+```
+
+## Test Strategy
+
+### Mocking Strategy
+
+For CI/fast tests, mock external APIs:
+
+```python
+@pytest.fixture
+def mock_pubmed():
+    """Return realistic but fake PubMed results."""
+    return [
+        Evidence(
+            content="Metformin improves insulin sensitivity...",
+            citation=Citation(
+                source="pubmed",
+                title="Metformin in PCOS: A Meta-Analysis",
+                url="https://pubmed.ncbi.nlm.nih.gov/12345678/",
+                date="2024",
+            )
+        )
+    ]
+```
+
+### Integration Tests (Real APIs)
+
+For validation, run against real APIs (marked `@pytest.mark.integration`):
+
+```python
+@pytest.mark.integration
+@pytest.mark.slow
+async def test_real_pubmed_search():
+    """Integration test with real PubMed API."""
+    # Requires NCBI_API_KEY in env
+    ...
+```
+
+## Test Matrix
+
+| Mode | Mock | Real API | Status |
+|------|------|----------|--------|
+| Simple (Free) | ✅ Need | ⏳ Optional | Not implemented |
+| Advanced (OpenAI) | ✅ Need | ⏳ Optional | Not implemented |
+
+## Directory Structure
+
+```
+tests/
+├── unit/           # Existing 142 tests
+├── integration/    # Real API tests (existing)
+└── e2e/            # NEW: Full pipeline tests
+    ├── conftest.py         # E2E fixtures
+    ├── test_simple_mode.py # Simple mode E2E
+    └── test_advanced_mode.py # Magentic mode E2E
+```
+
+## Acceptance Criteria
+
+- [ ] E2E test for Simple mode (mocked)
+- [ ] E2E test for Advanced mode (mocked)
+- [ ] Tests validate output structure
+- [ ] Tests run in CI (<2 minutes)
+- [ ] At least one integration test with real API
+
+## Why Before OpenAlex?
+
+1. **Prove current system works** before adding complexity
+2. **Establish baseline** - what does "good output" look like?
+3. **Catch regressions** - future changes won't break core functionality
+4. **Confidence for hackathon** - we know the demo will produce something
+
+## Related Issues
+
+- #47: E2E Testing - Does Pipeline Actually Generate Useful Reports?
+- #65: Demo timing (must fix first to make E2E tests practical)
+
+## Files to Create
+
+1. `tests/e2e/conftest.py` - E2E fixtures and mocks
+2. `tests/e2e/test_simple_mode.py` - Simple mode tests
+3. `tests/e2e/test_advanced_mode.py` - Advanced mode tests
