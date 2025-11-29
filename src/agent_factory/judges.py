@@ -218,7 +218,7 @@ class HFInferenceJudgeHandler:
                     or "payment required" in error_str.lower()
                 ):
                     logger.error("HF Quota Exhausted", error=error_str)
-                    return self._create_quota_exhausted_assessment(question)
+                    return self._create_quota_exhausted_assessment(question, evidence)
 
                 logger.warning("Model failed", model=model, error=str(e))
                 last_error = e
@@ -342,16 +342,31 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
 
         return None
 
-    def _create_quota_exhausted_assessment(self, question: str) -> JudgeAssessment:
+    def _create_quota_exhausted_assessment(
+        self, question: str, evidence: list[Evidence]
+    ) -> JudgeAssessment:
         """Create an assessment that stops the loop when quota is exhausted."""
+        # Heuristic extraction for fallback
+        findings = []
+        for e in evidence[:5]:
+            title = e.citation.title
+            if len(title) > 150:
+                title = title[:147] + "..."
+            findings.append(title)
+
+        if not findings:
+            findings = ["No findings available (Quota exceeded and no search results)."]
+
         return JudgeAssessment(
             details=AssessmentDetails(
                 mechanism_score=0,
-                mechanism_reasoning="Free tier quota exhausted.",
+                mechanism_reasoning="Free tier quota exhausted. Unable to analyze mechanism.",
                 clinical_evidence_score=0,
-                clinical_reasoning="Free tier quota exhausted.",
-                drug_candidates=[],
-                key_findings=[],
+                clinical_reasoning=(
+                    "Free tier quota exhausted. Unable to analyze clinical evidence."
+                ),
+                drug_candidates=["Upgrade to paid API for drug extraction."],
+                key_findings=findings,
             ),
             sufficient=True,  # STOP THE LOOP
             confidence=0.0,
@@ -360,6 +375,8 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
             reasoning=(
                 "⚠️ **Free Tier Quota Exceeded** ⚠️\n\n"
                 "The HuggingFace Inference API free tier limit has been reached. "
+                "The search results listed below were retrieved but could not be "
+                "analyzed by the AI. "
                 "Please try again later, or add an OpenAI/Anthropic API key above "
                 "for unlimited access."
             ),
