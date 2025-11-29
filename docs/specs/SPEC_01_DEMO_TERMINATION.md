@@ -16,7 +16,7 @@ Advanced (Magentic) mode runs indefinitely from user perspective. The demo was m
 ### Question 1: Does max_round_count actually work?
 
 ```python
-# Current code (src/orchestrator_magentic.py:112)
+# Current code (src/orchestrator_magentic.py:110)
 .with_standard_manager(
     chat_client=manager_client,
     max_round_count=self._max_rounds,  # Default: 10

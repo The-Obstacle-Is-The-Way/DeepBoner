@@ -4,7 +4,7 @@
 
 ## Problem Statement
 
-We have 142 unit tests that verify individual components work, but **no test that proves the full pipeline produces useful research output**.
+We have 140 unit tests that verify individual components work, but **no test that proves the full pipeline produces useful research output**.
 
 We don't know if:
 1. Simple mode produces a valid report
@@ -122,7 +122,7 @@ async def test_real_pubmed_search():
 
 ```
 tests/
-├── unit/           # Existing 142 tests
+├── unit/           # Existing 140 tests
 ├── integration/    # Real API tests (existing)
 └── e2e/            # NEW: Full pipeline tests
     ├── conftest.py         # E2E fixtures
