@@ -25,11 +25,11 @@ def test_get_model_openai(mock_settings):
     """Test that OpenAI model is returned when provider is openai."""
     mock_settings.llm_provider = "openai"
     mock_settings.openai_api_key = "sk-test"
-    mock_settings.openai_model = "gpt-5"
+    mock_settings.openai_model = "gpt-5.1"
 
     model = get_model()
     assert isinstance(model, OpenAIChatModel)
-    assert model.model_name == "gpt-5"
+    assert model.model_name == "gpt-5.1"
 
 
 def test_get_model_anthropic(mock_settings):
@@ -58,7 +58,7 @@ def test_get_model_default_fallback(mock_settings):
     """Test fallback to OpenAI if provider is unknown."""
     mock_settings.llm_provider = "unknown_provider"
     mock_settings.openai_api_key = "sk-test"
-    mock_settings.openai_model = "gpt-5"
+    mock_settings.openai_model = "gpt-5.1"
 
     model = get_model()
     assert isinstance(model, OpenAIChatModel)

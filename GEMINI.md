@@ -74,9 +74,8 @@ Settings via pydantic-settings from `.env`:
 
 Given the rapid advancements, as of November 29, 2025, the DeepBoner project uses the following default LLM models in its configuration (`src/utils/config.py`):
 
-- **OpenAI:** `gpt-5`
-  - This is the stable flagship model released in August 2025.
-  - While `gpt-5.1` (released November 2025) exists, it is currently gated, and attempts to use it resulted in a `403 model_not_found` error for typical API keys. Advanced users with access to `gpt-5.1-instant`, `gpt-5.1-thinking`, or `gpt-5.1-codex-max` may configure their `.env` accordingly.
+- **OpenAI:** `gpt-5.1`
+  - Current flagship model (November 2025). Requires Tier 5 access.
 - **Anthropic:** `claude-sonnet-4-5-20250929`
   - This is the mid-range Claude 4.5 model, released on September 29, 2025.
   - The flagship `Claude Opus 4.5` (released November 24, 2025) is also available and can be configured by advanced users for enhanced capabilities.
