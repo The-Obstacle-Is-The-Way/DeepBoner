@@ -43,6 +43,10 @@ dev = [
     "ruff>=0.4.0",
     "mypy>=1.10",
     "pre-commit>=3.7",
+
+    # Security
+    "bandit>=1.7.0",
+    "pip-audit>=2.7.0",
 ]
 magentic = [
     "agent-framework-core>=1.0.0b251120,<2.0.0",  # Microsoft Agent Framework (PyPI)
