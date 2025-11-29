@@ -173,7 +173,11 @@ async def research_agent(
             user_api_key=user_api_key,
         )
 
-        yield f"🧠 **Backend**: {backend_name}\n\n"
+        # Immediate backend info + loading feedback so user knows something is happening
+        yield (
+            f"🧠 **Backend**: {backend_name}\n\n"
+            "⏳ **Processing...** Searching PubMed, ClinicalTrials.gov, Europe PMC...\n"
+        )
 
         # Immediate loading feedback so user knows something is happening
         yield (

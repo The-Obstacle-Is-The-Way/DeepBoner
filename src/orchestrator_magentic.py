@@ -168,13 +168,37 @@ The final output should be a structured research report."""
         )
 
         iteration = 0
+        final_event_received = False
+
         try:
             async for event in workflow.run_stream(task):
                 agent_event = self._process_event(event, iteration)
                 if agent_event:
                     if isinstance(event, MagenticAgentMessageEvent):
                         iteration += 1
+
+                    if agent_event.type == "complete":
+                        final_event_received = True
+
                     yield agent_event
+
+            # GUARANTEE: Always emit termination event if stream ends without one
+            # (e.g., max rounds reached)
+            if not final_event_received:
+                logger.warning(
+                    "Workflow ended without final event",
+                    iterations=iteration,
+                )
+                yield AgentEvent(
+                    type="complete",
+                    message=(
+                        f"Research completed after {iteration} agent rounds. "
+                        "Max iterations reached - results may be partial. "
+                        "Try a more specific query for better results."
+                    ),
+                    data={"iterations": iteration, "reason": "max_rounds_reached"},
+                    iteration=iteration,
+                )
 
         except Exception as e:
             logger.error("Magentic workflow failed", error=str(e))
