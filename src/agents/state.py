@@ -5,7 +5,7 @@ searching simultaneously via Gradio).
 """
 
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import BaseModel
 
@@ -13,6 +13,7 @@ from src.services.research_memory import ResearchMemory
 
 if TYPE_CHECKING:
     from src.services.embeddings import EmbeddingService
+    from src.utils.models import Evidence
 
 
 class MagenticState(BaseModel):
@@ -22,6 +23,37 @@ class MagenticState(BaseModel):
     memory: Any = None  # Instance of ResearchMemory
 
     model_config = {"arbitrary_types_allowed": True}
+
+    # --- Proxy methods for backwards compatibility with retrieval_agent.py ---
+
+    def add_evidence(self, evidence: list["Evidence"]) -> int:
+        """Add evidence to memory cache (sync). Returns count of new items.
+
+        Note: This is a sync method for compatibility. For async storage with
+        embedding service, call state.memory.store_evidence() directly.
+        """
+        if self.memory is None:
+            return 0
+
+        memory: ResearchMemory = self.memory
+        new_count = 0
+        for ev in evidence:
+            ev_id = ev.citation.url
+            if ev_id not in memory._evidence_cache:
+                memory._evidence_cache[ev_id] = ev
+                memory.evidence_ids.append(ev_id)
+                new_count += 1
+        return new_count
+
+    @property
+    def embedding_service(self) -> "EmbeddingService | None":
+        """Get the embedding service from memory."""
+        if self.memory is None:
+            return None
+        # Cast needed because memory is typed as Any to avoid Pydantic issues
+        from src.services.embeddings import EmbeddingService as EmbeddingSvc
+
+        return cast(EmbeddingSvc | None, self.memory._embedding_service)
 
 
 # The ContextVar holds the MagenticState for the current execution context
