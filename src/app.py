@@ -127,8 +127,13 @@ async def research_agent(
         yield "Please enter a research question."
         return
 
+    # BUG FIX: Handle None values from Gradio example caching
+    # Gradio passes None for missing example columns, overriding defaults
+    api_key_str = api_key or ""
+    api_key_state_str = api_key_state or ""
+
     # BUG FIX: Prefer freshly-entered key, then persisted state
-    user_api_key = (api_key.strip() or api_key_state.strip()) or None
+    user_api_key = (api_key_str.strip() or api_key_state_str.strip()) or None
 
     # Check available keys
     has_openai = bool(os.getenv("OPENAI_API_KEY"))
