@@ -29,7 +29,3 @@ class RateLimitError(SearchError):
     """Raised when we hit API rate limits."""
 
     pass
-
-
-# Backwards compatibility alias
-DeepCriticalError = DeepBonerError

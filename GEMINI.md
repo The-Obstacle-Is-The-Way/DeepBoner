@@ -8,12 +8,7 @@
 **Architecture:**
 The project follows a **Vertical Slice Architecture** (Search -> Judge -> Orchestrator) and adheres to **Strict TDD** (Test-Driven Development).
 
-**Current Status:**
-
-- **Phases 1-9:** COMPLETE. Foundation, Search, Judge, UI, Orchestrator, Embeddings, Hypothesis, Report, Cleanup.
-- **Phases 10-11:** COMPLETE. ClinicalTrials.gov and Europe PMC integration.
-- **Phase 12:** COMPLETE. MCP Server integration (Gradio MCP at `/gradio_api/mcp/`).
-- **Phase 13:** COMPLETE. Modal sandbox for statistical analysis.
+**Current Status:** Phases 1-14 COMPLETE (Foundation through Demo Submission).
 
 ## Tech Stack & Tooling
 

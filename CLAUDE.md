@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 DeepBoner is an AI-native sexual health research agent. It uses a search-and-judge loop to autonomously search biomedical databases (PubMed, ClinicalTrials.gov, Europe PMC) and synthesize evidence for queries like "What drugs improve female libido post-menopause?" or "Evidence for testosterone therapy in women with HSDD?".
 
-**Current Status:** Phases 1-13 COMPLETE (Foundation through Modal sandbox integration).
+**Current Status:** Phases 1-14 COMPLETE (Foundation through Demo Submission).
 
 ## Development Commands
 

@@ -409,7 +409,7 @@ from typing import AsyncGenerator
 from src.orchestrator import Orchestrator
 from src.tools.pubmed import PubMedTool
 from src.tools.clinicaltrials import ClinicalTrialsTool
-from src.tools.biorxiv import BioRxivTool
+from src.tools.europepmc import EuropePMCTool
 from src.tools.search_handler import SearchHandler
 from src.agent_factory.judges import JudgeHandler, HFInferenceJudgeHandler
 from src.utils.models import OrchestratorConfig, AgentEvent
@@ -443,7 +443,7 @@ def create_orchestrator(
 
     # Create search tools
     search_handler = SearchHandler(
-        tools=[PubMedTool(), ClinicalTrialsTool(), BioRxivTool()],
+        tools=[PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()],
         timeout=30.0,
     )
 
@@ -1033,7 +1033,7 @@ uv run python -m src.app
 import asyncio
 from src.orchestrator import Orchestrator
 from src.tools.pubmed import PubMedTool
-from src.tools.biorxiv import BioRxivTool
+from src.tools.europepmc import EuropePMCTool
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.search_handler import SearchHandler
 from src.agent_factory.judges import HFInferenceJudgeHandler, MockJudgeHandler
@@ -1041,7 +1041,7 @@ from src.utils.models import OrchestratorConfig
 
 async def test_full_flow():
     # Create components
-    search_handler = SearchHandler([PubMedTool(), ClinicalTrialsTool(), BioRxivTool()])
+    search_handler = SearchHandler([PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()])
 
     # Option 1: Use FREE HuggingFace Inference (real AI analysis)
     judge_handler = HFInferenceJudgeHandler()

@@ -42,7 +42,7 @@ src/
 │   ├── __init__.py
 │   ├── pubmed.py               # PubMed E-utilities tool
 │   ├── clinicaltrials.py       # ClinicalTrials.gov API
-│   ├── biorxiv.py              # bioRxiv/medRxiv preprints
+│   ├── europepmc.py            # Europe PMC (preprints + papers)
 │   ├── code_execution.py       # Modal sandbox execution
 │   └── search_handler.py       # Orchestrates multiple tools
 ├── prompts/                    # Prompt templates
@@ -64,7 +64,7 @@ tests/
 │   ├── tools/
 │   │   ├── test_pubmed.py
 │   │   ├── test_clinicaltrials.py
-│   │   ├── test_biorxiv.py
+│   │   ├── test_europepmc.py
 │   │   └── test_search_handler.py
 │   ├── agent_factory/
 │   │   └── test_judges.py
@@ -201,7 +201,7 @@ Structured Research Report
 
 9. **[Phase 9 Spec: Remove DuckDuckGo](09_phase_source_cleanup.md)** ✅
 10. **[Phase 10 Spec: ClinicalTrials.gov](10_phase_clinicaltrials.md)** ✅
-11. **[Phase 11 Spec: bioRxiv Preprints](11_phase_biorxiv.md)** ✅
+11. **[Phase 11 Spec: Europe PMC](11_phase_europepmc.md)** ✅
 
 ### Hackathon Integration (Phases 12-14)
 
@@ -225,7 +225,7 @@ Structured Research Report
 | Phase 8: Report | ✅ COMPLETE | Structured scientific reports |
 | Phase 9: Source Cleanup | ✅ COMPLETE | Remove DuckDuckGo |
 | Phase 10: ClinicalTrials | ✅ COMPLETE | ClinicalTrials.gov API |
-| Phase 11: bioRxiv | ✅ COMPLETE | Preprint search |
+| Phase 11: Europe PMC | ✅ COMPLETE | Preprint search |
 | Phase 12: MCP Server | ✅ COMPLETE | MCP protocol integration |
 | Phase 13: Modal Pipeline | 📝 SPEC READY | Sandboxed code execution |
 | Phase 14: Demo & Submit | 📝 SPEC READY | Hackathon submission |

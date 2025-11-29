@@ -25,7 +25,7 @@ AI-powered deep research system for sexual wellness, reproductive health, and ho
 - **[Phase 8: Report](implementation/08_phase_report.md)** ✅ - Structured scientific reports
 - **[Phase 9: Source Cleanup](implementation/09_phase_source_cleanup.md)** ✅ - Remove DuckDuckGo
 - **[Phase 10: ClinicalTrials](implementation/10_phase_clinicaltrials.md)** ✅ - Clinical trials API
-- **[Phase 11: Europe PMC](implementation/11_phase_biorxiv.md)** ✅ - Preprint search
+- **[Phase 11: Europe PMC](implementation/11_phase_europepmc.md)** ✅ - Preprint search
 - **[Phase 12: MCP Server](implementation/12_phase_mcp_server.md)** ✅ - Claude Desktop integration
 - **[Phase 13: Modal Integration](implementation/13_phase_modal_integration.md)** ✅ - Secure code execution
 - **[Phase 14: Demo Submission](implementation/14_phase_demo_submission.md)** ✅ - Hackathon submission

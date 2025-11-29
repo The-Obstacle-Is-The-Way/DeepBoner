@@ -85,7 +85,7 @@ graph TB
     end
 
     subgraph "MCP Tools"
-        WebSearch[Web Search<br/>PubMed • arXiv • bioRxiv]
+        WebSearch[Web Search<br/>PubMed • ClinicalTrials • Europe PMC]
         CodeExec[Code Execution<br/>Sandboxed Python]
         RAG[RAG Retrieval<br/>Vector DB • Embeddings]
         Viz[Visualization<br/>Charts • Graphs]
@@ -229,12 +229,12 @@ flowchart TD
     Strategy --> Multi[Multi-Source Search]
 
     Multi --> PubMed[PubMed Search<br/>via MCP]
-    Multi --> ArXiv[arXiv Search<br/>via MCP]
-    Multi --> BioRxiv[bioRxiv Search<br/>via MCP]
+    Multi --> Trials[ClinicalTrials Search<br/>via MCP]
+    Multi --> EuropePMC[Europe PMC Search<br/>via MCP]
 
     PubMed --> Aggregate[Aggregate Results]
-    ArXiv --> Aggregate
-    BioRxiv --> Aggregate
+    Trials --> Aggregate
+    EuropePMC --> Aggregate
 
     Aggregate --> Filter[Filter & Rank<br/>by Relevance]
     Filter --> Dedup[Deduplicate<br/>Cross-Reference]
@@ -388,7 +388,7 @@ graph TB
     end
 
     subgraph "MCP Servers"
-        Server1[Web Search Server<br/>localhost:8001<br/>• PubMed<br/>• arXiv<br/>• bioRxiv]
+        Server1[Web Search Server<br/>localhost:8001<br/>• PubMed<br/>• ClinicalTrials<br/>• Europe PMC]
         Server2[Code Execution Server<br/>localhost:8002<br/>• Sandboxed Python<br/>• Package management]
         Server3[RAG Server<br/>localhost:8003<br/>• Vector embeddings<br/>• Similarity search]
         Server4[Visualization Server<br/>localhost:8004<br/>• Chart generation<br/>• Plot rendering]
@@ -396,8 +396,8 @@ graph TB
 
     subgraph "External Services"
         PubMed[PubMed API]
-        ArXiv[arXiv API]
-        BioRxiv[bioRxiv API]
+        Trials[ClinicalTrials.gov API]
+        EuropePMC[Europe PMC API]
         Modal[Modal Sandbox]
         ChromaDB[(ChromaDB)]
     end
@@ -412,8 +412,8 @@ graph TB
     Registry --> Server4
 
     Server1 --> PubMed
-    Server1 --> ArXiv
-    Server1 --> BioRxiv
+    Server1 --> Trials
+    Server1 --> EuropePMC
     Server2 --> Modal
     Server3 --> ChromaDB
 
@@ -517,8 +517,8 @@ graph LR
     User[👤 Researcher<br/>Asks research questions] -->|Submits query| DC[DeepBoner<br/>Magentic Workflow]
 
     DC -->|Literature search| PubMed[PubMed API<br/>Medical papers]
-    DC -->|Preprint search| ArXiv[arXiv API<br/>Scientific preprints]
-    DC -->|Biology search| BioRxiv[bioRxiv API<br/>Biology preprints]
+    DC -->|Clinical trials| Trials[ClinicalTrials.gov<br/>Trial data]
+    DC -->|Preprints| EuropePMC[Europe PMC API<br/>Preprints & papers]
     DC -->|Agent reasoning| Claude[Claude API<br/>Sonnet 4 / Opus]
     DC -->|Code execution| Modal[Modal Sandbox<br/>Safe Python env]
     DC -->|Vector storage| Chroma[ChromaDB<br/>Embeddings & RAG]
@@ -526,8 +526,8 @@ graph LR
     DC -->|Deployed on| HF[HuggingFace Spaces<br/>Gradio 6.0]
 
     PubMed -->|Results| DC
-    ArXiv -->|Results| DC
-    BioRxiv -->|Results| DC
+    Trials -->|Results| DC
+    EuropePMC -->|Results| DC
     Claude -->|Responses| DC
     Modal -->|Output| DC
     Chroma -->|Context| DC
@@ -537,8 +537,8 @@ graph LR
     style User fill:#e1f5e1
     style DC fill:#ffe6e6
     style PubMed fill:#e6f3ff
-    style ArXiv fill:#e6f3ff
-    style BioRxiv fill:#e6f3ff
+    style Trials fill:#e6f3ff
+    style EuropePMC fill:#e6f3ff
     style Claude fill:#ffd6d6
     style Modal fill:#f0f0f0
     style Chroma fill:#ffe6f0

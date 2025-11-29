@@ -97,9 +97,9 @@ async def search_pubmed(query: str, max_results: int = 10) -> str:
 search_agent = ChatAgent(
     name="SearchAgent",
     description="Searches biomedical databases for drug repurposing evidence",
-    instructions="You search PubMed, ClinicalTrials.gov, and bioRxiv for evidence.",
+    instructions="You search PubMed, ClinicalTrials.gov, and Europe PMC for evidence.",
     chat_client=OpenAIChatClient(model_id="gpt-4o-mini"),  # INTERNAL LLM
-    tools=[search_pubmed, search_clinicaltrials, search_biorxiv],  # TOOLS
+    tools=[search_pubmed, search_clinicaltrials, search_europepmc],  # TOOLS
 )
 ```
 
@@ -286,14 +286,14 @@ This preserves semantic deduplication and structured citation access.
 from agent_framework import AIFunction
 
 from src.agents.state import get_magentic_state
-from src.tools.biorxiv import BioRxivTool
+from src.tools.europepmc import EuropePMCTool
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.pubmed import PubMedTool
 
 # Singleton tool instances
 _pubmed = PubMedTool()
 _clinicaltrials = ClinicalTrialsTool()
-_biorxiv = BioRxivTool()
+_europepmc = EuropePMCTool()
 
 
 def _format_results(results: list, source_name: str, query: str) -> str:
@@ -382,21 +382,21 @@ async def search_clinical_trials(query: str, max_results: int = 10) -> str:
 
 
 @AIFunction
-async def search_preprints(query: str, max_results: int = 10) -> str:
-    """Search bioRxiv/medRxiv for preprint papers.
+async def search_europepmc(query: str, max_results: int = 10) -> str:
+    """Search Europe PMC for preprints and papers.
 
-    Use this tool to find the latest research that hasn't been
-    peer-reviewed yet. Good for cutting-edge findings.
+    Use this tool to find the latest research including preprints
+    from bioRxiv, medRxiv, and peer-reviewed papers.
 
     Args:
         query: Search terms (e.g., "long covid treatment")
         max_results: Maximum results to return (default 10)
 
     Returns:
-        Formatted list of preprints with abstracts and links
+        Formatted list of papers with abstracts and links
     """
     # 1. Execute search
-    results = await _biorxiv.search(query, max_results)
+    results = await _europepmc.search(query, max_results)
 
     # 2. Update shared state
     state = get_magentic_state()
@@ -406,7 +406,7 @@ async def search_preprints(query: str, max_results: int = 10) -> str:
     total_new = len(unique)
     total_stored = len(state.evidence_store)
 
-    output = _format_results(results, "bioRxiv/medRxiv", query)
+    output = _format_results(results, "Europe PMC", query)
     output += f"\n[State: {total_new} new, {total_stored} total in evidence store]"
 
     return output
@@ -513,7 +513,7 @@ def create_search_agent(chat_client: OpenAIChatClient | None = None) -> ChatAgen
 
     return ChatAgent(
         name="SearchAgent",
-        description="Searches biomedical databases (PubMed, ClinicalTrials.gov, bioRxiv) for drug repurposing evidence",
+        description="Searches biomedical databases (PubMed, ClinicalTrials.gov, Europe PMC) for drug repurposing evidence",
         instructions="""You are a biomedical search specialist. When asked to find evidence:
 
 1. Analyze the request to determine what to search for
@@ -521,13 +521,13 @@ def create_search_agent(chat_client: OpenAIChatClient | None = None) -> ChatAgen
 3. Use the appropriate search tools:
    - search_pubmed for peer-reviewed papers
    - search_clinical_trials for clinical studies
-   - search_preprints for cutting-edge findings
+   - search_europepmc for preprints and additional papers
 4. Summarize what you found and highlight key evidence
 
 Be thorough - search multiple databases when appropriate.
 Focus on finding: mechanisms of action, clinical evidence, and specific drug candidates.""",
         chat_client=client,
-        tools=[search_pubmed, search_clinical_trials, search_preprints],
+        tools=[search_pubmed, search_clinical_trials, search_europepmc],
         temperature=0.3,  # More deterministic for tool use
     )
 
@@ -790,7 +790,7 @@ class MagenticOrchestrator:
         task = f"""Research drug repurposing opportunities for: {query}
 
 Workflow:
-1. SearchAgent: Find evidence from PubMed, ClinicalTrials.gov, and bioRxiv
+1. SearchAgent: Find evidence from PubMed, ClinicalTrials.gov, and Europe PMC
 2. HypothesisAgent: Generate mechanistic hypotheses (Drug → Target → Pathway → Effect)
 3. JudgeAgent: Evaluate if evidence is sufficient
 4. If insufficient → SearchAgent refines search based on gaps
