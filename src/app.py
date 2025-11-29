@@ -202,21 +202,9 @@ def create_demo() -> gr.ChatInterface:
             "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`"
         ),
         examples=[
-            [
-                "What drugs improve female libido post-menopause?",
-                "simple",
-                "",
-            ],
-            [
-                "Clinical trials for erectile dysfunction alternatives to PDE5 inhibitors?",
-                "simple",
-                "",
-            ],
-            [
-                "Evidence for testosterone therapy in women with HSDD?",
-                "simple",
-                "",
-            ],
+            ["What drugs improve female libido post-menopause?", "simple"],
+            ["Clinical trials for erectile dysfunction alternatives to PDE5 inhibitors?", "simple"],
+            ["Evidence for testosterone therapy in women with HSDD?", "simple"],
         ],
         additional_inputs_accordion=gr.Accordion(
             label="⚙️ Settings (Free tier works without API key)", open=False
