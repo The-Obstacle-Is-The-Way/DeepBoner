@@ -195,7 +195,9 @@ class HFInferenceJudgeHandler:
         "HuggingFaceH4/zephyr-7b-beta",  # Fallback (Ungated)
     ]
 
-    MAX_CONSECUTIVE_FAILURES: ClassVar[int] = 3  # Force synthesis after N failures
+    # Force synthesis after N consecutive failures to prevent infinite loops
+    # Rationale: 3 models x 3 retries each = 9 total API attempts before circuit break
+    MAX_CONSECUTIVE_FAILURES: ClassVar[int] = 3
 
     def __init__(self, model_id: str | None = None) -> None:
         """
@@ -224,6 +226,12 @@ class HFInferenceJudgeHandler:
         After MAX_CONSECUTIVE_FAILURES, forces synthesis to prevent infinite loops.
         """
         self.call_count += 1
+
+        # Session-based reset: new question = new research session = reset failures
+        # Prevents failure state from leaking across different user queries
+        if question != self.last_question and self.last_question is not None:
+            self.consecutive_failures = 0
+
         self.last_question = question
         self.last_evidence = evidence
 
