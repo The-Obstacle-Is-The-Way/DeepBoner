@@ -23,6 +23,9 @@ tags:
 
 # DeepBoner 🍆
 
+[![CI](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/actions/workflows/ci.yml/badge.svg)](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/The-Obstacle-Is-The-Way/DeepBoner/branch/main/graph/badge.svg)](https://codecov.io/gh/The-Obstacle-Is-The-Way/DeepBoner)
+
 AI-Native Sexual Health Research Agent
 
 Deep research for sexual wellness, ED treatments, hormone therapy, libido, and reproductive health - for all genders.
