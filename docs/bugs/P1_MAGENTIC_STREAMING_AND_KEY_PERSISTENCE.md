@@ -57,13 +57,16 @@ async for event in orchestrator.run(message):
 For N tokens, this yields N times, each time showing all previous tokens. This is O(N²) string operations and creates massive visual spam.
 
 ### Fix Applied
-**File:** `src/app.py:171-197`
+**File:** `src/app.py:175-204`
 
-Implemented streaming token buffering:
+Implemented streaming token buffering with live updates:
 1. Added `streaming_buffer = ""` to accumulate tokens
-2. Skip individual streaming events (don't append or yield)
-3. Flush buffer only when non-streaming event occurs or at completion
-4. Result: One consolidated streaming message instead of N individual ones
+2. For each streaming event: append to buffer, yield immediately (for live typing UX)
+3. **Key fix**: Don't append streaming events to `response_parts` (prevents O(N²) list growth)
+4. Each yield has only ONE `📡 STREAMING:` line (the accumulated buffer)
+5. Flush buffer to `response_parts` only when non-streaming event occurs
+
+**Result**: Live typing feel preserved, but no visual spam (each update replaces, not accumulates)
 
 ### Proposed Fix Options
 
@@ -137,18 +140,18 @@ Gradio's `ChatInterface` with `additional_inputs` has known issues:
 2. `src/utils/llm_factory.py`
 
 **Bug 1 (Streaming Spam):**
-- Implemented "smart streaming":
-  - Accumulate tokens in `streaming_buffer`
-  - Yield updates immediately to show progress (UX improvement)
-  - **Crucially**: Do NOT append to the persistent `response_parts` list until the stream segment is complete.
-  - This prevents the O(N²) list growth and "new line spam" while keeping the UI responsive.
+- Accumulate tokens in `streaming_buffer`
+- Yield updates immediately for live typing UX
+- **Key**: Don't append to `response_parts` until stream segment complete
+- Each yield has ONE `📡 STREAMING:` line (not N accumulated lines)
 
 **Bug 2 (API Key Persistence):**
-- **Strategy:** Cleaner Fix (Example List Modification)
-  - Instead of complex `gr.State` wiring (which caused context issues), we simply **removed the empty string columns** for `api_key` and `api_key_state` from the `examples` list in `create_demo`.
-  - Gradio's behavior is that if an example row has fewer columns than inputs, the remaining inputs (like the API key textbox) are **left unchanged** when the example is clicked.
-  - This naturally preserves the user's input without requiring extra state management.
-  - The `api_key_state` parameter remains in `research_agent` as a fallback but is largely redundant with this cleaner fix.
+- **Strategy:** Partial example list (relies on Gradio behavior)
+  - Examples have only 2 elements `[message, mode]` instead of 4
+  - Gradio only updates inputs with corresponding example values
+  - Remaining inputs (api_key textbox) are left unchanged
+  - `api_key_state` parameter exists as fallback but may be redundant
+- **Note:** This is a workaround relying on undocumented Gradio behavior
 
 **Bug 3 (OpenAIModel Deprecation):** ✅ FIXED
 - Replaced all `OpenAIModel` imports with `OpenAIChatModel` in `src/app.py` and `src/utils/llm_factory.py`.
