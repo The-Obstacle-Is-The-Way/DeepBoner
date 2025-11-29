@@ -261,7 +261,7 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
                 None,
             ],
             [
-                "Testosterone therapy for HSDD (Hypoactive Sexual Desire Disorder)?",
+                "Testosterone therapy for Hypoactive Sexual Desire Disorder?",
                 "simple",
                 None,
                 None,
