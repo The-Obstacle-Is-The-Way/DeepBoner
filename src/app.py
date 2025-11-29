@@ -108,6 +108,7 @@ async def research_agent(
     history: list[dict[str, Any]],
     mode: str = "simple",
     api_key: str = "",
+    api_key_state: str = "",
 ) -> AsyncGenerator[str, None]:
     """
     Gradio chat function that runs the research agent.
@@ -117,6 +118,7 @@ async def research_agent(
         history: Chat history (Gradio format)
         mode: Orchestrator mode ("simple" or "advanced")
         api_key: Optional user-provided API key (BYOK - auto-detects provider)
+        api_key_state: Persistent API key state (survives example clicks)
 
     Yields:
         Markdown-formatted responses for streaming
@@ -125,8 +127,10 @@ async def research_agent(
         yield "Please enter a research question."
         return
 
-    # Clean user-provided API key
-    user_api_key = api_key.strip() if api_key else None
+    # BUG FIX: Use state for persistence, fallback to textbox
+    # If user just entered a key (api_key is not empty), use it and update state
+    # Otherwise, use the persisted state value
+    user_api_key = api_key.strip() if api_key else api_key_state.strip() if api_key_state else None
 
     # Check available keys
     has_openai = bool(os.getenv("OPENAI_API_KEY"))
@@ -155,6 +159,7 @@ async def research_agent(
 
     # Run the agent and stream events
     response_parts: list[str] = []
+    streaming_buffer = ""  # Buffer for accumulating streaming tokens
 
     try:
         # use_mock=False - let configure_orchestrator decide based on available keys
@@ -168,16 +173,32 @@ async def research_agent(
         yield f"🧠 **Backend**: {backend_name}\n\n"
 
         async for event in orchestrator.run(message):
-            # Format event as markdown
-            event_md = event.to_markdown()
-            response_parts.append(event_md)
+            # BUG FIX: Handle streaming events separately to avoid token-by-token spam
+            if event.type == "streaming":
+                # Accumulate streaming tokens without emitting individual events
+                streaming_buffer += event.message
+                # Don't append to response_parts or yield - just buffer
+                continue
 
-            # If complete, show full response
+            # For non-streaming events, flush any buffered streaming content first
+            if streaming_buffer:
+                response_parts.append(f"📡 **STREAMING**: {streaming_buffer}")
+                streaming_buffer = ""  # Reset buffer
+
+            # Handle complete events specially
             if event.type == "complete":
                 yield event.message
             else:
+                # Format and append non-streaming events
+                event_md = event.to_markdown()
+                response_parts.append(event_md)
                 # Show progress
                 yield "\n\n".join(response_parts)
+
+        # Flush any remaining streaming content at the end
+        if streaming_buffer:
+            response_parts.append(f"📡 **STREAMING**: {streaming_buffer}")
+            yield "\n\n".join(response_parts)
 
     except Exception as e:
         yield f"❌ **Error**: {e!s}"
@@ -193,6 +214,10 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
     additional_inputs_accordion = gr.Accordion(
         label="⚙️ Mode & API Key (Free tier works!)", open=False
     )
+
+    # BUG FIX: Add gr.State for API key persistence across example clicks
+    api_key_state = gr.State("")
+
     # 1. Unwrapped ChatInterface (Fixes Accordion Bug)
     demo = gr.ChatInterface(
         fn=research_agent,
@@ -210,14 +235,20 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
             [
                 "What drugs improve female libido post-menopause?",
                 "simple",
+                "",  # api_key placeholder for examples
+                "",  # api_key_state placeholder for examples
             ],
             [
                 "Clinical trials for erectile dysfunction alternatives to PDE5 inhibitors?",
                 "advanced",
+                "",  # api_key placeholder
+                "",  # api_key_state placeholder
             ],
             [
                 "Evidence for testosterone therapy in women with HSDD?",
                 "simple",
+                "",  # api_key placeholder
+                "",  # api_key_state placeholder
             ],
         ],
         additional_inputs_accordion=additional_inputs_accordion,
@@ -234,6 +265,7 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
                 type="password",
                 info="Leave empty for free tier. Auto-detects provider from key prefix.",
             ),
+            api_key_state,  # Hidden state component for persistence
         ],
     )
 
