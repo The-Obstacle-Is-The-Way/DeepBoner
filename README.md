@@ -147,11 +147,7 @@ Built with:
 
 ## Team
 
-Built with love (and rigorous methodology) by:
-
-- 🏆 **The-Obstacle-Is-The-Way** - Lead Developer
-- 🎮 **MarioAderman** - Agent Architecture
-- 🔧 **EmployeeNo427** - Infrastructure
+Built with love (and rigorous methodology) by **The-Obstacle-Is-The-Way**
 
 ## Hackathon
 
