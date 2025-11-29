@@ -39,6 +39,13 @@
 - Yields "Multi-agent reasoning in progress..." before blocking workflow call
 - Users now see feedback during 2-5 minute initial processing
 
+### ~~P2 - Gradio Example Not Filling Chat Box~~ FIXED
+**Commit**: `2ea01fd` (2025-11-29)
+
+- Third example (HSDD) wasn't populating chat box when clicked
+- Root cause: Parentheses in `HSDD (Hypoactive Sexual Desire Disorder)`
+- Fix: Simplified to `Testosterone therapy for Hypoactive Sexual Desire Disorder?`
+
 ### ~~P1 - Gradio Settings Accordion~~ WONTFIX
 
 Decision: Removed nested Blocks, using ChatInterface directly.

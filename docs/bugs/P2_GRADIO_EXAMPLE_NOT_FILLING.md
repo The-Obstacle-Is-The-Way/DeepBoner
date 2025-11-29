@@ -4,6 +4,7 @@
 - **Date:** 2025-11-29
 - **Priority:** P2 (UX issue)
 - **Component:** `src/app.py` - Gradio examples
+- **Resolution:** FIXED in commit `2ea01fd`
 
 ---
 
