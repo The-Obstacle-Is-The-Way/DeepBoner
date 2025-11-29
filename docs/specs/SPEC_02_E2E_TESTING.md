@@ -18,13 +18,21 @@ We don't know if:
 ### Level 1: Smoke Test (Does it run?)
 
 ```python
+@pytest.mark.asyncio
 @pytest.mark.e2e
-async def test_simple_mode_completes():
+async def test_simple_mode_completes(mock_search_handler, mock_judge_handler):
     """Verify Simple mode runs without crashing."""
     from src.orchestrator import Orchestrator
+    from src.utils.models import OrchestratorConfig
 
-    # Mock the search tools to avoid real API calls
-    orchestrator = create_test_orchestrator(mode="simple")
+    config = OrchestratorConfig(max_iterations=2)
+    orchestrator = Orchestrator(
+        search_handler=mock_search_handler,
+        judge_handler=mock_judge_handler,
+        config=config,
+        enable_analysis=False,
+        enable_embeddings=False,
+    )
 
     events = []
     async for event in orchestrator.run("test query"):
@@ -79,23 +87,54 @@ async def test_output_quality():
 
 ### Mocking Strategy
 
-For CI/fast tests, mock external APIs:
+For CI/fast tests, mock external APIs via pytest fixtures in `tests/e2e/conftest.py`:
 
 ```python
 @pytest.fixture
-def mock_pubmed():
-    """Return realistic but fake PubMed results."""
-    return [
-        Evidence(
-            content="Metformin improves insulin sensitivity...",
-            citation=Citation(
-                source="pubmed",
-                title="Metformin in PCOS: A Meta-Analysis",
-                url="https://pubmed.ncbi.nlm.nih.gov/12345678/",
-                date="2024",
-            )
+def mock_search_handler():
+    """Return a mock search handler that returns fake evidence."""
+    from unittest.mock import MagicMock
+    from src.utils.models import Citation, Evidence, SearchResult
+
+    async def mock_execute(query: str):
+        return SearchResult(
+            evidence=[
+                Evidence(
+                    content="Study on test query showing positive results...",
+                    citation=Citation(
+                        source="pubmed",
+                        title="Study on test query",
+                        url="https://pubmed.example.com/123",
+                        date="2024",
+                    ),
+                )
+            ],
+            sources_searched=["pubmed", "clinicaltrials"],
         )
-    ]
+
+    mock = MagicMock()
+    mock.execute = mock_execute
+    return mock
+
+@pytest.fixture
+def mock_judge_handler():
+    """Return a mock judge that always says 'synthesize'."""
+    from unittest.mock import MagicMock
+    from src.utils.models import JudgeAssessment
+
+    async def mock_assess(evidence, query):
+        return JudgeAssessment(
+            sufficient=True,
+            reasoning="Mock: Evidence is sufficient",
+            suggested_refinements=[],
+            key_findings=["Finding 1", "Finding 2"],
+            evidence_gaps=[],
+            recommended_drugs=["MockDrug A", "MockDrug B"],
+        )
+
+    mock = MagicMock()
+    mock.assess = mock_assess
+    return mock
 ```
 
 ### Integration Tests (Real APIs)
@@ -152,8 +191,8 @@ tests/
 - #47: E2E Testing - Does Pipeline Actually Generate Useful Reports?
 - #65: Demo timing (must fix first to make E2E tests practical)
 
-## Files to Create
+## Files Created
 
-1. `tests/e2e/conftest.py` - E2E fixtures and mocks
-2. `tests/e2e/test_simple_mode.py` - Simple mode tests
-3. `tests/e2e/test_advanced_mode.py` - Advanced mode tests
+1. `tests/e2e/conftest.py` - E2E fixtures (mock_search_handler, mock_judge_handler)
+2. `tests/e2e/test_simple_mode.py` - Simple mode tests (2 tests)
+3. `tests/e2e/test_advanced_mode.py` - Advanced mode tests (1 test, mocked workflow)

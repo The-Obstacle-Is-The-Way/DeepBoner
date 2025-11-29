@@ -45,6 +45,7 @@ class MagenticOrchestrator:
         max_rounds: int = 10,
         chat_client: OpenAIChatClient | None = None,
         api_key: str | None = None,
+        timeout_seconds: float = 300.0,
     ) -> None:
         """Initialize orchestrator.
 
@@ -52,12 +53,14 @@ class MagenticOrchestrator:
             max_rounds: Maximum coordination rounds
             chat_client: Optional shared chat client for agents
             api_key: Optional OpenAI API key (for BYOK)
+            timeout_seconds: Maximum workflow duration (default: 5 minutes)
         """
         # Validate requirements only if no key provided
         if not chat_client and not api_key:
             check_magentic_requirements()
 
         self._max_rounds = max_rounds
+        self._timeout_seconds = timeout_seconds
         self._chat_client: OpenAIChatClient | None
 
         if chat_client:
@@ -170,10 +173,9 @@ The final output should be a structured research report."""
 
         iteration = 0
         final_event_received = False
-        demo_timeout_seconds = 300  # 5 minutes max
 
         try:
-            async with asyncio.timeout(demo_timeout_seconds):
+            async with asyncio.timeout(self._timeout_seconds):
                 async for event in workflow.run_stream(task):
                     agent_event = self._process_event(event, iteration)
                     if agent_event:
