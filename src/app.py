@@ -6,7 +6,7 @@ from typing import Any
 
 import gradio as gr
 from pydantic_ai.models.anthropic import AnthropicModel
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.providers.openai import OpenAIProvider
 
@@ -61,7 +61,7 @@ def configure_orchestrator(
     # 2. Paid API Key (User provided or Env)
     elif user_api_key and user_api_key.strip():
         # Auto-detect provider from key prefix
-        model: AnthropicModel | OpenAIModel
+        model: AnthropicModel | OpenAIChatModel
         if user_api_key.startswith("sk-ant-"):
             # Anthropic key
             anthropic_provider = AnthropicProvider(api_key=user_api_key)
@@ -70,7 +70,7 @@ def configure_orchestrator(
         elif user_api_key.startswith("sk-"):
             # OpenAI key
             openai_provider = OpenAIProvider(api_key=user_api_key)
-            model = OpenAIModel(settings.openai_model, provider=openai_provider)
+            model = OpenAIChatModel(settings.openai_model, provider=openai_provider)
             backend_info = "Paid API (OpenAI)"
         else:
             raise ConfigurationError(
@@ -108,6 +108,7 @@ async def research_agent(
     history: list[dict[str, Any]],
     mode: str = "simple",
     api_key: str = "",
+    api_key_state: str = "",
 ) -> AsyncGenerator[str, None]:
     """
     Gradio chat function that runs the research agent.
@@ -117,6 +118,7 @@ async def research_agent(
         history: Chat history (Gradio format)
         mode: Orchestrator mode ("simple" or "advanced")
         api_key: Optional user-provided API key (BYOK - auto-detects provider)
+        api_key_state: Persistent API key state (survives example clicks)
 
     Yields:
         Markdown-formatted responses for streaming
@@ -125,8 +127,8 @@ async def research_agent(
         yield "Please enter a research question."
         return
 
-    # Clean user-provided API key
-    user_api_key = api_key.strip() if api_key else None
+    # BUG FIX: Prefer freshly-entered key, then persisted state
+    user_api_key = (api_key.strip() or api_key_state.strip()) or None
 
     # Check available keys
     has_openai = bool(os.getenv("OPENAI_API_KEY"))
@@ -155,6 +157,7 @@ async def research_agent(
 
     # Run the agent and stream events
     response_parts: list[str] = []
+    streaming_buffer = ""  # Buffer for accumulating streaming tokens
 
     try:
         # use_mock=False - let configure_orchestrator decide based on available keys
@@ -168,16 +171,35 @@ async def research_agent(
         yield f"🧠 **Backend**: {backend_name}\n\n"
 
         async for event in orchestrator.run(message):
-            # Format event as markdown
-            event_md = event.to_markdown()
-            response_parts.append(event_md)
+            # BUG FIX: Handle streaming events separately to avoid token-by-token spam
+            if event.type == "streaming":
+                # Accumulate streaming tokens without emitting individual events
+                streaming_buffer += event.message
+                # Yield the current buffer combined with previous parts to show progress
+                # But DO NOT append to response_parts list yet (to avoid O(N^2) list growth)
+                current_parts = [*response_parts, f"📡 **STREAMING**: {streaming_buffer}"]
+                yield "\n\n".join(current_parts)
+                continue
 
-            # If complete, show full response
+            # For non-streaming events, flush any buffered streaming content first
+            if streaming_buffer:
+                response_parts.append(f"📡 **STREAMING**: {streaming_buffer}")
+                streaming_buffer = ""  # Reset buffer
+
+            # Handle complete events specially
             if event.type == "complete":
                 yield event.message
             else:
+                # Format and append non-streaming events
+                event_md = event.to_markdown()
+                response_parts.append(event_md)
                 # Show progress
                 yield "\n\n".join(response_parts)
+
+        # Flush any remaining streaming content at the end
+        if streaming_buffer:
+            response_parts.append(f"📡 **STREAMING**: {streaming_buffer}")
+            yield "\n\n".join(response_parts)
 
     except Exception as e:
         yield f"❌ **Error**: {e!s}"
@@ -193,6 +215,10 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
     additional_inputs_accordion = gr.Accordion(
         label="⚙️ Mode & API Key (Free tier works!)", open=False
     )
+
+    # BUG FIX: Add gr.State for API key persistence across example clicks
+    api_key_state = gr.State("")
+
     # 1. Unwrapped ChatInterface (Fixes Accordion Bug)
     demo = gr.ChatInterface(
         fn=research_agent,
@@ -210,6 +236,7 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
             [
                 "What drugs improve female libido post-menopause?",
                 "simple",
+                # Removed empty strings for api_key and api_key_state to prevent overwriting
             ],
             [
                 "Clinical trials for erectile dysfunction alternatives to PDE5 inhibitors?",
@@ -234,8 +261,12 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
                 type="password",
                 info="Leave empty for free tier. Auto-detects provider from key prefix.",
             ),
+            api_key_state,  # Hidden state component for persistence
         ],
     )
+
+    # API key persists because examples only include [message, mode] columns,
+    # so Gradio doesn't overwrite the api_key textbox when examples are clicked.
 
     return demo, additional_inputs_accordion
 
