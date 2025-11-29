@@ -4,7 +4,7 @@
 
 ## Problem Statement
 
-We have 140 unit tests that verify individual components work, but **no test that proves the full pipeline produces useful research output**.
+We have 141 unit tests that verify individual components work, but **no test that proves the full pipeline produces useful research output**.
 
 We don't know if:
 1. Simple mode produces a valid report
@@ -115,14 +115,14 @@ async def test_real_pubmed_search():
 
 | Mode | Mock | Real API | Status |
 |------|------|----------|--------|
-| Simple (Free) | ✅ Need | ⏳ Optional | Not implemented |
-| Advanced (OpenAI) | ✅ Need | ⏳ Optional | Not implemented |
+| Simple (Free) | ✅ Done | ⏳ Optional | ✅ IMPLEMENTED |
+| Advanced (OpenAI) | ✅ Done | ⏳ Optional | ✅ IMPLEMENTED |
 
 ## Directory Structure
 
 ```
 tests/
-├── unit/           # Existing 140 tests
+├── unit/           # Existing 141 tests
 ├── integration/    # Real API tests (existing)
 └── e2e/            # NEW: Full pipeline tests
     ├── conftest.py         # E2E fixtures
@@ -132,11 +132,13 @@ tests/
 
 ## Acceptance Criteria
 
-- [ ] E2E test for Simple mode (mocked)
-- [ ] E2E test for Advanced mode (mocked)
-- [ ] Tests validate output structure
-- [ ] Tests run in CI (<2 minutes)
-- [ ] At least one integration test with real API
+- [x] E2E test for Simple mode (mocked)
+- [x] E2E test for Advanced mode (mocked)
+- [x] Tests validate output structure
+- [x] Tests run in CI (<2 minutes)
+- [ ] At least one integration test with real API (existing in tests/integration/)
+
+**Status: IMPLEMENTED** (commit b1d094d)
 
 ## Why Before OpenAlex?
 

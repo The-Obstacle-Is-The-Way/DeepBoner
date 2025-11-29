@@ -16,7 +16,7 @@ Advanced (Magentic) mode runs indefinitely from user perspective. The demo was m
 ### Question 1: Does max_round_count actually work?
 
 ```python
-# Current code (src/orchestrator_magentic.py:94)
+# Current code (src/orchestrator_magentic.py:111)
 .with_standard_manager(
     chat_client=manager_client,
     max_round_count=self._max_rounds,  # Default: 10
@@ -99,10 +99,12 @@ if len(evidence) >= 20:
 
 ## Acceptance Criteria
 
-- [ ] Demo completes in <5 minutes with visible progress
-- [ ] User sees round count (e.g., "Round 3/5")
-- [ ] Always produces SOME output (even if partial)
-- [ ] Timeout prevents infinite running
+- [x] Demo completes in <5 minutes with visible progress
+- [x] User sees round count (e.g., "Round 3/5")
+- [x] Always produces SOME output (even if partial)
+- [x] Timeout prevents infinite running
+
+**Status: IMPLEMENTED** (commit b1d094d)
 
 ## Test Plan
 
