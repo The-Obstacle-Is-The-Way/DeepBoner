@@ -212,7 +212,7 @@ class OpenAlexTool(SearchTool):
                     "filter": "type:article,is_oa:true",
                     "sort": "cited_by_count:desc",
                     "per_page": max_results,
-                    "mailto": "deepcritical@example.com",  # Polite pool
+                    "mailto": "deepboner@example.com",  # Polite pool
                 },
             )
             data = resp.json()

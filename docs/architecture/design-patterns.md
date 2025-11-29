@@ -811,7 +811,7 @@ uvx fastmcp run src/mcp_servers/pubmed_server.py
     "pubmed": {
       "command": "python",
       "args": ["-m", "src.mcp_servers.pubmed_server"],
-      "cwd": "/path/to/deepcritical"
+      "cwd": "/path/to/deepboner"
     }
   }
 }

@@ -198,7 +198,7 @@ AI-Powered Drug Repurposing Research Agent
 
 Connect to our MCP server at:
 ```
-https://MCP-1st-Birthday-deepcritical.hf.space/gradio_api/mcp/
+https://your-space.hf.space/gradio_api/mcp/
 ```
 
 Available tools:

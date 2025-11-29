@@ -25,7 +25,7 @@ class LlamaIndexRAGService:
 
     def __init__(
         self,
-        collection_name: str = "deepcritical_evidence",
+        collection_name: str = "deepboner_evidence",
         persist_dir: str | None = None,
         embedding_model: str | None = None,
         similarity_top_k: int = 5,
@@ -248,7 +248,7 @@ class LlamaIndexRAGService:
 
 
 def get_rag_service(
-    collection_name: str = "deepcritical_evidence",
+    collection_name: str = "deepboner_evidence",
     **kwargs: Any,
 ) -> LlamaIndexRAGService:
     """

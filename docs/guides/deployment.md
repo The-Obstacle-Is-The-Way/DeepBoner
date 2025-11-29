@@ -69,7 +69,7 @@ def predict(message, history):
    ```json
    {
      "mcpServers": {
-       "deepcritical": {
+       "deepboner": {
          "command": "uv",
          "args": ["run", "fastmcp", "run", "src/mcp_servers/pubmed_server.py"],
          "cwd": "/absolute/path/to/DeepBoner"
@@ -111,7 +111,7 @@ Instead of calling Anthropic API, we call a Modal function:
 # src/llm/modal_client.py
 import modal
 
-stub = modal.Stub("deepcritical-inference")
+stub = modal.Stub("deepboner-inference")
 
 @stub.function(gpu="A100")
 def generate_text(prompt: str):

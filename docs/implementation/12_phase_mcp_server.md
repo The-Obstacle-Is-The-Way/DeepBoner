@@ -672,7 +672,7 @@ class TestMCPServerIntegration:
 // %APPDATA%\Claude\claude_desktop_config.json (Windows)
 {
   "mcpServers": {
-    "deepcritical": {
+    "deepboner": {
       "url": "http://localhost:7860/gradio_api/mcp/"
     }
   }
@@ -684,8 +684,8 @@ class TestMCPServerIntegration:
 ```json
 {
   "mcpServers": {
-    "deepcritical": {
-      "url": "https://MCP-1st-Birthday-deepcritical.hf.space/gradio_api/mcp/"
+    "deepboner": {
+      "url": "https://your-space.hf.space/gradio_api/mcp/"
     }
   }
 }
@@ -696,7 +696,7 @@ class TestMCPServerIntegration:
 ```json
 {
   "mcpServers": {
-    "deepcritical": {
+    "deepboner": {
       "url": "https://your-space.hf.space/gradio_api/mcp/",
       "headers": {
         "Authorization": "Bearer hf_xxxxxxxxxxxxx"
