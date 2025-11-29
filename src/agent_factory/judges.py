@@ -26,6 +26,31 @@ from src.utils.models import AssessmentDetails, Evidence, JudgeAssessment
 logger = structlog.get_logger()
 
 
+def _extract_titles_from_evidence(
+    evidence: list[Evidence], max_items: int = 5, fallback_message: str | None = None
+) -> list[str]:
+    """Extract truncated titles from evidence for fallback display.
+
+    Args:
+        evidence: List of evidence items
+        max_items: Maximum number of titles to extract
+        fallback_message: Message to return if no evidence provided
+
+    Returns:
+        List of truncated titles (max 150 chars each)
+    """
+    findings = []
+    for e in evidence[:max_items]:
+        title = e.citation.title
+        if len(title) > 150:
+            title = title[:147] + "..."
+        findings.append(title)
+
+    if not findings and fallback_message:
+        return [fallback_message]
+    return findings
+
+
 def get_model() -> Any:
     """Get the LLM model based on configuration.
 
@@ -346,16 +371,11 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
         self, question: str, evidence: list[Evidence]
     ) -> JudgeAssessment:
         """Create an assessment that stops the loop when quota is exhausted."""
-        # Heuristic extraction for fallback
-        findings = []
-        for e in evidence[:5]:
-            title = e.citation.title
-            if len(title) > 150:
-                title = title[:147] + "..."
-            findings.append(title)
-
-        if not findings:
-            findings = ["No findings available (Quota exceeded and no search results)."]
+        findings = _extract_titles_from_evidence(
+            evidence,
+            max_items=5,
+            fallback_message="No findings available (Quota exceeded and no search results).",
+        )
 
         return JudgeAssessment(
             details=AssessmentDetails(
@@ -431,13 +451,11 @@ class MockJudgeHandler:
 
     def _extract_key_findings(self, evidence: list[Evidence], max_findings: int = 5) -> list[str]:
         """Extract key findings from evidence titles."""
-        findings = []
-        for e in evidence[:max_findings]:
-            # Use first 150 chars of title as a finding
-            title = e.citation.title
-            if len(title) > 150:
-                title = title[:147] + "..."
-            findings.append(title)
+        findings = _extract_titles_from_evidence(
+            evidence,
+            max_items=max_findings,
+            fallback_message="No specific findings extracted (demo mode)",
+        )
         return findings if findings else ["No specific findings extracted (demo mode)"]
 
     def _extract_drug_candidates(self, question: str, evidence: list[Evidence]) -> list[str]:

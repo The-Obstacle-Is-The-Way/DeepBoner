@@ -15,7 +15,7 @@ This results in a "Synthesis" step that has 0 candidates and 0 findings, renderi
 
 ## Evidence
 Output provided:
-```
+```text
 ### Citations (20 sources)
 ...
 ### Reasoning
