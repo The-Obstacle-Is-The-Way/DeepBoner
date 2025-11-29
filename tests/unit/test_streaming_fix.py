@@ -51,18 +51,38 @@ async def test_streaming_events_are_buffered_not_spammed():
         async for result in research_agent("test query", [], mode="simple", api_key=""):
             results.append(result)
 
-        # Verify that we don't have individual streaming events in the output
-        # Before fix: Would see "📡 **STREAMING**: This", "📡 **STREAMING**: is", etc.
-        # After fix: Should see buffered content only
+        # Verify that we DO see streaming updates (for UX responsiveness)
+        # But we don't want O(N^2) growth of the persisted list.
 
-        # Count how many times we see streaming markers
-        streaming_count = sum(1 for r in results if "📡 **STREAMING**:" in r)
+        # We expect results to contain the streaming updates
+        assert len(results) > 0, "Should have yielded results"
 
-        # Should be at most 1 streaming message (buffered), not 4 (one per token)
-        assert streaming_count <= 1, (
-            f"Expected at most 1 buffered streaming message, got {streaming_count}. "
-            f"This indicates token-by-token spam is still happening!"
-        )
+        # Check that we see the accumulated message
+        assert any(
+            "📡 **STREAMING**: This is a test" in r for r in results
+        ), "Buffer didn't accumulate correctly"
+
+        # The critical check for the "Spam" bug:
+        # In the spam bug, the output grew like:
+        # "Stream: T"
+        # "Stream: T\nStream: h"
+        # "Stream: T\nStream: h\nStream: i"
+        #
+        # In the fixed version, it should look like:
+        # "Stream: T"
+        # "Stream: Th"
+        # "Stream: Thi"
+        # (Replacing the last line, not adding new lines)
+
+        for res in results:
+            # Count occurrences of "📡 **STREAMING**:": in a single result string
+            # It should appear AT MOST once
+            # (unless we have multiple distinct streaming blocks)
+            streaming_markers = res.count("📡 **STREAMING**:")
+            assert streaming_markers <= 1, (
+                f"Found multiple streaming markers in single response: {res}\n"
+                "This indicates we are appending new lines instead of updating in place."
+            )
 
         # The final result should be the complete message
         assert any("Final answer" in r for r in results), "Missing final complete message"

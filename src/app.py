@@ -177,7 +177,10 @@ async def research_agent(
             if event.type == "streaming":
                 # Accumulate streaming tokens without emitting individual events
                 streaming_buffer += event.message
-                # Don't append to response_parts or yield - just buffer
+                # Yield the current buffer combined with previous parts to show progress
+                # But DO NOT append to response_parts list yet (to avoid O(N^2) list growth)
+                current_parts = [*response_parts, f"📡 **STREAMING**: {streaming_buffer}"]
+                yield "\n\n".join(current_parts)
                 continue
 
             # For non-streaming events, flush any buffered streaming content first
@@ -235,20 +238,15 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
             [
                 "What drugs improve female libido post-menopause?",
                 "simple",
-                "",  # api_key placeholder for examples
-                "",  # api_key_state placeholder for examples
+                # Removed empty strings for api_key and api_key_state to prevent overwriting
             ],
             [
                 "Clinical trials for erectile dysfunction alternatives to PDE5 inhibitors?",
                 "advanced",
-                "",  # api_key placeholder
-                "",  # api_key_state placeholder
             ],
             [
                 "Evidence for testosterone therapy in women with HSDD?",
                 "simple",
-                "",  # api_key placeholder
-                "",  # api_key_state placeholder
             ],
         ],
         additional_inputs_accordion=additional_inputs_accordion,
@@ -268,6 +266,15 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
             api_key_state,  # Hidden state component for persistence
         ],
     )
+
+    # Wire up API key change to update state
+    # This ensures that when user types, state is updated.
+    # When examples are clicked (and only modify first 2 args), state remains.
+    # Note: This requires a Blocks context, which ChatInterface doesn't expose easily here.
+    # However, by removing the empty strings from the examples list above,
+    # we prevent the API key from being overwritten in the first place,
+    # so the api_key textbox retains its value, and research_agent receives it directly.
+    # api_key_input.change(lambda x: x, inputs=api_key_input, outputs=api_key_state)
 
     return demo, additional_inputs_accordion
 
