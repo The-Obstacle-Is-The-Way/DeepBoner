@@ -512,7 +512,7 @@ class TestOpenAlexIntegration:
 - [x] All unit tests pass (11 tests)
 - [x] Integration test passes with real API
 
-**Status: IMPLEMENTED** (commits fd28242, TBD)
+**Status: IMPLEMENTED** (commits fd28242, cb46aac)
 
 ## Files Modified
 

@@ -181,11 +181,13 @@ if time_remaining < self._timeout_seconds * 0.2:
 
 ## Acceptance Criteria
 
-- [ ] Timeout shows ALL progress events, not just timeout message
-- [ ] Default timeout increased to 600s (10 minutes)
-- [ ] Timeout configurable via `MAGENTIC_TIMEOUT` env var
-- [ ] Tests verify chat history preserved on timeout
-- [ ] (P2) System synthesizes early when timeout approaches
+- [x] Timeout shows ALL progress events, not just timeout message
+- [x] Default timeout increased to 600s (10 minutes)
+- [x] Timeout configurable via `MAGENTIC_TIMEOUT` env var
+- [x] Tests verify chat history preserved on timeout
+- [ ] (P2) System synthesizes early when timeout approaches (Future)
+
+**Status: IMPLEMENTED** (commit cb46aac)
 
 ## Files to Modify
 

@@ -121,10 +121,12 @@ make check  # All 142 tests should pass
 
 ## Acceptance Criteria
 
-- [ ] Empty `src/orchestrator/` folder deleted
-- [ ] No broken imports (grep for `from src.orchestrator/`)
-- [ ] Tests pass
-- [ ] (Optional) `orchestrator_hierarchical.py` removed or deprecated
+- [x] Empty `src/orchestrator/` folder deleted
+- [x] No broken imports (grep for `from src.orchestrator/`)
+- [x] Tests pass (154 unit tests)
+- [x] `orchestrator_hierarchical.py` removed
+
+**Status: IMPLEMENTED** (commit cb46aac)
 
 ## Files to Modify
 
