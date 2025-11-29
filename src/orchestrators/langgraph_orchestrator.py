@@ -10,6 +10,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from src.agents.graph.state import ResearchState
 from src.agents.graph.workflow import create_research_graph
 from src.orchestrators.base import OrchestratorProtocol
+from src.services.embeddings import EmbeddingService
 from src.utils.config import settings
 from src.utils.models import AgentEvent
 
@@ -32,8 +33,9 @@ class LangGraphOrchestrator(OrchestratorProtocol):
         # Ensure we have an API key
         api_key = settings.hf_token
         if not api_key:
-            # Fallback or error? For now, assume it's set or env var
-            pass
+            raise ValueError(
+                "HF_TOKEN (Hugging Face API Token) is required for God Mode to use Llama 3.1."
+            )
 
         self.llm_endpoint = HuggingFaceEndpoint(  # type: ignore
             repo_id=repo_id,
@@ -46,6 +48,8 @@ class LangGraphOrchestrator(OrchestratorProtocol):
 
     async def run(self, query: str) -> AsyncGenerator[AgentEvent, None]:
         """Execute research workflow with structured state."""
+        # Initialize embedding service for this specific run (ensures isolation)
+        embedding_service = EmbeddingService()
 
         # Setup checkpointer (SQLite for dev)
         if self._checkpoint_path:
@@ -62,9 +66,17 @@ class LangGraphOrchestrator(OrchestratorProtocol):
         async def get_graph_context(saver_instance: Any) -> AsyncIterator[Any]:
             if saver_instance:
                 async with saver_instance as s:
-                    yield create_research_graph(llm=self.chat_model, checkpointer=s)
+                    yield create_research_graph(
+                        llm=self.chat_model,
+                        checkpointer=s,
+                        embedding_service=embedding_service,
+                    )
             else:
-                yield create_research_graph(llm=self.chat_model, checkpointer=None)
+                yield create_research_graph(
+                    llm=self.chat_model,
+                    checkpointer=None,
+                    embedding_service=embedding_service,
+                )
 
         async with get_graph_context(saver) as graph:
             # Initialize state

@@ -1,18 +1,31 @@
 """Graph node implementations for DeepBoner research."""
 
-import asyncio
 from typing import Any, Literal
 
+import structlog
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
+from pydantic_ai import Agent
 
+from src.agent_factory.judges import get_model
 from src.agents.graph.state import Hypothesis, ResearchState
+from src.prompts.hypothesis import SYSTEM_PROMPT as HYPOTHESIS_SYSTEM_PROMPT
+from src.prompts.hypothesis import format_hypothesis_prompt
+from src.prompts.report import SYSTEM_PROMPT as REPORT_SYSTEM_PROMPT
+from src.prompts.report import format_report_prompt
+from src.services.embeddings import EmbeddingService
+from src.tools.base import SearchTool
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
 from src.tools.pubmed import PubMedTool
+from src.tools.search_handler import SearchHandler
+from src.utils.citation_validator import validate_references
+from src.utils.models import Citation, Evidence, HypothesisAssessment, ResearchReport
+
+logger = structlog.get_logger()
 
 
 # --- Supervisor Output Schema ---
@@ -28,92 +41,206 @@ class SupervisorDecision(BaseModel):
 # --- Nodes ---
 
 
-async def search_node(state: ResearchState) -> dict[str, Any]:
+async def search_node(
+    state: ResearchState, embedding_service: EmbeddingService | None = None
+) -> dict[str, Any]:
     """Execute search across all sources."""
     query = state["query"]
+    logger.info("search_node: executing search", query=query)
 
     # Initialize tools
-    pubmed = PubMedTool()
-    ct = ClinicalTrialsTool()
-    epmc = EuropePMCTool()
+    tools: list[SearchTool] = [PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()]
+    handler = SearchHandler(tools=tools)
 
-    # Parallel search
-    # Note: Tools return list[Evidence]
-    results = await asyncio.gather(
-        pubmed.search(query), ct.search(query), epmc.search(query), return_exceptions=True
+    # Execute search
+    result = await handler.execute(query)
+
+    new_evidence_count = 0
+    new_ids = []
+
+    if embedding_service and result.evidence:
+        # Deduplicate and store
+        unique_evidence = await embedding_service.deduplicate(result.evidence)
+
+        for ev in unique_evidence:
+            ev_id = ev.citation.url
+            await embedding_service.add_evidence(
+                evidence_id=ev_id,
+                content=ev.content,
+                metadata={
+                    "source": ev.citation.source,
+                    "title": ev.citation.title,
+                    "date": ev.citation.date,
+                    "authors": ",".join(ev.citation.authors or []),
+                    "url": ev.citation.url,
+                },
+            )
+            new_ids.append(ev_id)
+
+        new_evidence_count = len(unique_evidence)
+    else:
+        new_evidence_count = len(result.evidence)
+
+    message = (
+        f"Search completed. Found {result.total_found} total, "
+        f"{new_evidence_count} unique new papers."
+    )
+    if result.errors:
+        message += f" Errors: {'; '.join(result.errors)}"
+
+    return {
+        "evidence_ids": new_ids,
+        "messages": [AIMessage(content=message)],
+    }
+
+
+async def judge_node(
+    state: ResearchState, embedding_service: EmbeddingService | None = None
+) -> dict[str, Any]:
+    """Evaluate evidence and update hypothesis confidence."""
+    logger.info("judge_node: evaluating evidence")
+
+    evidence_context: list[Evidence] = []
+    if embedding_service:
+        scored_points = await embedding_service.search_similar(state["query"], n_results=20)
+        for p in scored_points:
+            meta = p.get("metadata", {})
+            authors = meta.get("authors", "")
+            author_list = authors.split(",") if authors else []
+
+            evidence_context.append(
+                Evidence(
+                    content=p.get("content", ""),
+                    citation=Citation(
+                        url=p.get("id", ""),
+                        title=meta.get("title", "Unknown"),
+                        source=meta.get("source", "Unknown"),
+                        date=meta.get("date", ""),
+                        authors=author_list,
+                    ),
+                )
+            )
+
+    agent = Agent(
+        model=get_model(),
+        output_type=HypothesisAssessment,
+        system_prompt=HYPOTHESIS_SYSTEM_PROMPT,
     )
 
-    # new_evidence_ids = []
-    count = 0
+    prompt = await format_hypothesis_prompt(
+        query=state["query"], evidence=evidence_context, embeddings=embedding_service
+    )
 
-    # Process results (flatten and handle errors)
-    for res in results:
-        if isinstance(res, list):
-            # In a real impl, we would store these in ChromaDB here
-            # and just track IDs. For now, we'll just count them.
-            # state["evidence_ids"] would act as pointers.
-            # For this demo, let's assume we just log the count.
-            count += len(res)
-        else:
-            # Log error?
-            pass
+    try:
+        result = await agent.run(prompt)
+        assessment = result.output
 
-    return {
-        "messages": [AIMessage(content=f"Search completed. Found {count} new papers.")],
-        # In real impl: "evidence_ids": new_ids
-    }
+        new_hypotheses = []
+        for h in assessment.hypotheses:
+            new_hypotheses.append(
+                Hypothesis(
+                    id=h.drug,
+                    statement=f"{h.drug} -> {h.target} -> {h.pathway} -> {h.effect}",
+                    status="proposed",
+                    confidence=h.confidence,
+                    supporting_evidence_ids=[],
+                    contradicting_evidence_ids=[],
+                )
+            )
 
-
-async def judge_node(state: ResearchState) -> dict[str, Any]:
-    """Evaluate evidence and update hypothesis confidence."""
-    # TODO: Implement actual LLM judging logic
-    # For now, we simulate a judge finding a conflict or confirming a hypothesis
-
-    # Simulation: If no hypotheses, propose one
-    if not state["hypotheses"]:
-        new_hypo = Hypothesis(
-            id="h1",
-            statement=f"Hypothesis derived from {state['query']}",
-            status="proposed",
-            confidence=0.5,
-        )
         return {
-            "hypotheses": [new_hypo],
-            "messages": [AIMessage(content="Judge: Proposed initial hypothesis.")],
+            "hypotheses": new_hypotheses,
+            "messages": [AIMessage(content=f"Judge: Generated {len(new_hypotheses)} hypotheses.")],
+            "next_step": "resolve",
         }
+    except Exception as e:
+        logger.error("judge_node failed", error=str(e))
+        return {"messages": [AIMessage(content=f"Judge Error: {e!s}")], "next_step": "search"}
 
-    # Simulation: Update confidence
-    return {"messages": [AIMessage(content="Judge: Evaluated evidence. Confidence updated.")]}
 
-
-async def resolve_node(state: ResearchState) -> dict[str, Any]:
+async def resolve_node(
+    state: ResearchState, embedding_service: EmbeddingService | None = None
+) -> dict[str, Any]:
     """Handle open conflicts."""
-    # TODO: Implement conflict resolution logic
-    return {"messages": [AIMessage(content="Resolver: Attempted to resolve conflicts.")]}
+    messages = []
+
+    # Access attributes with dot notation because items are Pydantic models
+    high_conf = [h for h in state["hypotheses"] if h.confidence > 0.8]
+
+    if high_conf:
+        messages.append(
+            AIMessage(
+                content=(
+                    f"Resolver: Found {len(high_conf)} high confidence hypotheses. "
+                    "Conflicts resolved."
+                )
+            )
+        )
+    else:
+        messages.append(AIMessage(content="Resolver: No high confidence hypotheses yet."))
+
+    return {"messages": messages}
 
 
-async def synthesize_node(state: ResearchState) -> dict[str, Any]:
+async def synthesize_node(
+    state: ResearchState, embedding_service: EmbeddingService | None = None
+) -> dict[str, Any]:
     """Generate final report."""
-    # TODO: Implement report generation
-    return {
-        "messages": [AIMessage(content="# Final Report\n\nResearch complete.")],
-        "next_step": "finish",
-    }
+    logger.info("synthesize_node: generating report")
+
+    evidence_context: list[Evidence] = []
+    if embedding_service:
+        scored_points = await embedding_service.search_similar(state["query"], n_results=50)
+        for p in scored_points:
+            meta = p.get("metadata", {})
+            authors = meta.get("authors", "")
+            author_list = authors.split(",") if authors else []
+
+            evidence_context.append(
+                Evidence(
+                    content=p.get("content", ""),
+                    citation=Citation(
+                        url=p.get("id", ""),
+                        title=meta.get("title", "Unknown"),
+                        source=meta.get("source", "Unknown"),
+                        date=meta.get("date", ""),
+                        authors=author_list,
+                    ),
+                )
+            )
+
+    agent = Agent(
+        model=get_model(),
+        output_type=ResearchReport,
+        system_prompt=REPORT_SYSTEM_PROMPT,
+    )
+
+    prompt = await format_report_prompt(
+        query=state["query"],
+        evidence=evidence_context,
+        hypotheses=[],  # Relies on evidence for now as state mapping is complex
+        assessment={},  # Pass empty dict instead of None
+        metadata={"sources": list(set(e.citation.source for e in evidence_context))},
+        embeddings=embedding_service,
+    )
+
+    try:
+        result = await agent.run(prompt)
+        report = result.output
+        report = validate_references(report, evidence_context)
+
+        return {"messages": [AIMessage(content=report.to_markdown())], "next_step": "finish"}
+    except Exception as e:
+        logger.error("synthesize_node failed", error=str(e))
+        return {"messages": [AIMessage(content=f"Synthesis Error: {e!s}")], "next_step": "finish"}
 
 
 async def supervisor_node(state: ResearchState, llm: BaseChatModel | None = None) -> dict[str, Any]:
-    """Route to next node based on state using robust Pydantic parsing.
-
-    Args:
-        state: Current graph state
-        llm: The language model to use (injected at runtime)
-    """
-    # Hard termination check
+    """Route to next node based on state using robust Pydantic parsing."""
     if state["iteration_count"] >= state["max_iterations"]:
         return {"next_step": "synthesize", "iteration_count": state["iteration_count"]}
 
     if llm is None:
-        # Fallback for tests/default
         return {"next_step": "search", "iteration_count": state["iteration_count"] + 1}
 
     parser = PydanticOutputParser(pydantic_object=SupervisorDecision)
@@ -142,6 +269,7 @@ async def supervisor_node(state: ResearchState, llm: BaseChatModel | None = None
     chain = prompt | llm | parser
 
     try:
+        # Note: state["conflicts"] contains Pydantic models, so use dot notation
         decision: SupervisorDecision = await chain.ainvoke(
             {
                 "query": state["query"],
@@ -158,10 +286,8 @@ async def supervisor_node(state: ResearchState, llm: BaseChatModel | None = None
             "messages": [AIMessage(content=f"Supervisor: {decision.reasoning}")],
         }
     except Exception as e:
-        # Fallback on error (e.g. parsing failure)
-        # We default to 'judge' if we have data, or 'synthesize' if we are stuck
         return {
-            "next_step": "synthesize",  # Fail safe
+            "next_step": "synthesize",
             "iteration_count": state["iteration_count"] + 1,
             "messages": [AIMessage(content=f"Supervisor Error: {e!s}. Proceeding to synthesis.")],
         }

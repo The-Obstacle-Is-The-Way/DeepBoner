@@ -7,8 +7,26 @@ from src.agents.graph.state import ResearchState
 
 
 @pytest.mark.asyncio
-async def test_judge_node_initialization():
+async def test_judge_node_initialization(mocker):
     """Test judge creates initial hypothesis if none exist."""
+    # Mock pydantic_ai Agent
+    mock_run = mocker.patch("pydantic_ai.Agent.run")
+
+    # Create a mock assessment with attributes
+    mock_hypothesis = mocker.Mock()
+    mock_hypothesis.drug = "Caffeine"
+    mock_hypothesis.target = "Adenosine"
+    mock_hypothesis.pathway = "CNS"
+    mock_hypothesis.effect = "Alertness"
+    mock_hypothesis.confidence = 0.8
+
+    mock_assessment = mocker.Mock()
+    mock_assessment.hypotheses = [mock_hypothesis]
+
+    mock_result = mocker.Mock()
+    mock_result.output = mock_assessment
+    mock_run.return_value = mock_result
+
     state: ResearchState = {
         "query": "Does coffee cause cancer?",
         "hypotheses": [],
@@ -24,7 +42,7 @@ async def test_judge_node_initialization():
 
     assert "hypotheses" in update
     assert len(update["hypotheses"]) == 1
-    assert update["hypotheses"][0].id == "h1"
+    assert update["hypotheses"][0].id == "Caffeine"
     assert update["hypotheses"][0].status == "proposed"
 
 
@@ -67,4 +85,5 @@ async def test_search_node_execution(mocker):
 
     update = await search_node(state)
     assert "messages" in update
-    assert "Found 0 new papers" in update["messages"][0].content
+    # Matches "Found 0 total, 0 unique new papers."
+    assert "0 unique new papers" in update["messages"][0].content
