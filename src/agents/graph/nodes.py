@@ -23,9 +23,45 @@ from src.tools.europepmc import EuropePMCTool
 from src.tools.pubmed import PubMedTool
 from src.tools.search_handler import SearchHandler
 from src.utils.citation_validator import validate_references
-from src.utils.models import Citation, Evidence, HypothesisAssessment, ResearchReport
+from src.utils.models import (
+    Citation,
+    Evidence,
+    HypothesisAssessment,
+    MechanismHypothesis,
+    ResearchReport,
+)
 
 logger = structlog.get_logger()
+
+
+def _convert_hypothesis_to_mechanism(h: Hypothesis) -> MechanismHypothesis:
+    """Convert state Hypothesis to MechanismHypothesis for report generation.
+
+    The state Hypothesis stores the mechanism as a statement like:
+    "drug -> target -> pathway -> effect"
+
+    We parse this back into structured MechanismHypothesis fields.
+    """
+    # Parse statement format: "drug -> target -> pathway -> effect"
+    parts = h.statement.split(" -> ")
+    if len(parts) >= 4:
+        drug, target, pathway, effect = parts[0], parts[1], parts[2], parts[3]
+    else:
+        # Fallback if format is unexpected
+        drug = h.id
+        target = "Unknown"
+        pathway = "Unknown"
+        effect = h.statement
+
+    return MechanismHypothesis(
+        drug=drug,
+        target=target,
+        pathway=pathway,
+        effect=effect,
+        confidence=h.confidence,
+        supporting_evidence=h.supporting_evidence_ids,
+        contradicting_evidence=h.contradicting_evidence_ids,
+    )
 
 
 # --- Supervisor Output Schema ---
@@ -215,11 +251,14 @@ async def synthesize_node(
         system_prompt=REPORT_SYSTEM_PROMPT,
     )
 
+    # Convert state hypotheses to MechanismHypothesis for report generation
+    mechanism_hypotheses = [_convert_hypothesis_to_mechanism(h) for h in state["hypotheses"]]
+
     prompt = await format_report_prompt(
         query=state["query"],
         evidence=evidence_context,
-        hypotheses=[],  # Relies on evidence for now as state mapping is complex
-        assessment={},  # Pass empty dict instead of None
+        hypotheses=mechanism_hypotheses,
+        assessment={},
         metadata={"sources": list(set(e.citation.source for e in evidence_context))},
         embeddings=embedding_service,
     )
