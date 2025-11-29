@@ -499,3 +499,24 @@ class TestOpenAlexIntegration:
         # Should have concepts
         assert len(results[0].metadata["concepts"]) > 0
 ```
+
+## Acceptance Criteria
+
+- [x] `OpenAlexTool` implements `SearchTool` Protocol
+- [x] Tool returns `list[Evidence]` with citation metadata
+- [x] Abstract reconstructed from inverted index format
+- [x] Relevance calculated from citation count (capped at 1.0)
+- [x] Exported from `src/tools/__init__.py`
+- [x] Integrated into `src/app.py` SearchHandler
+- [x] UI description updated to mention OpenAlex
+- [x] All unit tests pass (11 tests)
+- [x] Integration test passes with real API
+
+**Status: IMPLEMENTED** (commits fd28242, TBD)
+
+## Files Modified
+
+1. `src/tools/openalex.py` - NEW: OpenAlex tool implementation
+2. `tests/unit/tools/test_openalex.py` - NEW: Unit and integration tests
+3. `src/tools/__init__.py` - Export OpenAlexTool
+4. `src/app.py` - Wire OpenAlexTool into SearchHandler
