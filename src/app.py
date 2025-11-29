@@ -247,15 +247,20 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
             [
                 "What drugs improve female libido post-menopause?",
                 "simple",
-                # Removed empty strings for api_key and api_key_state to prevent overwriting
+                None,
+                None,
             ],
             [
                 "Clinical trials for erectile dysfunction alternatives to PDE5 inhibitors?",
                 "advanced",
+                None,
+                None,
             ],
             [
                 "Testosterone therapy for HSDD (Hypoactive Sexual Desire Disorder)?",
                 "simple",
+                None,
+                None,
             ],
         ],
         additional_inputs_accordion=additional_inputs_accordion,
@@ -276,8 +281,8 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
         ],
     )
 
-    # API key persists because examples only include [message, mode] columns,
-    # so Gradio doesn't overwrite the api_key textbox when examples are clicked.
+    # API key persists because examples include [message, mode, None, None].
+    # The explicit None values tell Gradio to NOT overwrite those inputs.
 
     return demo, additional_inputs_accordion
 

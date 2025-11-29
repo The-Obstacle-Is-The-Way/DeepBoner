@@ -106,6 +106,7 @@ class AgentEvent(BaseModel):
 
     type: Literal[
         "started",
+        "thinking",  # Multi-agent reasoning in progress (before first event)
         "searching",
         "search_complete",
         "judging",
@@ -128,6 +129,7 @@ class AgentEvent(BaseModel):
         """Format event as markdown for chat display."""
         icons = {
             "started": "🚀",
+            "thinking": "⏳",  # Hourglass for thinking/waiting
             "searching": "🔍",
             "search_complete": "📚",
             "judging": "🧠",

@@ -156,6 +156,17 @@ Focus on:
 
 The final output should be a structured research report."""
 
+        # UX FIX: Yield thinking state before blocking workflow call
+        # The workflow.run_stream() blocks for 2+ minutes on first LLM call
+        yield AgentEvent(
+            type="thinking",
+            message=(
+                "Multi-agent reasoning in progress... "
+                "This may take 2-5 minutes for complex queries."
+            ),
+            iteration=0,
+        )
+
         iteration = 0
         try:
             async for event in workflow.run_stream(task):
