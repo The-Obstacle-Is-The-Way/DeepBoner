@@ -90,7 +90,7 @@ InterventionName, StartDate, CompletionDate, BriefSummary
 source: Literal["pubmed", "web"]
 
 # AFTER
-source: Literal["pubmed", "clinicaltrials", "biorxiv"]
+source: Literal["pubmed", "clinicaltrials", "europepmc"]
 ```
 
 ### 3.2 Evidence from Clinical Trials

@@ -1133,7 +1133,7 @@ Phase 13 is **COMPLETE** when:
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Gradio App + MCP Server                     │
 │  ┌──────────────────────────────────────────────────────────┐   │
-│  │  MCP Tools: search_pubmed, search_trials, search_biorxiv │   │
+│  │  MCP Tools: search_pubmed, search_trials, search_europepmc │   │
 │  │             search_all, analyze_hypothesis               │   │
 │  └──────────────────────────────────────────────────────────┘   │
 └───────────────────────────┬─────────────────────────────────────┘

@@ -62,7 +62,7 @@ sources_searched: list[Literal["pubmed", "web"]]
 sources_searched: list[Literal["pubmed"]]
 
 # AFTER (Phase 10-11)
-sources_searched: list[Literal["pubmed", "clinicaltrials", "biorxiv"]]
+sources_searched: list[Literal["pubmed", "clinicaltrials", "europepmc"]]
 ```
 
 ### 2.4 DELETE: Tests for WebTool

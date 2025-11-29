@@ -86,7 +86,7 @@ to find new uses for existing drugs."
 "When I ask about metformin for Alzheimer's, DeepBoner:
 1. Searches PubMed for peer-reviewed papers
 2. Queries ClinicalTrials.gov for active trials
-3. Scans bioRxiv for the latest preprints"
+3. Scans Europe PMC for the latest preprints"
 
 [Show search results streaming]
 
@@ -189,7 +189,7 @@ AI-Powered Drug Repurposing Research Agent
 
 ## Features
 
-- **Multi-Source Search**: PubMed, ClinicalTrials.gov, bioRxiv/medRxiv
+- **Multi-Source Search**: PubMed, ClinicalTrials.gov, Europe PMC (incl. preprints)
 - **MCP Integration**: Use our tools from Claude Desktop or any MCP client
 - **Modal Sandbox**: Secure execution of AI-generated statistical code
 - **LlamaIndex RAG**: Semantic search and evidence synthesis
@@ -204,7 +204,7 @@ https://your-space.hf.space/gradio_api/mcp/
 Available tools:
 - `search_pubmed` - Search peer-reviewed biomedical literature
 - `search_clinical_trials` - Search ClinicalTrials.gov
-- `search_biorxiv` - Search bioRxiv/medRxiv preprints
+- `search_europepmc` - Search Europe PMC (preprints & papers)
 - `search_all` - Search all sources simultaneously
 
 ## Team
@@ -240,7 +240,7 @@ MODAL_TOKEN_SECRET=...
 🧬 Excited to submit DeepBoner to MCP's 1st Birthday Hackathon!
 
 An AI agent that:
-✅ Searches PubMed, ClinicalTrials.gov & bioRxiv
+✅ Searches PubMed, ClinicalTrials.gov & Europe PMC
 ✅ Exposes tools via MCP protocol
 ✅ Runs statistical code in Modal sandboxes
 ✅ Uses LlamaIndex for semantic search
