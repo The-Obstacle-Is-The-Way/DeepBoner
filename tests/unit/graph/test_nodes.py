@@ -9,8 +9,8 @@ from src.agents.graph.state import ResearchState
 @pytest.mark.asyncio
 async def test_judge_node_initialization(mocker):
     """Test judge creates initial hypothesis if none exist."""
-    # Mock pydantic_ai Agent
-    mock_run = mocker.patch("pydantic_ai.Agent.run")
+    # Mock get_model to avoid needing real API keys
+    mocker.patch("src.agents.graph.nodes.get_model", return_value=mocker.Mock())
 
     # Create a mock assessment with attributes
     mock_hypothesis = mocker.Mock()
@@ -25,7 +25,11 @@ async def test_judge_node_initialization(mocker):
 
     mock_result = mocker.Mock()
     mock_result.output = mock_assessment
-    mock_run.return_value = mock_result
+
+    # Mock the Agent class entirely
+    mock_agent_instance = mocker.Mock()
+    mock_agent_instance.run = mocker.AsyncMock(return_value=mock_result)
+    mocker.patch("src.agents.graph.nodes.Agent", return_value=mock_agent_instance)
 
     state: ResearchState = {
         "query": "Does coffee cause cancer?",
