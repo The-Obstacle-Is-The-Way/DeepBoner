@@ -126,3 +126,4 @@ Built with:
 ## Links
 
 - [GitHub Repository](https://github.com/The-Obstacle-Is-The-Way/DeepBoner)
+- [Social Media Post](https://x.com/VibeCoderMcSwag/status/1994591979070423086)
