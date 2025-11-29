@@ -1,39 +1,55 @@
 # Active Bugs
 
-> Last updated: 2025-11-28
+> Last updated: 2025-11-29
 
-## P0 - Critical
+## P3 - Edge Case
 
-### Magentic Mode Report Generation
-**File**: [FIX_PLAN_MAGENTIC_MODE.md](./FIX_PLAN_MAGENTIC_MODE.md)
-
-**Symptom**: Magentic mode returns `ChatMessage` object instead of synthesized report text.
-
-**Root Cause**:
-- `event.message.text` extraction fails in orchestrator
-- `max_rounds=3` too low for SearchAgent + JudgeAgent + ReportAgent sequence
-
-**Workaround**: Use Simple mode (default) - works correctly with all LLM providers.
-
-**Status**: Fix plan documented, not yet implemented.
-
----
-
-## P1 - Minor UX
-
-### Gradio Settings Accordion Won't Collapse
-**File**: [P1_GRADIO_SETTINGS_CLEANUP.md](./P1_GRADIO_SETTINGS_CLEANUP.md)
-
-**Symptom**: Settings accordion stays open after user interaction.
-
-**Root Cause**: Nested `gr.Blocks` context prevents accordion state management.
-
-**Impact**: UX only - all functionality works correctly.
-
-**Status**: Solution documented, not yet implemented.
+*(None)*
 
 ---
 
 ## Resolved Bugs
 
-*None currently - bugs above are still open.*
+### ~~P3 - Magentic Mode Missing Termination Guarantee~~ FIXED
+**Commit**: `(Pending)` (2025-11-29)
+
+- Added `final_event_received` tracking in `orchestrator_magentic.py`
+- Added fallback yield for "max iterations reached" scenario
+- Verified with `test_magentic_termination.py`
+
+### ~~P0 - Magentic Mode Report Generation~~ FIXED
+**Commit**: `9006d69` (2025-11-29)
+
+- Fixed `_extract_text()` to handle various message object formats
+- Increased `max_rounds=10` (was 3)
+- Added `temperature=1.0` for reasoning model compatibility
+- Advanced mode now produces full research reports
+
+### ~~P1 - Streaming Spam + API Key Persistence~~ FIXED
+**Commit**: `0c9be4a` (2025-11-29)
+
+- Streaming events now buffered (not token-by-token spam)
+- API key persists across example clicks via `gr.State`
+- Examples use explicit `None` values to avoid overwriting keys
+
+### ~~P2 - Missing "Thinking" State~~ FIXED
+**Commit**: `9006d69` (2025-11-29)
+
+- Added `"thinking"` event type with hourglass icon
+- Yields "Multi-agent reasoning in progress..." before blocking workflow call
+- Users now see feedback during 2-5 minute initial processing
+
+### ~~P1 - Gradio Settings Accordion~~ WONTFIX
+**File**: [P1_GRADIO_SETTINGS_CLEANUP.md](./P1_GRADIO_SETTINGS_CLEANUP.md)
+
+Decision: Removed nested Blocks, using ChatInterface directly.
+Accordion behavior is default Gradio - acceptable for demo.
+
+---
+
+## How to Report Bugs
+
+1. Create `docs/bugs/P{N}_{SHORT_NAME}.md`
+2. Include: Symptom, Root Cause, Fix Plan, Test Plan
+3. Update this index
+4. Priority: P0=blocker, P1=important, P2=UX, P3=edge case
