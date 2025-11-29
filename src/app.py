@@ -127,8 +127,13 @@ async def research_agent(
         yield "Please enter a research question."
         return
 
+    # BUG FIX: Handle None values from Gradio example caching
+    # Gradio passes None for missing example columns, overriding defaults
+    api_key_str = api_key or ""
+    api_key_state_str = api_key_state or ""
+
     # BUG FIX: Prefer freshly-entered key, then persisted state
-    user_api_key = (api_key.strip() or api_key_state.strip()) or None
+    user_api_key = (api_key_str.strip() or api_key_state_str.strip()) or None
 
     # Check available keys
     has_openai = bool(os.getenv("OPENAI_API_KEY"))
@@ -169,6 +174,12 @@ async def research_agent(
         )
 
         yield f"🧠 **Backend**: {backend_name}\n\n"
+
+        # Immediate loading feedback so user knows something is happening
+        yield (
+            f"🧠 **Backend**: {backend_name}\n\n"
+            "⏳ **Processing...** Searching PubMed, ClinicalTrials.gov, Europe PMC...\n"
+        )
 
         async for event in orchestrator.run(message):
             # BUG FIX: Handle streaming events separately to avoid token-by-token spam
@@ -236,15 +247,20 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
             [
                 "What drugs improve female libido post-menopause?",
                 "simple",
-                # Removed empty strings for api_key and api_key_state to prevent overwriting
+                None,
+                None,
             ],
             [
                 "Clinical trials for erectile dysfunction alternatives to PDE5 inhibitors?",
                 "advanced",
+                None,
+                None,
             ],
             [
-                "Evidence for testosterone therapy in women with HSDD?",
+                "Testosterone therapy for HSDD (Hypoactive Sexual Desire Disorder)?",
                 "simple",
+                None,
+                None,
             ],
         ],
         additional_inputs_accordion=additional_inputs_accordion,
@@ -265,8 +281,8 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
         ],
     )
 
-    # API key persists because examples only include [message, mode] columns,
-    # so Gradio doesn't overwrite the api_key textbox when examples are clicked.
+    # API key persists because examples include [message, mode, None, None].
+    # The explicit None values tell Gradio to NOT overwrite those inputs.
 
     return demo, additional_inputs_accordion
 

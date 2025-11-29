@@ -46,7 +46,7 @@ Be thorough - search multiple databases when appropriate.
 Focus on finding: mechanisms of action, clinical evidence, and specific drug candidates.""",
         chat_client=client,
         tools=[search_pubmed, search_clinical_trials, search_preprints],
-        temperature=0.3,  # More deterministic for tool use
+        temperature=1.0,  # Explicitly set for reasoning model compatibility (o1/o3)
     )
 
 
@@ -85,7 +85,7 @@ Be rigorous but fair. Look for:
 - Safety data
 - Drug-drug interactions""",
         chat_client=client,
-        temperature=0.2,  # Consistent judgments
+        temperature=1.0,  # Explicitly set for reasoning model compatibility
     )
 
 
@@ -122,7 +122,7 @@ def create_hypothesis_agent(chat_client: OpenAIChatClient | None = None) -> Chat
 
 Focus on mechanistic plausibility and existing evidence.""",
         chat_client=client,
-        temperature=0.5,  # Some creativity for hypothesis generation
+        temperature=1.0,  # Explicitly set for reasoning model compatibility
     )
 
 
@@ -180,5 +180,5 @@ Format them as a numbered list.
 Be comprehensive but concise. Cite evidence for all claims.""",
         chat_client=client,
         tools=[get_bibliography],
-        temperature=0.3,
+        temperature=1.0,  # Explicitly set for reasoning model compatibility
     )
