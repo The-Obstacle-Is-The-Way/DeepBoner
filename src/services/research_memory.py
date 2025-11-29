@@ -19,6 +19,13 @@ class ResearchMemory:
     """
 
     def __init__(self, query: str, embedding_service: EmbeddingService | None = None):
+        """Initialize ResearchMemory with a query and optional embedding service.
+
+        Args:
+            query: The research query to track evidence for.
+            embedding_service: Service for semantic search and deduplication.
+                             Creates a new instance if not provided.
+        """
         self.query = query
         self.hypotheses: list[Hypothesis] = []
         self.conflicts: list[Conflict] = []

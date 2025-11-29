@@ -26,24 +26,27 @@ class MagenticState(BaseModel):
 
     # --- Proxy methods for backwards compatibility with retrieval_agent.py ---
 
-    def add_evidence(self, evidence: list["Evidence"]) -> int:
-        """Add evidence to memory cache (sync). Returns count of new items.
+    async def add_evidence(self, evidence: list["Evidence"]) -> int:
+        """Add evidence to memory with deduplication and embedding storage.
 
-        Note: This is a sync method for compatibility. For async storage with
-        embedding service, call state.memory.store_evidence() directly.
+        This method delegates to ResearchMemory.store_evidence() which:
+        1. Performs semantic deduplication (threshold 0.9)
+        2. Stores unique evidence in the vector store
+        3. Caches evidence for retrieval
+
+        Args:
+            evidence: List of Evidence objects to store.
+
+        Returns:
+            Number of new (non-duplicate) evidence items stored.
         """
         if self.memory is None:
             return 0
 
         memory: ResearchMemory = self.memory
-        new_count = 0
-        for ev in evidence:
-            ev_id = ev.citation.url
-            if ev_id not in memory._evidence_cache:
-                memory._evidence_cache[ev_id] = ev
-                memory.evidence_ids.append(ev_id)
-                new_count += 1
-        return new_count
+        initial_count = len(memory.evidence_ids)
+        await memory.store_evidence(evidence)
+        return len(memory.evidence_ids) - initial_count
 
     @property
     def embedding_service(self) -> "EmbeddingService | None":
