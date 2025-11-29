@@ -52,6 +52,7 @@ def create_orchestrator(
         return orchestrator_cls(
             max_rounds=config.max_iterations if config else 10,
             api_key=api_key,
+            timeout_seconds=settings.magentic_timeout,
         )
 
     # Simple mode requires handlers

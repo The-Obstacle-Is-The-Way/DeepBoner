@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     # Agent Configuration
     max_iterations: int = Field(default=10, ge=1, le=50)
     search_timeout: int = Field(default=30, description="Seconds to wait for search")
+    magentic_timeout: int = Field(
+        default=600,
+        description="Timeout for Magentic mode in seconds",
+    )
 
     # Logging
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"

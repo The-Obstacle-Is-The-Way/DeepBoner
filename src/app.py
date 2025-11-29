@@ -14,6 +14,7 @@ from src.agent_factory.judges import HFInferenceJudgeHandler, JudgeHandler, Mock
 from src.orchestrator_factory import create_orchestrator
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
+from src.tools.openalex import OpenAlexTool
 from src.tools.pubmed import PubMedTool
 from src.tools.search_handler import SearchHandler
 from src.utils.config import settings
@@ -45,7 +46,7 @@ def configure_orchestrator(
 
     # Create search tools
     search_handler = SearchHandler(
-        tools=[PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()],
+        tools=[PubMedTool(), ClinicalTrialsTool(), EuropePMCTool(), OpenAlexTool()],
         timeout=config.search_timeout,
     )
 
@@ -176,13 +177,7 @@ async def research_agent(
         # Immediate backend info + loading feedback so user knows something is happening
         yield (
             f"🧠 **Backend**: {backend_name}\n\n"
-            "⏳ **Processing...** Searching PubMed, ClinicalTrials.gov, Europe PMC...\n"
-        )
-
-        # Immediate loading feedback so user knows something is happening
-        yield (
-            f"🧠 **Backend**: {backend_name}\n\n"
-            "⏳ **Processing...** Searching PubMed, ClinicalTrials.gov, Europe PMC...\n"
+            "⏳ **Processing...** Searching PubMed, ClinicalTrials.gov, Europe PMC, OpenAlex...\n"
         )
 
         async for event in orchestrator.run(message):
@@ -203,7 +198,8 @@ async def research_agent(
 
             # Handle complete events specially
             if event.type == "complete":
-                yield event.message
+                response_parts.append(event.message)
+                yield "\n\n".join(response_parts)
             else:
                 # Format and append non-streaming events
                 event_md = event.to_markdown()
@@ -240,7 +236,7 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
         title="🍆 DeepBoner",
         description=(
             "*AI-Powered Sexual Health Research Agent — searches PubMed, "
-            "ClinicalTrials.gov & Europe PMC*\n\n"
+            "ClinicalTrials.gov, Europe PMC & OpenAlex*\n\n"
             "Deep research for sexual wellness, ED treatments, hormone therapy, "
             "libido, and reproductive health - for all genders.\n\n"
             "---\n"
