@@ -12,7 +12,7 @@ from agent_framework import (
     Role,
 )
 
-from src.orchestrator import JudgeHandlerProtocol
+from src.orchestrators import JudgeHandlerProtocol
 from src.utils.models import Evidence, JudgeAssessment
 
 

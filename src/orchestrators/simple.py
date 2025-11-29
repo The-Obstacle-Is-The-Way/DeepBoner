@@ -1,11 +1,20 @@
-"""Orchestrator - the agent loop connecting Search and Judge."""
+"""Simple Orchestrator - the basic agent loop connecting Search and Judge.
+
+This orchestrator uses a simple loop pattern with pydantic-ai for structured
+LLM outputs. It works with free tier (HuggingFace Inference) or paid APIs
+(OpenAI, Anthropic).
+
+Design Pattern: Template Method - defines the skeleton of the search-judge loop
+while allowing handlers to implement specific behaviors.
+"""
 
 import asyncio
 from collections.abc import AsyncGenerator
-from typing import Any, Protocol
+from typing import Any
 
 import structlog
 
+from src.orchestrators.base import JudgeHandlerProtocol, SearchHandlerProtocol
 from src.utils.config import settings
 from src.utils.models import (
     AgentEvent,
@@ -18,23 +27,13 @@ from src.utils.models import (
 logger = structlog.get_logger()
 
 
-class SearchHandlerProtocol(Protocol):
-    """Protocol for search handler."""
-
-    async def execute(self, query: str, max_results_per_tool: int = 10) -> SearchResult: ...
-
-
-class JudgeHandlerProtocol(Protocol):
-    """Protocol for judge handler."""
-
-    async def assess(self, question: str, evidence: list[Evidence]) -> JudgeAssessment: ...
-
-
 class Orchestrator:
     """
-    The agent orchestrator - runs the Search -> Judge -> Loop cycle.
+    The simple agent orchestrator - runs the Search -> Judge -> Loop cycle.
 
     This is a generator-based design that yields events for real-time UI updates.
+    Uses pydantic-ai for structured LLM outputs without requiring the full
+    Microsoft Agent Framework.
     """
 
     def __init__(

@@ -10,7 +10,7 @@ from agent_framework import (
     Role,
 )
 
-from src.orchestrator import SearchHandlerProtocol
+from src.orchestrators import SearchHandlerProtocol
 from src.utils.models import Citation, Evidence, SearchResult
 
 if TYPE_CHECKING:

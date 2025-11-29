@@ -9,7 +9,7 @@ pytest.importorskip("agent_framework")
 
 from agent_framework import MagenticFinalResultEvent  # noqa: E402
 
-from src.orchestrator_magentic import MagenticOrchestrator  # noqa: E402
+from src.orchestrators.advanced import AdvancedOrchestrator as MagenticOrchestrator  # noqa: E402
 
 
 class MockChatMessage:
@@ -39,7 +39,7 @@ class MockChatMessage:
 @pytest.fixture
 def mock_magentic_requirements():
     """Mock the API key check so tests run in CI without OPENAI_API_KEY."""
-    with patch("src.orchestrator_magentic.check_magentic_requirements"):
+    with patch("src.orchestrators.advanced.check_magentic_requirements"):
         yield
 
 
@@ -74,12 +74,12 @@ class TestMagenticFixes:
         # Also verify it's used in _build_workflow
         # Mock all the agent creation and OpenAI client calls
         with (
-            patch("src.orchestrator_magentic.create_search_agent") as mock_search,
-            patch("src.orchestrator_magentic.create_judge_agent") as mock_judge,
-            patch("src.orchestrator_magentic.create_hypothesis_agent") as mock_hypo,
-            patch("src.orchestrator_magentic.create_report_agent") as mock_report,
-            patch("src.orchestrator_magentic.OpenAIChatClient") as mock_client,
-            patch("src.orchestrator_magentic.MagenticBuilder") as mock_builder,
+            patch("src.orchestrators.advanced.create_search_agent") as mock_search,
+            patch("src.orchestrators.advanced.create_judge_agent") as mock_judge,
+            patch("src.orchestrators.advanced.create_hypothesis_agent") as mock_hypo,
+            patch("src.orchestrators.advanced.create_report_agent") as mock_report,
+            patch("src.orchestrators.advanced.OpenAIChatClient") as mock_client,
+            patch("src.orchestrators.advanced.MagenticBuilder") as mock_builder,
         ):
             # Setup mocks
             mock_search.return_value = MagicMock()

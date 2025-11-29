@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.orchestrator import Orchestrator
+from src.orchestrators import Orchestrator
 from src.utils.models import (
     AgentEvent,
     AssessmentDetails,

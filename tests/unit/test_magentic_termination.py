@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from agent_framework import MagenticAgentMessageEvent
 
-from src.orchestrator_magentic import MagenticOrchestrator
+from src.orchestrators.advanced import AdvancedOrchestrator as MagenticOrchestrator
 from src.utils.models import AgentEvent
 
 # Skip tests if agent_framework is not installed
@@ -25,7 +25,7 @@ class MockChatMessage:
 @pytest.fixture
 def mock_magentic_requirements():
     """Mock requirements check."""
-    with patch("src.orchestrator_magentic.check_magentic_requirements"):
+    with patch("src.orchestrators.advanced.check_magentic_requirements"):
         yield
 
 

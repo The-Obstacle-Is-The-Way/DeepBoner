@@ -59,9 +59,9 @@ async def test_streaming_events_are_buffered_not_spammed():
         assert len(results) > 0, "Should have yielded results"
 
         # Check that we see the accumulated message
-        assert any(
-            "📡 **STREAMING**: This is a test" in r for r in results
-        ), "Buffer didn't accumulate correctly"
+        assert any("📡 **STREAMING**: This is a test" in r for r in results), (
+            "Buffer didn't accumulate correctly"
+        )
 
         # The critical check for the "Spam" bug:
         # In the spam bug, the output grew like:

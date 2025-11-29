@@ -23,7 +23,7 @@ import os
 import sys
 
 from src.agent_factory.judges import JudgeHandler
-from src.orchestrator import Orchestrator
+from src.orchestrators import Orchestrator
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
 from src.tools.pubmed import PubMedTool

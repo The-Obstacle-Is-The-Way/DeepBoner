@@ -6,19 +6,18 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-from src.orchestrator import Orchestrator
-from src.orchestrator_factory import create_orchestrator
+from src.orchestrators import Orchestrator, create_orchestrator
 
 
 @pytest.fixture
 def mock_settings():
-    with patch("src.orchestrator_factory.settings", autospec=True) as mock_settings:
+    with patch("src.orchestrators.factory.settings", autospec=True) as mock_settings:
         yield mock_settings
 
 
 @pytest.fixture
 def mock_magentic_cls():
-    with patch("src.orchestrator_factory._get_magentic_orchestrator_class") as mock:
+    with patch("src.orchestrators.factory._get_advanced_orchestrator_class") as mock:
         # The mock returns a class (callable), which returns an instance
         mock_class = MagicMock()
         mock.return_value = mock_class

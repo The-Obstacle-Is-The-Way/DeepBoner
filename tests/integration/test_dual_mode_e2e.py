@@ -6,7 +6,7 @@ import pytest
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
-from src.orchestrator_factory import create_orchestrator
+from src.orchestrators import create_orchestrator
 from src.utils.models import Citation, Evidence, OrchestratorConfig
 
 
@@ -65,17 +65,18 @@ async def test_advanced_mode_explicit_instantiation():
     MagenticOrchestrator can be instantiated when explicitly requested.
     The settings patch ensures any internal checks pass.
     """
-    with patch("src.orchestrator_factory.settings") as mock_settings:
+    with patch("src.orchestrators.factory.settings") as mock_settings:
         # Settings patch ensures factory checks pass (even though mode is explicit)
         mock_settings.has_openai_key = True
 
         with patch("src.agents.magentic_agents.OpenAIChatClient"):
             # Mock agent creation to avoid real API calls during init
             with (
-                patch("src.orchestrator_magentic.create_search_agent"),
-                patch("src.orchestrator_magentic.create_judge_agent"),
-                patch("src.orchestrator_magentic.create_hypothesis_agent"),
-                patch("src.orchestrator_magentic.create_report_agent"),
+                patch("src.orchestrators.advanced.check_magentic_requirements"),
+                patch("src.orchestrators.advanced.create_search_agent"),
+                patch("src.orchestrators.advanced.create_judge_agent"),
+                patch("src.orchestrators.advanced.create_hypothesis_agent"),
+                patch("src.orchestrators.advanced.create_report_agent"),
             ):
                 # Explicit mode="advanced" - tests the explicit path, not auto-detect
                 orch = create_orchestrator(mode="advanced")

@@ -6,7 +6,7 @@ import pytest
 agent_framework = pytest.importorskip("agent_framework")
 from agent_framework import MagenticAgentMessageEvent, MagenticFinalResultEvent
 
-from src.orchestrator_magentic import MagenticOrchestrator
+from src.orchestrators.advanced import AdvancedOrchestrator as MagenticOrchestrator
 
 
 class MockChatMessage:
@@ -24,7 +24,7 @@ async def test_advanced_mode_completes_mocked():
     """Verify Advanced mode runs without crashing (mocked workflow)."""
 
     # Initialize orchestrator (mocking requirements check)
-    with patch("src.orchestrator_magentic.check_magentic_requirements"):
+    with patch("src.orchestrators.advanced.check_magentic_requirements"):
         orchestrator = MagenticOrchestrator(max_rounds=5)
 
     # Mock the workflow
@@ -51,7 +51,7 @@ async def test_advanced_mode_completes_mocked():
     # _init_embedding_service: Avoids loading embeddings
     with (
         patch.object(orchestrator, "_build_workflow", return_value=mock_workflow),
-        patch("src.orchestrator_magentic.init_magentic_state"),
+        patch("src.orchestrators.advanced.init_magentic_state"),
         patch.object(orchestrator, "_init_embedding_service", return_value=None),
     ):
         events = []

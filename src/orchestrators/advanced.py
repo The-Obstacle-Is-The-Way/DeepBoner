@@ -1,4 +1,18 @@
-"""Magentic-based orchestrator using ChatAgent pattern."""
+"""Advanced Orchestrator using Microsoft Agent Framework.
+
+This orchestrator uses the ChatAgent pattern from Microsoft's agent-framework-core
+package for multi-agent coordination. It provides richer orchestration capabilities
+including specialized agents (Search, Hypothesis, Judge, Report) coordinated by
+a manager agent.
+
+Note: Previously named 'orchestrator_magentic.py' - renamed to eliminate confusion
+with the 'magentic' PyPI package (which is a different library).
+
+Design Patterns:
+- Mediator: Manager agent coordinates between specialized agents
+- Strategy: Different agents implement different strategies for their tasks
+- Observer: Event stream allows UI to observe progress
+"""
 
 import asyncio
 from collections.abc import AsyncGenerator
@@ -32,12 +46,18 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 
-class MagenticOrchestrator:
+class AdvancedOrchestrator:
     """
-    Magentic-based orchestrator using ChatAgent pattern.
+    Advanced orchestrator using Microsoft Agent Framework ChatAgent pattern.
 
     Each agent has an internal LLM that understands natural language
     instructions from the manager and can call tools appropriately.
+
+    This orchestrator provides:
+    - Multi-agent coordination (Search, Hypothesis, Judge, Report)
+    - Manager agent for workflow orchestration
+    - Streaming events for real-time UI updates
+    - Configurable timeouts and round limits
     """
 
     def __init__(
@@ -90,7 +110,7 @@ class MagenticOrchestrator:
         return None
 
     def _build_workflow(self) -> Any:
-        """Build the Magentic workflow with ChatAgent participants."""
+        """Build the workflow with ChatAgent participants."""
         # Create agents with internal LLMs
         search_agent = create_search_agent(self._chat_client)
         judge_agent = create_judge_agent(self._chat_client)
@@ -122,7 +142,7 @@ class MagenticOrchestrator:
 
     async def run(self, query: str) -> AsyncGenerator[AgentEvent, None]:
         """
-        Run the Magentic workflow.
+        Run the workflow.
 
         Args:
             query: User's research question
@@ -130,11 +150,11 @@ class MagenticOrchestrator:
         Yields:
             AgentEvent objects for real-time UI updates
         """
-        logger.info("Starting Magentic orchestrator", query=query)
+        logger.info("Starting Advanced orchestrator", query=query)
 
         yield AgentEvent(
             type="started",
-            message=f"Starting research (Magentic mode): {query}",
+            message=f"Starting research (Advanced mode): {query}",
             iteration=0,
         )
 
@@ -221,7 +241,7 @@ The final output should be a structured research report."""
             )
 
         except Exception as e:
-            logger.error("Magentic workflow failed", error=str(e))
+            logger.error("Workflow failed", error=str(e))
             yield AgentEvent(
                 type="error",
                 message=f"Workflow error: {e!s}",
@@ -317,3 +337,8 @@ The final output should be a structured research report."""
                 )
 
         return None
+
+
+# Backwards compatibility alias
+# TODO: Remove after all imports are updated
+MagenticOrchestrator = AdvancedOrchestrator

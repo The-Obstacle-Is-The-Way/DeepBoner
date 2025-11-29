@@ -17,7 +17,7 @@ import os
 import sys
 
 from src.agent_factory.judges import JudgeHandler
-from src.orchestrator_factory import create_orchestrator
+from src.orchestrators import create_orchestrator
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
 from src.tools.pubmed import PubMedTool
