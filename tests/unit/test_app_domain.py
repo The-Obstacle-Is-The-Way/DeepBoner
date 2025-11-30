@@ -8,17 +8,37 @@ from src.config.domain import ResearchDomain
 
 class TestAppDomain:
     @patch("src.app.create_orchestrator")
-    @patch("src.app.JudgeHandler")
-    def test_configure_orchestrator_passes_domain(self, mock_judge, mock_create):
-        configure_orchestrator(use_mock=False, mode="simple", domain=ResearchDomain.SEXUAL_HEALTH)
+    @patch("src.app.MockJudgeHandler")
+    def test_configure_orchestrator_passes_domain_mock_mode(self, mock_judge, mock_create):
+        """Test domain is passed when using mock mode (unit test path)."""
+        configure_orchestrator(use_mock=True, mode="simple", domain=ResearchDomain.SEXUAL_HEALTH)
 
-        mock_judge.assert_called_with(model=ANY, domain=ResearchDomain.SEXUAL_HEALTH)
+        # MockJudgeHandler should receive domain
+        mock_judge.assert_called_with(domain=ResearchDomain.SEXUAL_HEALTH)
         mock_create.assert_called_with(
             search_handler=ANY,
             judge_handler=ANY,
             config=ANY,
             mode="simple",
-            api_key=ANY,
+            api_key=None,
+            domain=ResearchDomain.SEXUAL_HEALTH,
+        )
+
+    @patch.dict("os.environ", {}, clear=True)
+    @patch("src.app.create_orchestrator")
+    @patch("src.app.HFInferenceJudgeHandler")
+    def test_configure_orchestrator_passes_domain_free_tier(self, mock_hf_judge, mock_create):
+        """Test domain is passed when using free tier (no API keys)."""
+        configure_orchestrator(use_mock=False, mode="simple", domain=ResearchDomain.SEXUAL_HEALTH)
+
+        # HFInferenceJudgeHandler should receive domain (no API keys = free tier)
+        mock_hf_judge.assert_called_with(domain=ResearchDomain.SEXUAL_HEALTH)
+        mock_create.assert_called_with(
+            search_handler=ANY,
+            judge_handler=ANY,
+            config=ANY,
+            mode="simple",
+            api_key=None,
             domain=ResearchDomain.SEXUAL_HEALTH,
         )
 

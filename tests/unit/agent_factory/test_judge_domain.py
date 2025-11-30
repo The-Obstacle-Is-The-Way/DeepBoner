@@ -8,19 +8,24 @@ from src.utils.models import AssessmentDetails, JudgeAssessment
 
 
 class TestJudgeHandlerDomain:
+    @patch("src.agent_factory.judges.get_model")
     @patch("src.agent_factory.judges.Agent")
-    def test_judge_handler_accepts_domain(self, mock_agent_cls):
+    def test_judge_handler_accepts_domain(self, mock_agent_cls, mock_get_model):
+        # Mock get_model to avoid API key requirement
+        mock_get_model.return_value = MagicMock()
         # Test init with domain
         handler = JudgeHandler(domain=ResearchDomain.SEXUAL_HEALTH)
         assert handler.domain == ResearchDomain.SEXUAL_HEALTH
 
+    @patch("src.agent_factory.judges.get_model")
     @patch("src.agent_factory.judges.Agent")
     @patch("src.agent_factory.judges.format_user_prompt")
     @patch("src.agent_factory.judges.select_evidence_for_judge")
     async def test_judge_handler_passes_domain_to_prompt(
-        self, mock_select, mock_format, mock_agent_cls
+        self, mock_select, mock_format, mock_agent_cls, mock_get_model
     ):
         # Setup mocks
+        mock_get_model.return_value = MagicMock()
         mock_agent_instance = MagicMock()
         mock_agent_cls.return_value = mock_agent_instance
 
