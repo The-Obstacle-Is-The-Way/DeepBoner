@@ -16,7 +16,7 @@ from src.prompts.hypothesis import SYSTEM_PROMPT as HYPOTHESIS_SYSTEM_PROMPT
 from src.prompts.hypothesis import format_hypothesis_prompt
 from src.prompts.report import SYSTEM_PROMPT as REPORT_SYSTEM_PROMPT
 from src.prompts.report import format_report_prompt
-from src.services.embeddings import EmbeddingService
+from src.services.embedding_protocol import EmbeddingServiceProtocol
 from src.tools.base import SearchTool
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
@@ -84,6 +84,31 @@ def _convert_hypothesis_to_mechanism(h: Hypothesis) -> MechanismHypothesis:
     )
 
 
+def _results_to_evidence(results: list[dict[str, Any]]) -> list[Evidence]:
+    """Convert search_similar results to Evidence objects.
+
+    Extracted helper to avoid code duplication between judge_node and synthesize_node.
+    """
+    evidence_list = []
+    for r in results:
+        meta = r.get("metadata", {})
+        authors_str = meta.get("authors", "")
+        author_list = [a.strip() for a in authors_str.split(",")] if authors_str else []
+        evidence_list.append(
+            Evidence(
+                content=r.get("content", ""),
+                citation=Citation(
+                    url=r.get("id", ""),
+                    title=meta.get("title", "Unknown"),
+                    source=meta.get("source", "Unknown"),
+                    date=meta.get("date", ""),
+                    authors=author_list,
+                ),
+            )
+        )
+    return evidence_list
+
+
 # --- Supervisor Output Schema ---
 class SupervisorDecision(BaseModel):
     """The decision made by the supervisor."""
@@ -98,7 +123,7 @@ class SupervisorDecision(BaseModel):
 
 
 async def search_node(
-    state: ResearchState, embedding_service: EmbeddingService | None = None
+    state: ResearchState, embedding_service: EmbeddingServiceProtocol | None = None
 ) -> dict[str, Any]:
     """Execute search across all sources."""
     query = state["query"]
@@ -115,24 +140,11 @@ async def search_node(
     new_ids = []
 
     if embedding_service and result.evidence:
-        # Deduplicate and store
+        # Deduplicate and store (deduplicate() already calls add_evidence() internally)
         unique_evidence = await embedding_service.deduplicate(result.evidence)
 
-        for ev in unique_evidence:
-            ev_id = ev.citation.url
-            await embedding_service.add_evidence(
-                evidence_id=ev_id,
-                content=ev.content,
-                metadata={
-                    "source": ev.citation.source,
-                    "title": ev.citation.title,
-                    "date": ev.citation.date,
-                    "authors": ",".join(ev.citation.authors or []),
-                    "url": ev.citation.url,
-                },
-            )
-            new_ids.append(ev_id)
-
+        # Track IDs for state (evidence already stored by deduplicate())
+        new_ids = [ev.citation.url for ev in unique_evidence]
         new_evidence_count = len(unique_evidence)
     else:
         new_evidence_count = len(result.evidence)
@@ -151,7 +163,7 @@ async def search_node(
 
 
 async def judge_node(
-    state: ResearchState, embedding_service: EmbeddingService | None = None
+    state: ResearchState, embedding_service: EmbeddingServiceProtocol | None = None
 ) -> dict[str, Any]:
     """Evaluate evidence and update hypothesis confidence."""
     logger.info("judge_node: evaluating evidence")
@@ -159,23 +171,7 @@ async def judge_node(
     evidence_context: list[Evidence] = []
     if embedding_service:
         scored_points = await embedding_service.search_similar(state["query"], n_results=20)
-        for p in scored_points:
-            meta = p.get("metadata", {})
-            authors = meta.get("authors", "")
-            author_list = authors.split(",") if authors else []
-
-            evidence_context.append(
-                Evidence(
-                    content=p.get("content", ""),
-                    citation=Citation(
-                        url=p.get("id", ""),
-                        title=meta.get("title", "Unknown"),
-                        source=meta.get("source", "Unknown"),
-                        date=meta.get("date", ""),
-                        authors=author_list,
-                    ),
-                )
-            )
+        evidence_context = _results_to_evidence(scored_points)
 
     agent = Agent(
         model=get_model(),
@@ -215,7 +211,7 @@ async def judge_node(
 
 
 async def resolve_node(
-    state: ResearchState, embedding_service: EmbeddingService | None = None
+    state: ResearchState, embedding_service: EmbeddingServiceProtocol | None = None
 ) -> dict[str, Any]:
     """Handle open conflicts."""
     messages = []
@@ -239,7 +235,7 @@ async def resolve_node(
 
 
 async def synthesize_node(
-    state: ResearchState, embedding_service: EmbeddingService | None = None
+    state: ResearchState, embedding_service: EmbeddingServiceProtocol | None = None
 ) -> dict[str, Any]:
     """Generate final report."""
     logger.info("synthesize_node: generating report")
@@ -247,23 +243,7 @@ async def synthesize_node(
     evidence_context: list[Evidence] = []
     if embedding_service:
         scored_points = await embedding_service.search_similar(state["query"], n_results=50)
-        for p in scored_points:
-            meta = p.get("metadata", {})
-            authors = meta.get("authors", "")
-            author_list = authors.split(",") if authors else []
-
-            evidence_context.append(
-                Evidence(
-                    content=p.get("content", ""),
-                    citation=Citation(
-                        url=p.get("id", ""),
-                        title=meta.get("title", "Unknown"),
-                        source=meta.get("source", "Unknown"),
-                        date=meta.get("date", ""),
-                        authors=author_list,
-                    ),
-                )
-            )
+        evidence_context = _results_to_evidence(scored_points)
 
     agent = Agent(
         model=get_model(),

@@ -5,15 +5,24 @@ Requires optional dependencies: uv sync --extra modal
 Migration Note (v1.0 rebrand):
     Default collection_name changed from "deepcritical_evidence" to "deepboner_evidence".
     To preserve existing data, explicitly pass collection_name="deepcritical_evidence".
+
+Protocol Compliance:
+    This service implements EmbeddingServiceProtocol via async wrapper methods:
+    - add_evidence() - async wrapper for ingest_evidence()
+    - search_similar() - async wrapper for retrieve()
+    - deduplicate() - async wrapper using search_similar() + add_evidence()
+
+    These wrappers use asyncio.run_in_executor() to avoid blocking the event loop.
 """
 
+import asyncio
 from typing import Any
 
 import structlog
 
 from src.utils.config import settings
-from src.utils.exceptions import ConfigurationError
-from src.utils.models import Evidence
+from src.utils.exceptions import ConfigurationError, EmbeddingError
+from src.utils.models import Citation, Evidence
 
 logger = structlog.get_logger()
 
@@ -89,25 +98,38 @@ class LlamaIndexRAGService:
         self.chroma_client = self._chromadb.PersistentClient(path=self.persist_dir)
 
         # Get or create collection
+        # ChromaDB raises different exceptions depending on version:
+        # - ValueError (older versions)
+        # - InvalidCollectionException / NotFoundError (newer versions)
         try:
             self.collection = self.chroma_client.get_collection(self.collection_name)
             logger.info("loaded_existing_collection", name=self.collection_name)
-        except Exception:
-            self.collection = self.chroma_client.create_collection(self.collection_name)
-            logger.info("created_new_collection", name=self.collection_name)
+        except Exception as e:
+            # Catch any collection-not-found error and create it
+            if (
+                "not exist" in str(e).lower()
+                or "not found" in str(e).lower()
+                or isinstance(e, ValueError)
+            ):
+                self.collection = self.chroma_client.create_collection(self.collection_name)
+                logger.info("created_new_collection", name=self.collection_name)
+            else:
+                raise
 
         # Initialize vector store and index
         self.vector_store = self._ChromaVectorStore(chroma_collection=self.collection)
         self.storage_context = self._StorageContext.from_defaults(vector_store=self.vector_store)
 
         # Try to load existing index, or create empty one
+        # LlamaIndex raises ValueError for empty/invalid stores
         try:
             self.index = self._VectorStoreIndex.from_vector_store(
                 vector_store=self.vector_store,
                 storage_context=self.storage_context,
             )
             logger.info("loaded_existing_index")
-        except Exception:
+        except (ValueError, KeyError):
+            # Empty or newly created store - create fresh index
             self.index = self._VectorStoreIndex([], storage_context=self.storage_context)
             logger.info("created_new_index")
 
@@ -145,9 +167,9 @@ class LlamaIndexRAGService:
             for doc in documents:
                 self.index.insert(doc)
             logger.info("ingested_evidence", count=len(documents))
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
             logger.error("failed_to_ingest_evidence", error=str(e))
-            raise
+            raise EmbeddingError(f"Failed to ingest evidence: {e}") from e
 
     def ingest_documents(self, documents: list[Any]) -> None:
         """
@@ -164,9 +186,9 @@ class LlamaIndexRAGService:
             for doc in documents:
                 self.index.insert(doc)
             logger.info("ingested_documents", count=len(documents))
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
             logger.error("failed_to_ingest_documents", error=str(e))
-            raise
+            raise EmbeddingError(f"Failed to ingest documents: {e}") from e
 
     def retrieve(self, query: str, top_k: int | None = None) -> list[dict[str, Any]]:
         """
@@ -205,9 +227,9 @@ class LlamaIndexRAGService:
             logger.info("retrieved_documents", query=query[:50], count=len(results))
             return results
 
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
             logger.error("failed_to_retrieve", error=str(e), query=query[:50])
-            raise  # Re-raise to allow callers to distinguish errors from empty results
+            raise EmbeddingError(f"Failed to retrieve documents: {e}") from e
 
     def query(self, query_str: str, top_k: int | None = None) -> str:
         """
@@ -232,9 +254,9 @@ class LlamaIndexRAGService:
             logger.info("generated_response", query=query_str[:50])
             return str(response)
 
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
             logger.error("failed_to_query", error=str(e), query=query_str[:50])
-            raise  # Re-raise to allow callers to handle errors explicitly
+            raise EmbeddingError(f"Failed to query RAG system: {e}") from e
 
     def clear_collection(self) -> None:
         """Clear all documents from the collection."""
@@ -247,9 +269,161 @@ class LlamaIndexRAGService:
             )
             self.index = self._VectorStoreIndex([], storage_context=self.storage_context)
             logger.info("cleared_collection", name=self.collection_name)
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
             logger.error("failed_to_clear_collection", error=str(e))
-            raise
+            raise EmbeddingError(f"Failed to clear collection: {e}") from e
+
+    # ─────────────────────────────────────────────────────────────────
+    # Async Protocol Methods (EmbeddingServiceProtocol compliance)
+    # ─────────────────────────────────────────────────────────────────
+
+    async def embed(self, text: str) -> list[float]:
+        """Embed a single text using OpenAI embeddings (Protocol-compatible).
+
+        Uses the LlamaIndex Settings.embed_model which was configured in __init__.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            Embedding vector as list of floats
+        """
+        loop = asyncio.get_running_loop()
+        # LlamaIndex embed_model has get_text_embedding method
+        embedding = await loop.run_in_executor(
+            None, self._Settings.embed_model.get_text_embedding, text
+        )
+        return list(embedding)
+
+    async def embed_batch(self, texts: list[str]) -> list[list[float]]:
+        """Embed multiple texts efficiently (Protocol-compatible).
+
+        Uses LlamaIndex's batch embedding for efficiency.
+
+        Args:
+            texts: List of texts to embed
+
+        Returns:
+            List of embedding vectors
+        """
+        if not texts:
+            return []
+
+        loop = asyncio.get_running_loop()
+        # LlamaIndex embed_model has get_text_embedding_batch method
+        embeddings = await loop.run_in_executor(
+            None, self._Settings.embed_model.get_text_embedding_batch, texts
+        )
+        return [list(emb) for emb in embeddings]
+
+    async def add_evidence(self, evidence_id: str, content: str, metadata: dict[str, Any]) -> None:
+        """Async wrapper for adding evidence (Protocol-compatible).
+
+        Converts the sync ingest_evidence pattern to the async protocol interface.
+        Uses run_in_executor to avoid blocking the event loop.
+
+        Args:
+            evidence_id: Unique identifier (typically URL)
+            content: Text content to embed and store
+            metadata: Additional metadata (source, title, date, authors)
+        """
+        # Reconstruct Evidence from parts
+        authors_str = metadata.get("authors", "")
+        authors = [a.strip() for a in authors_str.split(",")] if authors_str else []
+
+        citation = Citation(
+            source=metadata.get("source", "web"),
+            title=metadata.get("title", "Unknown"),
+            url=evidence_id,
+            date=metadata.get("date", "Unknown"),
+            authors=authors,
+        )
+        evidence = Evidence(content=content, citation=citation)
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self.ingest_evidence, [evidence])
+
+    async def search_similar(self, query: str, n_results: int = 5) -> list[dict[str, Any]]:
+        """Async wrapper for retrieve (Protocol-compatible).
+
+        Returns results in the same format as EmbeddingService.search_similar()
+        for seamless interchangeability.
+
+        Args:
+            query: Search query text
+            n_results: Maximum number of results to return
+
+        Returns:
+            List of dicts with keys: id, content, metadata, distance
+        """
+        loop = asyncio.get_running_loop()
+        results = await loop.run_in_executor(None, self.retrieve, query, n_results)
+
+        # Convert LlamaIndex format to EmbeddingService format for compatibility
+        # LlamaIndex: {"text": ..., "score": ..., "metadata": ...}
+        # EmbeddingService: {"id": ..., "content": ..., "metadata": ..., "distance": ...}
+        return [
+            {
+                "id": r.get("metadata", {}).get("url", ""),
+                "content": r.get("text", ""),
+                "metadata": r.get("metadata", {}),
+                # Convert similarity score to distance
+                # LlamaIndex score: 0-1 (higher = more similar)
+                # Output distance: 0-1 (lower = more similar, matches ChromaDB behavior)
+                "distance": 1.0 - r.get("score", 0.5),
+            }
+            for r in results
+        ]
+
+    async def deduplicate(self, evidence: list[Evidence], threshold: float = 0.9) -> list[Evidence]:
+        """Async wrapper for deduplication (Protocol-compatible).
+
+        Uses search_similar() to check for existing similar content.
+        Stores unique evidence and returns the deduplicated list.
+
+        Args:
+            evidence: List of evidence items to deduplicate
+            threshold: Similarity threshold (0.9 = 90% similar is duplicate)
+                Distance range: 0-1 (0 = identical, 1 = orthogonal)
+                Duplicate if: distance < (1 - threshold), e.g., < 0.1 for 90%
+
+        Returns:
+            List of unique evidence items (duplicates removed)
+        """
+        unique = []
+
+        for ev in evidence:
+            try:
+                # Check for similar existing content
+                similar = await self.search_similar(ev.content, n_results=1)
+
+                # Check similarity threshold
+                # distance 0 = identical, higher = more different
+                is_duplicate = similar and similar[0]["distance"] < (1 - threshold)
+
+                if not is_duplicate:
+                    unique.append(ev)
+                    # Store the new evidence
+                    await self.add_evidence(
+                        evidence_id=ev.citation.url,
+                        content=ev.content,
+                        metadata={
+                            "source": ev.citation.source,
+                            "title": ev.citation.title,
+                            "date": ev.citation.date,
+                            "authors": ",".join(ev.citation.authors or []),
+                        },
+                    )
+            except Exception as e:
+                # Log but don't fail - better to have duplicates than lose data
+                logger.warning(
+                    "Failed to process evidence in deduplicate",
+                    url=ev.citation.url,
+                    error=str(e),
+                )
+                unique.append(ev)
+
+        return unique
 
 
 def get_rag_service(

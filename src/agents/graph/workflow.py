@@ -18,13 +18,13 @@ from src.agents.graph.nodes import (
     synthesize_node,
 )
 from src.agents.graph.state import ResearchState
-from src.services.embeddings import EmbeddingService
+from src.services.embedding_protocol import EmbeddingServiceProtocol
 
 
 def create_research_graph(
     llm: BaseChatModel | None = None,
     checkpointer: BaseCheckpointSaver[Any] | None = None,
-    embedding_service: EmbeddingService | None = None,
+    embedding_service: EmbeddingServiceProtocol | None = None,
 ) -> CompiledStateGraph[Any]:
     """Build the research state graph.
 
