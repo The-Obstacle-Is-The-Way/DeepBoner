@@ -86,8 +86,24 @@ class AdvancedOrchestrator(OrchestratorProtocol):
             check_magentic_requirements()
 
         # Environment-configurable rounds (default 5 for demos)
-        default_rounds = int(os.getenv("ADVANCED_MAX_ROUNDS", "5"))
-        self._max_rounds = max_rounds if max_rounds is not None else default_rounds
+        raw_rounds = os.getenv("ADVANCED_MAX_ROUNDS", "5")
+        try:
+            env_rounds = int(raw_rounds)
+        except ValueError:
+            logger.warning(
+                "Invalid ADVANCED_MAX_ROUNDS value %r, falling back to 5",
+                raw_rounds,
+            )
+            env_rounds = 5
+
+        if env_rounds < 1:
+            logger.warning(
+                "ADVANCED_MAX_ROUNDS must be >= 1, got %d; using 1 instead",
+                env_rounds,
+            )
+            env_rounds = 1
+
+        self._max_rounds = max_rounds if max_rounds is not None else env_rounds
 
         self._timeout_seconds = timeout_seconds
         self.domain = domain
@@ -210,8 +226,8 @@ The final output should be a structured research report."""
                         if isinstance(event, MagenticAgentMessageEvent):
                             iteration += 1
 
-                            # Progress estimation
-                            rounds_remaining = self._max_rounds - iteration
+                            # Progress estimation (clamp to avoid negative values)
+                            rounds_remaining = max(self._max_rounds - iteration, 0)
                             est_seconds = rounds_remaining * 45
                             if est_seconds >= 60:
                                 est_display = f"{est_seconds // 60}m {est_seconds % 60}s"

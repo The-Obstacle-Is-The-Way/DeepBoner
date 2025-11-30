@@ -92,9 +92,10 @@ When asked to evaluate:
 ## CRITICAL OUTPUT FORMAT
 To ensure the workflow terminates when appropriate, you MUST follow these rules:
 
-IF evidence is SUFFICIENT (Confidence >= 70%):
-   Start your response EXACTLY with: "✅ SUFFICIENT EVIDENCE (confidence: <%>). STOP SEARCHING.
-   Delegate to ReportAgent NOW."
+IF evidence is SUFFICIENT (confidence >= 70%):
+   Start your response with a line like:
+   "✅ SUFFICIENT EVIDENCE (confidence: 72%). STOP SEARCHING. Delegate to ReportAgent NOW."
+   Use your actual numeric confidence instead of 72.
    Then explain why.
 
 IF evidence is INSUFFICIENT:

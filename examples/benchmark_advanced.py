@@ -1,7 +1,6 @@
 """Benchmark Advanced mode with different max_rounds settings."""
 
 import asyncio
-import os
 import time
 
 from src.orchestrators.advanced import AdvancedOrchestrator
@@ -9,9 +8,8 @@ from src.orchestrators.advanced import AdvancedOrchestrator
 
 async def benchmark(max_rounds: int) -> float:
     """Run benchmark with specified rounds, return elapsed time."""
-    os.environ["ADVANCED_MAX_ROUNDS"] = str(max_rounds)
-
-    orch = AdvancedOrchestrator()
+    # Pass max_rounds explicitly instead of mutating os.environ
+    orch = AdvancedOrchestrator(max_rounds=max_rounds)
     start = time.time()
 
     print(f"\nStarting benchmark with max_rounds={max_rounds}...")
