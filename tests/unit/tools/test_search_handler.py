@@ -1,9 +1,10 @@
 """Unit tests for SearchHandler."""
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, create_autospec
 
 import pytest
 
+from src.tools.base import SearchTool
 from src.tools.search_handler import SearchHandler
 from src.utils.exceptions import SearchError
 from src.utils.models import Citation, Evidence
@@ -15,8 +16,8 @@ class TestSearchHandler:
     @pytest.mark.asyncio
     async def test_execute_aggregates_results(self):
         """SearchHandler should aggregate results from all tools."""
-        # Create mock tools
-        mock_tool_1 = AsyncMock()
+        # Create properly spec'd mock tools using SearchTool Protocol
+        mock_tool_1 = create_autospec(SearchTool, instance=True)
         mock_tool_1.name = "pubmed"
         mock_tool_1.search = AsyncMock(
             return_value=[
@@ -27,7 +28,7 @@ class TestSearchHandler:
             ]
         )
 
-        mock_tool_2 = AsyncMock()
+        mock_tool_2 = create_autospec(SearchTool, instance=True)
         mock_tool_2.name = "pubmed"  # Type system currently restricts to pubmed
         mock_tool_2.search = AsyncMock(return_value=[])
 
@@ -41,7 +42,7 @@ class TestSearchHandler:
     @pytest.mark.asyncio
     async def test_execute_handles_tool_failure(self):
         """SearchHandler should continue if one tool fails."""
-        mock_tool_ok = AsyncMock()
+        mock_tool_ok = create_autospec(SearchTool, instance=True)
         mock_tool_ok.name = "pubmed"
         mock_tool_ok.search = AsyncMock(
             return_value=[
@@ -52,7 +53,7 @@ class TestSearchHandler:
             ]
         )
 
-        mock_tool_fail = AsyncMock()
+        mock_tool_fail = create_autospec(SearchTool, instance=True)
         mock_tool_fail.name = "pubmed"  # Mocking a second pubmed instance failing
         mock_tool_fail.search = AsyncMock(side_effect=SearchError("API down"))
 

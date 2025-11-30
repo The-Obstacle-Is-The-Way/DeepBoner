@@ -1,20 +1,26 @@
 """Tests for the shared ResearchMemory service."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, create_autospec
 
 import pytest
 
 from src.agents.graph.state import Conflict, Hypothesis
+from src.services.embedding_protocol import EmbeddingServiceProtocol
 from src.services.research_memory import ResearchMemory
 from src.utils.models import Citation, Evidence
 
 
 @pytest.fixture
 def mock_embedding_service():
-    service = MagicMock()
+    """Create a properly spec'd mock that matches EmbeddingServiceProtocol interface."""
+    # Use create_autospec for proper interface enforcement
+    service = create_autospec(EmbeddingServiceProtocol, instance=True)
+    # Override with AsyncMock for async methods
     service.deduplicate = AsyncMock()
     service.add_evidence = AsyncMock()
     service.search_similar = AsyncMock()
+    service.embed = AsyncMock()
+    service.embed_batch = AsyncMock()
     return service
 
 
