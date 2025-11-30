@@ -20,6 +20,7 @@ from src.config.domain import ResearchDomain, get_domain_config
 from src.orchestrators.base import JudgeHandlerProtocol, SearchHandlerProtocol
 from src.prompts.synthesis import format_synthesis_prompt, get_synthesis_system_prompt
 from src.utils.config import settings
+from src.utils.exceptions import JudgeError, ModalError, SearchError
 from src.utils.models import (
     AgentEvent,
     Evidence,
@@ -133,12 +134,25 @@ class Orchestrator:
                 iteration=iteration,
             )
 
-        except Exception as e:
-            logger.error("Modal analysis failed", error=str(e))
+        except ModalError as e:
+            logger.error("Modal analysis failed", error=str(e), exc_type="ModalError")
             yield AgentEvent(
                 type="error",
                 message=f"Modal analysis failed: {e}",
-                data={"error": str(e)},
+                data={"error": str(e), "recoverable": True},
+                iteration=iteration,
+            )
+        except Exception as e:
+            # Unexpected error - log with full context for debugging
+            logger.error(
+                "Modal analysis failed unexpectedly",
+                error=str(e),
+                exc_type=type(e).__name__,
+            )
+            yield AgentEvent(
+                type="error",
+                message=f"Modal analysis failed: {e}",
+                data={"error": str(e), "recoverable": True},
                 iteration=iteration,
             )
 
@@ -289,11 +303,26 @@ class Orchestrator:
                 if errors:
                     logger.warning("Search errors", errors=errors)
 
-            except Exception as e:
-                logger.error("Search phase failed", error=str(e))
+            except SearchError as e:
+                logger.error("Search phase failed", error=str(e), exc_type="SearchError")
                 yield AgentEvent(
                     type="error",
                     message=f"Search failed: {e!s}",
+                    data={"recoverable": True, "error_type": "search"},
+                    iteration=iteration,
+                )
+                continue
+            except Exception as e:
+                # Unexpected error - log full context for debugging
+                logger.error(
+                    "Search phase failed unexpectedly",
+                    error=str(e),
+                    exc_type=type(e).__name__,
+                )
+                yield AgentEvent(
+                    type="error",
+                    message=f"Search failed: {e!s}",
+                    data={"recoverable": True, "error_type": "unexpected"},
                     iteration=iteration,
                 )
                 continue
@@ -425,11 +454,26 @@ class Orchestrator:
                         iteration=iteration,
                     )
 
-            except Exception as e:
-                logger.error("Judge phase failed", error=str(e))
+            except JudgeError as e:
+                logger.error("Judge phase failed", error=str(e), exc_type="JudgeError")
                 yield AgentEvent(
                     type="error",
                     message=f"Assessment failed: {e!s}",
+                    data={"recoverable": True, "error_type": "judge"},
+                    iteration=iteration,
+                )
+                continue
+            except Exception as e:
+                # Unexpected error - log full context for debugging
+                logger.error(
+                    "Judge phase failed unexpectedly",
+                    error=str(e),
+                    exc_type=type(e).__name__,
+                )
+                yield AgentEvent(
+                    type="error",
+                    message=f"Assessment failed: {e!s}",
+                    data={"recoverable": True, "error_type": "unexpected"},
                     iteration=iteration,
                 )
                 continue
@@ -510,7 +554,13 @@ class Orchestrator:
 
         except Exception as e:
             # Fallback to template synthesis if LLM fails
-            logger.warning("LLM synthesis failed, using template fallback", error=str(e))
+            # This is intentionally broad - LLM can fail many ways (API, parsing, etc.)
+            logger.warning(
+                "LLM synthesis failed, using template fallback",
+                error=str(e),
+                exc_type=type(e).__name__,
+                evidence_count=len(evidence),
+            )
             return self._generate_template_synthesis(query, evidence, assessment)
 
         # Add full citation list footer
