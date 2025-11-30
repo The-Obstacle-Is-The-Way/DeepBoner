@@ -16,7 +16,7 @@ from src.prompts.hypothesis import SYSTEM_PROMPT as HYPOTHESIS_SYSTEM_PROMPT
 from src.prompts.hypothesis import format_hypothesis_prompt
 from src.prompts.report import SYSTEM_PROMPT as REPORT_SYSTEM_PROMPT
 from src.prompts.report import format_report_prompt
-from src.services.embeddings import EmbeddingService
+from src.services.embedding_protocol import EmbeddingServiceProtocol
 from src.tools.base import SearchTool
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
@@ -98,7 +98,7 @@ class SupervisorDecision(BaseModel):
 
 
 async def search_node(
-    state: ResearchState, embedding_service: EmbeddingService | None = None
+    state: ResearchState, embedding_service: EmbeddingServiceProtocol | None = None
 ) -> dict[str, Any]:
     """Execute search across all sources."""
     query = state["query"]
@@ -151,7 +151,7 @@ async def search_node(
 
 
 async def judge_node(
-    state: ResearchState, embedding_service: EmbeddingService | None = None
+    state: ResearchState, embedding_service: EmbeddingServiceProtocol | None = None
 ) -> dict[str, Any]:
     """Evaluate evidence and update hypothesis confidence."""
     logger.info("judge_node: evaluating evidence")
@@ -215,7 +215,7 @@ async def judge_node(
 
 
 async def resolve_node(
-    state: ResearchState, embedding_service: EmbeddingService | None = None
+    state: ResearchState, embedding_service: EmbeddingServiceProtocol | None = None
 ) -> dict[str, Any]:
     """Handle open conflicts."""
     messages = []
@@ -239,7 +239,7 @@ async def resolve_node(
 
 
 async def synthesize_node(
-    state: ResearchState, embedding_service: EmbeddingService | None = None
+    state: ResearchState, embedding_service: EmbeddingServiceProtocol | None = None
 ) -> dict[str, Any]:
     """Generate final report."""
     logger.info("synthesize_node: generating report")

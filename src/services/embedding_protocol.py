@@ -43,8 +43,36 @@ class EmbeddingServiceProtocol(Protocol):
         await service.add_evidence("id", "content", {"source": "pubmed"})
         results = await service.search_similar("query", n_results=5)
         unique = await service.deduplicate(evidence_list)
+
+        # Direct embedding (for MMR/diversity selection)
+        embedding = await service.embed("text")
+        embeddings = await service.embed_batch(["text1", "text2"])
         ```
     """
+
+    async def embed(self, text: str) -> list[float]:
+        """Embed a single text into a vector.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            Embedding vector as list of floats
+        """
+        ...
+
+    async def embed_batch(self, texts: list[str]) -> list[list[float]]:
+        """Embed multiple texts efficiently.
+
+        More efficient than calling embed() multiple times due to batching.
+
+        Args:
+            texts: List of texts to embed
+
+        Returns:
+            List of embedding vectors
+        """
+        ...
 
     async def add_evidence(
         self, evidence_id: str, content: str, metadata: dict[str, Any]

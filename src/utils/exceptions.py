@@ -29,3 +29,9 @@ class RateLimitError(SearchError):
     """Raised when we hit API rate limits."""
 
     pass
+
+
+class EmbeddingError(DeepBonerError):
+    """Raised when embedding or vector store operations fail."""
+
+    pass

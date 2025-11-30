@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from src.utils.text_utils import select_diverse_evidence, truncate_at_sentence
 
 if TYPE_CHECKING:
-    from src.services.embeddings import EmbeddingService
+    from src.services.embedding_protocol import EmbeddingServiceProtocol
     from src.utils.models import Evidence
 
 SYSTEM_PROMPT = """You are a biomedical research scientist specializing in drug repurposing.
@@ -30,7 +30,7 @@ Be specific. Use actual gene/protein names when possible."""
 
 
 async def format_hypothesis_prompt(
-    query: str, evidence: list["Evidence"], embeddings: "EmbeddingService | None" = None
+    query: str, evidence: list["Evidence"], embeddings: "EmbeddingServiceProtocol | None" = None
 ) -> str:
     """Format prompt for hypothesis generation.
 

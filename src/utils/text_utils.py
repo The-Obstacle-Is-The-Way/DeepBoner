@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from src.services.embeddings import EmbeddingService
+    from src.services.embedding_protocol import EmbeddingServiceProtocol
     from src.utils.models import Evidence
 
 
@@ -46,7 +46,10 @@ def truncate_at_sentence(text: str, max_chars: int = 300) -> str:
 
 
 async def select_diverse_evidence(
-    evidence: list["Evidence"], n: int, query: str, embeddings: "EmbeddingService | None" = None
+    evidence: list["Evidence"],
+    n: int,
+    query: str,
+    embeddings: "EmbeddingServiceProtocol | None" = None,
 ) -> list["Evidence"]:
     """Select n most diverse and relevant evidence items.
 
