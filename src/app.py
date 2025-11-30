@@ -257,10 +257,25 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
         "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`"
     )
 
+    # CSS to force dark mode on API key input
+    custom_css = """
+    .api-key-input input {
+        background-color: #1f2937 !important;
+        color: white !important;
+        border-color: #374151 !important;
+    }
+    .api-key-input input:focus {
+        background-color: #1f2937 !important;
+        color: white !important;
+        border-color: #e879f9 !important;
+    }
+    """
+
     demo = gr.ChatInterface(
         fn=research_agent,
         title="🍆 DeepBoner",
         description=description,
+        css=custom_css,
         examples=[
             [
                 "What drugs improve female libido post-menopause?",
@@ -304,6 +319,7 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
                 placeholder="sk-... (OpenAI) or sk-ant-... (Anthropic)",
                 type="password",
                 info="Leave empty for free tier. Auto-detects provider from key prefix.",
+                elem_classes=["api-key-input"],
             ),
             api_key_state,  # Hidden state component for persistence
         ],
