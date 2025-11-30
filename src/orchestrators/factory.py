@@ -99,7 +99,7 @@ def create_orchestrator(
     if effective_mode == "hierarchical":
         from src.orchestrators.hierarchical import HierarchicalOrchestrator
 
-        return HierarchicalOrchestrator(config=effective_config)
+        return HierarchicalOrchestrator(config=effective_config, domain=domain)
 
     # Simple mode requires handlers
     if search_handler is None or judge_handler is None:
