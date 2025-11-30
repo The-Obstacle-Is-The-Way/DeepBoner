@@ -557,11 +557,12 @@ class Orchestrator:
         except Exception as e:
             # Fallback to template synthesis if LLM fails
             # Log error details for debugging
-            logger.warning(
+            logger.error(
                 "LLM synthesis failed, using template fallback",
                 error=str(e),
                 exc_type=type(e).__name__,
                 evidence_count=len(evidence),
+                exc_info=True,  # Capture stack trace for debugging
             )
             # Surface the error to user (MS Agent Framework pattern)
             # Don't silently fall back - let user know synthesis degraded
