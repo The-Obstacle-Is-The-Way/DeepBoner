@@ -1,7 +1,60 @@
 # Embeddings & Meta-Agent Architecture Brainstorm
 
 **Date**: November 2025
+**Updated**: November 2025 (Reality Check added)
 **Context**: DeepBoner is externally a sexual health research agent, but internally a multi-agent orchestration system. This document explores embedding strategies for both research retrieval AND internal codebase understanding.
+
+---
+
+## PART 0: REALITY CHECK - What's Real vs Vaporware
+
+**The user asked**: "Was this all vaporware? Differentiate between what is bullshit vs actually good idea."
+
+### What's ACTUALLY REAL and Working (2025)
+
+| Tool | Status | How It Works | Evidence |
+|------|--------|--------------|----------|
+| **Cursor's @codebase** | **REAL, Production** | Chunks code locally → sends to server → OpenAI embeddings → stores in Turbopuffer → semantic nearest-neighbor search | [Cursor Docs](https://docs.cursor.com/context/codebase-indexing), [Engineer's Codex analysis](https://read.engineerscodex.com/p/how-cursor-indexes-codebases-fast) |
+| **Claude Code's default search** | **REAL but LIMITED** | Uses grep/ripgrep text search, NOT semantic embeddings. Burns more tokens. | [Milvus critique](https://milvus.io/blog/why-im-against-claude-codes-grep-only-retrieval-it-just-burns-too-many-tokens.md) |
+| **Zilliz claude-context MCP** | **REAL, some bugs** | Adds semantic search to Claude Code via MCP. Claims 40% token reduction. Has reported state sync bugs. | [GitHub](https://github.com/zilliztech/claude-context), [Issues](https://github.com/zilliztech/claude-context/issues/226) |
+| **code-index-mcp** | **REAL, 100% production-ready claim** | Local-first indexer, 136k lines, sub-100ms queries | [GitHub](https://github.com/johnhuang316/code-index-mcp) |
+| **Aider's repo map** | **REAL, Different approach** | Uses ctags/tree-sitter to build structure map, NOT embeddings. You manually add files. | [Aider docs](https://aider.chat/), writes 70-80% of its own code |
+
+### What's VAPORWARE or OVERSOLD
+
+| Claim | Reality |
+|-------|---------|
+| "Embeddings will make agents understand themselves better" | **Mostly vaporware.** Agents execute via prompts, not by reading their own code. Self-knowledge helps explainability, NOT execution. |
+| "Full codebase embedding is better" | **Wrong.** Signal-to-noise kills retrieval quality. Selective > comprehensive. |
+| "RAG makes everything magical" | **Oversold.** RAG helps retrieval, but chunking strategy, embedding model quality, and query formulation matter more than people admit. |
+| "Just add an MCP server and Claude Code = Cursor" | **Partially true.** MCP servers help, but Cursor's integration is tighter. Claude Code + MCP is a workaround, not native. |
+
+### The Honest Truth for AI-Native Devs
+
+**You said**: "I'm an AI-native dev. I wouldn't run mgrep myself. I would ask YOU to use it."
+
+Here's the reality:
+
+1. **Right now, I (Claude Code) use grep/ripgrep** - text matching, not semantic search
+2. **Cursor has semantic search built-in** - that's why `@codebase` "just works"
+3. **To give ME semantic search**, you'd install an MCP server like:
+   - `claude-context` (Zilliz) - most mature, some bugs
+   - `code-index-mcp` - claims production-ready
+   - `semantic-search-mcp` - simpler, ChromaDB-based
+
+4. **Would it help?** Yes, for queries like "where is the termination logic?" - I'd find `TERMINATION_CRITERIA` without you telling me the exact variable name.
+
+5. **Is it transformative?** No. It saves tokens and reduces misses, but I can already grep effectively for most tasks.
+
+### Recommendation: What's Worth Doing
+
+| Action | Worth It? | Why |
+|--------|-----------|-----|
+| Install `claude-context` MCP for this repo | **Maybe** | 40% token savings claimed, but bugs exist. Try it, see if it helps. |
+| Embed the whole codebase | **No** | Overkill for ~5k LOC. Grep works fine. |
+| Embed just key files (orchestrators, judges, prompts) | **Maybe** | If you find I keep missing context, this helps. |
+| Switch to Cursor for semantic search | **If you want it native** | Cursor's indexing "just works" but you lose terminal-first workflow |
+| Build custom RAG for DeepBoner's research retrieval | **Yes, for the product** | This is the ACTUAL use case - better embeddings for PubMed/evidence, not for our code |
 
 ---
 
