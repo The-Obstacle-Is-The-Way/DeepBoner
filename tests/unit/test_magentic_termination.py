@@ -3,13 +3,15 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from agent_framework import MagenticAgentMessageEvent
 
-from src.orchestrators.advanced import AdvancedOrchestrator as MagenticOrchestrator
-from src.utils.models import AgentEvent
-
-# Skip tests if agent_framework is not installed
+# Skip all tests if agent_framework not installed (optional dep)
+# MUST come before any agent_framework imports
 pytest.importorskip("agent_framework")
+
+from agent_framework import MagenticAgentMessageEvent  # noqa: E402
+
+from src.orchestrators.advanced import AdvancedOrchestrator as MagenticOrchestrator  # noqa: E402
+from src.utils.models import AgentEvent  # noqa: E402
 
 
 class MockChatMessage:

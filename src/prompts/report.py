@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from src.utils.text_utils import select_diverse_evidence, truncate_at_sentence
 
 if TYPE_CHECKING:
-    from src.services.embeddings import EmbeddingService
+    from src.services.embedding_protocol import EmbeddingServiceProtocol
     from src.utils.models import Evidence, MechanismHypothesis
 
 SYSTEM_PROMPT = """You are a scientific writer specializing in drug repurposing research reports.
@@ -74,7 +74,7 @@ async def format_report_prompt(
     hypotheses: list["MechanismHypothesis"],
     assessment: dict[str, Any],
     metadata: dict[str, Any],
-    embeddings: "EmbeddingService | None" = None,
+    embeddings: "EmbeddingServiceProtocol | None" = None,
 ) -> str:
     """Format prompt for report generation.
 

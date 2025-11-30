@@ -13,21 +13,31 @@ from src.services.embeddings import EmbeddingService
 
 
 class TestEmbeddingService:
-    @pytest.fixture
-    def mock_sentence_transformer(self):
+    @pytest.fixture(autouse=True)
+    def reset_singleton(self):
+        """Reset the shared model singleton before and after each test.
+
+        Using autouse=True ensures this always runs, even if test fails.
+        """
         import src.services.embeddings
 
-        # Reset singleton to ensure mock is used
+        # Reset before test
+        original_model = src.services.embeddings._shared_model
         src.services.embeddings._shared_model = None
 
+        yield
+
+        # Always cleanup after test (even on failure)
+        src.services.embeddings._shared_model = original_model
+
+    @pytest.fixture
+    def mock_sentence_transformer(self):
+        """Mock the SentenceTransformer class."""
         with patch("src.services.embeddings.SentenceTransformer") as mock_st_class:
             mock_model = mock_st_class.return_value
             # Mock encode to return a numpy array
             mock_model.encode.return_value = np.array([0.1, 0.2, 0.3])
             yield mock_model
-
-        # Cleanup
-        src.services.embeddings._shared_model = None
 
     @pytest.fixture
     def mock_chroma_client(self):

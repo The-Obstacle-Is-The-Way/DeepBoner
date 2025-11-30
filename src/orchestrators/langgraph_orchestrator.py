@@ -16,9 +16,9 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from src.agents.graph.state import ResearchState
 from src.agents.graph.workflow import create_research_graph
 from src.orchestrators.base import OrchestratorProtocol
-from src.services.embeddings import EmbeddingService
 from src.utils.config import settings
 from src.utils.models import AgentEvent
+from src.utils.service_loader import get_embedding_service
 
 
 class LangGraphOrchestrator(OrchestratorProtocol):
@@ -58,8 +58,9 @@ class LangGraphOrchestrator(OrchestratorProtocol):
 
     async def run(self, query: str) -> AsyncGenerator[AgentEvent, None]:
         """Execute research workflow with structured state."""
-        # Initialize embedding service for this specific run (ensures isolation)
-        embedding_service = EmbeddingService()
+        # Initialize embedding service using tiered selection (service_loader)
+        # Returns LlamaIndexRAGService if OpenAI key available, else local EmbeddingService
+        embedding_service = get_embedding_service()
 
         # Setup checkpointer (SQLite for dev)
         if self._checkpoint_path:
