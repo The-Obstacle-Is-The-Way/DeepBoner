@@ -7,12 +7,12 @@
 
 ## Problem Statement
 
-The codebase has "drug repurposing" hardcoded in **15 locations**:
+The codebase has "drug repurposing" hardcoded in **16 locations** (originally identified 15, plus 1 found in audit):
 
 ```
 src/prompts/report.py:11      - SYSTEM_PROMPT
 src/prompts/judge.py:5        - SYSTEM_PROMPT
-src/prompts/judge.py:140      - Evidence scoring prompt
+src/prompts/judge.py:140      - Evidence scoring prompt (inside format_user_prompt)
 src/prompts/hypothesis.py:11  - SYSTEM_PROMPT
 src/orchestrators/simple.py:476   - Report header
 src/orchestrators/simple.py:564   - Report header
@@ -25,10 +25,11 @@ src/mcp_tools.py:27               - Example query
 src/mcp_tools.py:116              - Docstring
 src/mcp_tools.py:164              - Function docstring
 src/mcp_tools.py:167              - Docstring
+src/agent_factory/judges.py:21    - Imports format_user_prompt (needs update)
 ```
 
 This violates:
-- **DRY** - Same concept repeated 15 times
+- **DRY** - Same concept repeated 15+ times
 - **Open/Closed** - Can't add domains without modifying multiple files
 - **Flexibility** - Agent is locked to one domain
 
@@ -210,7 +211,7 @@ DOMAIN_CONFIGS: dict[ResearchDomain, DomainConfig] = {
 DEFAULT_DOMAIN = ResearchDomain.GENERAL
 
 
-def get_domain_config(domain: ResearchDomain | None = None) -> DomainConfig:
+def get_domain_config(domain: ResearchDomain | str | None = None) -> DomainConfig:
     """Get configuration for a research domain.
 
     Args:
@@ -221,6 +222,13 @@ def get_domain_config(domain: ResearchDomain | None = None) -> DomainConfig:
     """
     if domain is None:
         domain = DEFAULT_DOMAIN
+    
+    if isinstance(domain, str):
+        try:
+            domain = ResearchDomain(domain)
+        except ValueError:
+            domain = DEFAULT_DOMAIN
+
     return DOMAIN_CONFIGS[domain]
 ```
 
@@ -238,7 +246,7 @@ class Settings(BaseSettings):
     research_domain: ResearchDomain = ResearchDomain.GENERAL
 ```
 
-### 3. Update All 15 Hardcoded Locations
+### 3. Update All Hardcoded Locations
 
 #### 3.1 Prompts Module
 
@@ -250,21 +258,35 @@ def get_system_prompt(domain=None):
     config = get_domain_config(domain)
     return config.report_system_prompt
 
-# Keep SYSTEM_PROMPT for backwards compatibility
+# Keep SYSTEM_PROMPT for backwards compatibility (uses default)
 SYSTEM_PROMPT = get_system_prompt()
 ```
 
 **`src/prompts/judge.py`**:
 ```python
-from src.config.domain import get_domain_config
+from src.config.domain import get_domain_config, ResearchDomain
 
 def get_system_prompt(domain=None):
     config = get_domain_config(domain)
     return config.judge_system_prompt
 
-def get_scoring_prompt(domain=None):
+def format_user_prompt(
+    question: str,
+    evidence: list[Evidence],
+    iteration: int = 0,
+    max_iterations: int = 10,
+    total_evidence_count: int | None = None,
+    domain: ResearchDomain | None = None,  # NEW ARGUMENT
+) -> str:
     config = get_domain_config(domain)
-    return config.judge_scoring_prompt
+    # ... existing logic ...
+    
+    # Inside f-string:
+    return f"""...
+{config.judge_scoring_prompt}
+DO NOT decide "synthesize" vs "continue" - that decision is made by the system.
+...
+"""
 
 SYSTEM_PROMPT = get_system_prompt()
 ```
@@ -280,7 +302,28 @@ def get_system_prompt(domain=None):
 SYSTEM_PROMPT = get_system_prompt()
 ```
 
-#### 3.2 Orchestrators
+#### 3.2 Judge Factory
+
+**`src/agent_factory/judges.py`**:
+```python
+from src.config.domain import ResearchDomain
+
+class JudgeHandler:
+    def __init__(self, model: Any = None, domain: ResearchDomain | None = None) -> None:
+        self.model = model or get_model()
+        self.domain = domain  # Store domain
+        # ...
+
+    async def assess(self, ...):
+        # ...
+        if evidence:
+            user_prompt = format_user_prompt(
+                ...,
+                domain=self.domain  # Pass domain
+            )
+```
+
+#### 3.3 Orchestrators
 
 **`src/orchestrators/simple.py`**:
 ```python
@@ -288,7 +331,11 @@ from src.config.domain import get_domain_config
 
 class SimpleOrchestrator:
     def __init__(self, domain=None, ...):
+        self.domain = domain
         self.domain_config = get_domain_config(domain)
+        
+        # Pass domain to JudgeHandler
+        self.judge = JudgeHandler(domain=domain)
 
     def _format_report(self, ...):
         return f"""{self.domain_config.report_title}
@@ -308,7 +355,7 @@ async def run_research(..., domain=None):
     """
 ```
 
-#### 3.3 Agents
+#### 3.4 Agents
 
 **`src/agents/magentic_agents.py`**:
 ```python
@@ -325,7 +372,7 @@ def create_search_agent(domain=None):
 **`src/agents/search_agent.py`** and **`src/agents/tools.py`**:
 Similar pattern - inject domain config.
 
-#### 3.4 MCP Tools
+#### 3.5 MCP Tools
 
 **`src/mcp_tools.py`**:
 ```python
@@ -363,17 +410,17 @@ domain_dropdown = gr.Dropdown(
 - [ ] Create `src/config/domain.py` with DomainConfig
 - [ ] Add `research_domain` to Settings
 - [ ] Update `src/prompts/report.py`
-- [ ] Update `src/prompts/judge.py`
+- [ ] Update `src/prompts/judge.py` (Add domain arg to `format_user_prompt`)
 - [ ] Update `src/prompts/hypothesis.py`
-- [ ] Update `src/orchestrators/simple.py`
+- [ ] Update `src/agent_factory/judges.py` (Pass domain to `format_user_prompt`)
+- [ ] Update `src/orchestrators/simple.py` (Pass domain to `JudgeHandler`)
 - [ ] Update `src/orchestrators/advanced.py`
 - [ ] Update `src/agents/magentic_agents.py`
 - [ ] Update `src/agents/search_agent.py`
 - [ ] Update `src/agents/tools.py`
 - [ ] Update `src/mcp_tools.py`
 - [ ] Add domain selector to Gradio UI
-- [ ] Write unit tests for domain config
-- [ ] Update CLAUDE.md, AGENTS.md, GEMINI.md
+- [ ] **Update Tests**: `tests/e2e/test_simple_mode.py` contains hardcoded "Drug Repurposing" assertions that will fail with default "General" domain.
 
 ## Testing Strategy
 
@@ -422,21 +469,13 @@ async def test_simple_mode_respects_domain():
 
 1. **Phase 1**: Create domain config, add to Settings (no breaking changes)
 2. **Phase 2**: Update prompts module to use config (backwards compatible)
-3. **Phase 3**: Update orchestrators (backwards compatible via defaults)
-4. **Phase 4**: Update UI with domain selector
-5. **Phase 5**: Update docs and examples
+3. **Phase 3**: Update `JudgeHandler` and `format_user_prompt` (requires careful threading of domain)
+4. **Phase 4**: Update orchestrators and agents
+5. **Phase 5**: Update UI with domain selector and Fix Tests
 
 ## Success Criteria
 
-- [ ] Zero hardcoded "drug repurposing" strings in `src/`
-- [ ] `grep -r "drug repurposing" src/` returns only `domain.py`
-- [ ] All existing tests pass
+- [ ] Zero hardcoded "drug repurposing" strings in `src/` (except `domain.py`)
+- [ ] All existing tests pass (after updates)
 - [ ] New domain can be added by only modifying `domain.py`
-- [ ] Default behavior unchanged (general domain)
-
-## Rollback Plan
-
-All changes are backwards compatible:
-- Default domain = GENERAL (similar to current behavior)
-- Existing APIs unchanged (domain is optional parameter)
-- No database migrations required
+- [ ] Default behavior is "General Research"
