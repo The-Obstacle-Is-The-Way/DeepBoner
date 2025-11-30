@@ -151,10 +151,10 @@ Add a banner explaining synthesis status:
 
 To determine why synthesis is failing in production:
 
-1. **Check logs for warning**: `"LLM synthesis failed, using template fallback"`
-2. **Check API key**: Is `OPENAI_API_KEY` set in environment?
-3. **Check model**: Is `gpt-5` accessible with current API tier?
-4. **Check rate limits**: Is the account quota exhausted?
+1. **Review logs** for warning: `"LLM synthesis failed, using template fallback"`
+2. **Verify API key**: Is `OPENAI_API_KEY` set in environment?
+3. **Confirm model access**: Is `gpt-5` accessible with current API tier?
+4. **Inspect rate limits**: Is the account quota exhausted?
 
 ---
 
