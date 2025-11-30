@@ -93,7 +93,7 @@ class ResearchMemory:
         for r in results:
             meta = r.get("metadata", {})
             authors_str = meta.get("authors", "")
-            authors = authors_str.split(",") if authors_str else []
+            authors = [a.strip() for a in authors_str.split(",")] if authors_str else []
 
             # Reconstruct Evidence object
             source_raw = meta.get("source", "web")

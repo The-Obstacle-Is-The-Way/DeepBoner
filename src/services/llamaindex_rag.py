@@ -329,7 +329,7 @@ class LlamaIndexRAGService:
         """
         # Reconstruct Evidence from parts
         authors_str = metadata.get("authors", "")
-        authors = authors_str.split(",") if authors_str else []
+        authors = [a.strip() for a in authors_str.split(",")] if authors_str else []
 
         citation = Citation(
             source=metadata.get("source", "web"),
@@ -370,7 +370,7 @@ class LlamaIndexRAGService:
                 # Convert similarity score to distance
                 # LlamaIndex score: 0-1 (higher = more similar)
                 # Output distance: 0-1 (lower = more similar, matches ChromaDB behavior)
-                "distance": 1.0 - (r.get("score") or 0.5),
+                "distance": 1.0 - r.get("score", 0.5),
             }
             for r in results
         ]

@@ -93,7 +93,7 @@ def _results_to_evidence(results: list[dict[str, Any]]) -> list[Evidence]:
     for r in results:
         meta = r.get("metadata", {})
         authors_str = meta.get("authors", "")
-        author_list = authors_str.split(",") if authors_str else []
+        author_list = [a.strip() for a in authors_str.split(",")] if authors_str else []
         evidence_list.append(
             Evidence(
                 content=r.get("content", ""),
