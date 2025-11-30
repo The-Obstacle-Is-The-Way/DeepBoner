@@ -1,5 +1,6 @@
 """OpenAlex search tool - citation-aware scholarly search."""
 
+import re
 from typing import Any
 
 import httpx
@@ -71,8 +72,6 @@ class OpenAlexTool:
 
     def _to_evidence(self, work: dict[str, Any]) -> Evidence:
         """Convert OpenAlex work to Evidence with rich metadata."""
-        import re
-
         # Extract basic fields
         title = work.get("display_name", "Untitled")
         doi = work.get("doi", "")

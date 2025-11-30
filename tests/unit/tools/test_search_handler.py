@@ -47,9 +47,14 @@ class TestExtractPaperId:
         assert extract_paper_id(evidence) == "PPRID:PPR123456"
 
     def test_extracts_europepmc_pat_id(self) -> None:
-        """Europe PMC patents have PAT IDs."""
+        """Europe PMC patents have PAT IDs (WIPO format)."""
         evidence = _make_evidence("europepmc", "https://europepmc.org/article/PAT/WO8601415")
         assert extract_paper_id(evidence) == "PATID:WO8601415"
+
+    def test_extracts_europepmc_pat_id_eu_format(self) -> None:
+        """European patent format should also work."""
+        evidence = _make_evidence("europepmc", "https://europepmc.org/article/PAT/EP1234567")
+        assert extract_paper_id(evidence) == "PATID:EP1234567"
 
     def test_extracts_doi(self) -> None:
         evidence = _make_evidence("pubmed", "https://doi.org/10.1038/nature12345")
@@ -125,6 +130,45 @@ class TestDeduplicateEvidence:
         result = deduplicate_evidence([e1, e2])
 
         assert len(result) == 2
+
+    def test_preserves_openalex_without_pmid(self) -> None:
+        """OpenAlex papers without PMID should NOT be deduplicated against PubMed."""
+        pubmed = _make_evidence("pubmed", "https://pubmed.ncbi.nlm.nih.gov/12345678/")
+        openalex_no_pmid = _make_evidence(
+            "openalex",
+            "https://openalex.org/W9999999",
+            metadata={"cited_by_count": 100},  # No pmid key
+        )
+
+        result = deduplicate_evidence([pubmed, openalex_no_pmid])
+
+        assert len(result) == 2  # Both preserved (different IDs)
+
+    def test_keeps_unidentifiable_evidence(self) -> None:
+        """Evidence with unrecognized URLs should be preserved."""
+        unknown = _make_evidence("web", "https://example.com/paper/123")
+
+        result = deduplicate_evidence([unknown])
+
+        assert len(result) == 1
+
+    def test_clinicaltrials_unique_per_nct(self) -> None:
+        """ClinicalTrials entries have unique NCT IDs."""
+        trial1 = _make_evidence("clinicaltrials", "https://clinicaltrials.gov/study/NCT11111111")
+        trial2 = _make_evidence("clinicaltrials", "https://clinicaltrials.gov/study/NCT22222222")
+
+        result = deduplicate_evidence([trial1, trial2])
+
+        assert len(result) == 2
+
+    def test_preprints_preserved_separately(self) -> None:
+        """Preprints (PPR IDs) should not dedupe against peer-reviewed papers."""
+        peer_reviewed = _make_evidence("pubmed", "https://pubmed.ncbi.nlm.nih.gov/12345678/")
+        preprint = _make_evidence("europepmc", "https://europepmc.org/article/PPR/PPR999999")
+
+        result = deduplicate_evidence([peer_reviewed, preprint])
+
+        assert len(result) == 2  # Both preserved (different ID types)
 
 
 class TestSearchHandler:
