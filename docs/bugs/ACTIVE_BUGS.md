@@ -13,31 +13,6 @@
 
 ## P1 - Important
 
-### P1 - Narrative Synthesis Falls Back to Template
-**File:** `archive/P1_NARRATIVE_SYNTHESIS_FALLBACK.md`
-**Related:** SPEC_12 (implemented but falling back)
-
-**Problem:** Users see bullet-point template output instead of LLM-generated narrative prose.
-**Root Cause:** Any exception in LLM synthesis triggers silent fallback to template.
-**Impact:** Core value proposition (synthesized reports) not delivered.
-**Fix Options:**
-1. Surface errors to user instead of silent fallback
-2. Configure HuggingFace Spaces secrets with API keys
-3. Add synthesis status indicator in UI
-
----
-
-## P3 - Architecture/Enhancement
-
-### ~~P3 - Missing Structured Cognitive Memory~~ FIXED (Phase 1)
-**File:** `P3_ARCHITECTURAL_GAP_STRUCTURED_MEMORY.md`
-**Spec:** [SPEC_07_LANGGRAPH_MEMORY_ARCH.md](../specs/SPEC_07_LANGGRAPH_MEMORY_ARCH.md)
-**PR:** [#72](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/pull/72)
-
-**Problem:** AdvancedOrchestrator uses chat-based state (context drift on long runs).
-**Solution:** Implemented LangGraph StateGraph with explicit hypothesis/conflict tracking (`src/agents/graph`).
-**Status:** ✅ Memory layer built. ⏳ Integration pending (SPEC_08).
-
 ### P1 - Memory Layer Not Integrated (Post-Hackathon)
 **Issue:** [#73](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/73)
 **Spec:** [SPEC_08_INTEGRATE_MEMORY_LAYER.md](../specs/SPEC_08_INTEGRATE_MEMORY_LAYER.md)
@@ -46,16 +21,18 @@
 **Solution:** Extract memory into shared service, integrate into Simple and Advanced modes.
 **Status:** Spec written. Blocked until post-hackathon.
 
-### P3 - Ephemeral Memory (No Persistence)
-**File:** `P3_ARCHITECTURAL_GAP_EPHEMERAL_MEMORY.md`
-
-**Problem:** ChromaDB uses in-memory client despite `settings.chroma_db_path` existing.
-**Solution:** Switch to `PersistentClient(path=settings.chroma_db_path)`.
-**Status:** Quick fix identified, not yet implemented.
-
 ---
 
 ## Resolved Bugs
+
+### ~~P0 - Free Tier Synthesis Incorrectly Uses Server-Side API Keys~~ FIXED
+**File:** `docs/bugs/P1_SYNTHESIS_BROKEN_KEY_FALLBACK.md`
+**Found:** 2025-11-30 (Testing)
+**Resolved:** 2025-11-30
+
+- Problem: Simple Mode crashed with "OpenAIError" on HuggingFace Spaces when user provided no key but admin key was invalid.
+- Root Cause: Synthesis logic bypassed the Free Tier judge and incorrectly used server-side keys via `get_model()`.
+- Fix: Implemented `synthesize()` in `HFInferenceJudgeHandler` to use free HuggingFace Inference, ensuring consistency with the judge phase.
 
 ### ~~P0 - Synthesis Fails with OpenAIError in Free Mode~~ FIXED
 **File:** `docs/bugs/P0_SYNTHESIS_PROVIDER_MISMATCH.md`

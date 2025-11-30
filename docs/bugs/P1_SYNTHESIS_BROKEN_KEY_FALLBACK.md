@@ -1,11 +1,42 @@
 # P0 - Free Tier Synthesis Incorrectly Uses Server-Side API Keys
 
-**Status:** OPEN
+**Status:** RESOLVED
 **Priority:** P0 (Breaks Free Tier Promise)
 **Found:** 2025-11-30
+**Resolved:** 2025-11-30
 **Component:** `src/orchestrators/simple.py`, `src/agent_factory/judges.py`
 
-## Symptom
+## Resolution Summary
+
+The architectural bug where Simple Mode synthesis incorrectly used server-side API keys has been fixed.
+We implemented a dedicated `synthesize()` method in `HFInferenceJudgeHandler` that uses the free
+HuggingFace Inference API, consistent with the judging phase.
+
+### Fix Details
+
+1.  **New Feature**: Added `synthesize()` method to `HFInferenceJudgeHandler` (and `JudgeHandler` protocol).
+    -   Uses `huggingface_hub.InferenceClient.chat_completion` (Free Tier).
+    -   Mirrors the `assess()` logic for consistent free access.
+
+2.  **Orchestrator Logic Update**:
+    -   `SimpleOrchestrator` now checks `if hasattr(self.judge, "synthesize")`.
+    -   If true (Free Tier), it calls `judge.synthesize()` directly, skipping `get_model()`/`pydantic_ai`.
+    -   If false (Paid Tier), it falls back to the existing `pydantic_ai` agent flow using `get_model()`.
+
+3.  **Test Coverage**:
+    -   Updated `tests/unit/orchestrators/test_simple_synthesis.py` to mock `judge.synthesize`.
+    -   Added new test case ensuring Free Tier path is taken when available.
+    -   Fixed integration tests to simulate Free Tier correctly.
+
+### Verification
+
+-   **Unit Tests**: `tests/unit/orchestrators/test_simple_synthesis.py` passed (7/7).
+-   **Integration**: `tests/integration/test_simple_mode_synthesis.py` passed.
+-   **Full Suite**: `make check` passed (310/310 tests).
+
+---
+
+## Symptom (Archive)
 
 When using Simple Mode (Free Tier) without providing a user API key, users see:
 
