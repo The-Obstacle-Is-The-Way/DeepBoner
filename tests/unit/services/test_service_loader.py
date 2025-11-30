@@ -60,6 +60,7 @@ class TestGetEmbeddingService:
 
             # Make llamaindex_rag module raise ImportError on import
             import sys
+
             original_modules = dict(sys.modules)
 
             # Remove llamaindex_rag if it exists
@@ -68,9 +69,7 @@ class TestGetEmbeddingService:
 
             try:
                 # Patch to raise ImportError
-                mock_embed_module = MagicMock(
-                    get_embedding_service=lambda: mock_local_service
-                )
+                mock_embed_module = MagicMock(get_embedding_service=lambda: mock_local_service)
                 with patch.dict(
                     "sys.modules",
                     {

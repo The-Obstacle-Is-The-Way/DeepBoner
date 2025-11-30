@@ -74,9 +74,7 @@ class EmbeddingServiceProtocol(Protocol):
         """
         ...
 
-    async def add_evidence(
-        self, evidence_id: str, content: str, metadata: dict[str, Any]
-    ) -> None:
+    async def add_evidence(self, evidence_id: str, content: str, metadata: dict[str, Any]) -> None:
         """Store evidence with embeddings.
 
         Args:
@@ -87,9 +85,7 @@ class EmbeddingServiceProtocol(Protocol):
         """
         ...
 
-    async def search_similar(
-        self, query: str, n_results: int = 5
-    ) -> list[dict[str, Any]]:
+    async def search_similar(self, query: str, n_results: int = 5) -> list[dict[str, Any]]:
         """Search for semantically similar content.
 
         Args:
