@@ -15,6 +15,7 @@ Design Patterns:
 """
 
 import asyncio
+import os
 from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any
 
@@ -65,10 +66,10 @@ class AdvancedOrchestrator(OrchestratorProtocol):
 
     def __init__(
         self,
-        max_rounds: int = 10,
+        max_rounds: int | None = None,
         chat_client: OpenAIChatClient | None = None,
         api_key: str | None = None,
-        timeout_seconds: float = 600.0,
+        timeout_seconds: float = 300.0,
         domain: ResearchDomain | str | None = None,
     ) -> None:
         """Initialize orchestrator.
@@ -77,14 +78,17 @@ class AdvancedOrchestrator(OrchestratorProtocol):
             max_rounds: Maximum coordination rounds
             chat_client: Optional shared chat client for agents
             api_key: Optional OpenAI API key (for BYOK)
-            timeout_seconds: Maximum workflow duration (default: 10 minutes)
+            timeout_seconds: Maximum workflow duration (default: 5 minutes)
             domain: Research domain for customization
         """
         # Validate requirements only if no key provided
         if not chat_client and not api_key:
             check_magentic_requirements()
 
-        self._max_rounds = max_rounds
+        # Environment-configurable rounds (default 5 for demos)
+        default_rounds = int(os.getenv("ADVANCED_MAX_ROUNDS", "5"))
+        self._max_rounds = max_rounds if max_rounds is not None else default_rounds
+
         self._timeout_seconds = timeout_seconds
         self.domain = domain
         self.domain_config = get_domain_config(domain)
@@ -163,7 +167,13 @@ class AdvancedOrchestrator(OrchestratorProtocol):
 
         task = f"""Research {self.domain_config.report_focus} for: {query}
 
-Workflow:
+## CRITICAL RULE
+When JudgeAgent says "SUFFICIENT EVIDENCE" or "STOP SEARCHING":
+→ IMMEDIATELY delegate to ReportAgent for synthesis
+→ Do NOT continue searching or gathering more evidence
+→ The Judge has determined evidence quality is adequate
+
+## Standard Workflow
 1. SearchAgent: Find evidence from PubMed, ClinicalTrials.gov, and Europe PMC
 2. HypothesisAgent: Generate mechanistic hypotheses (Drug -> Target -> Pathway -> Effect)
 3. JudgeAgent: Evaluate if evidence is sufficient
@@ -182,8 +192,9 @@ The final output should be a structured research report."""
         yield AgentEvent(
             type="thinking",
             message=(
-                "Multi-agent reasoning in progress... "
-                "This may take 2-5 minutes for complex queries."
+                f"Multi-agent reasoning in progress ({self._max_rounds} rounds max)... "
+                f"Estimated time: {self._max_rounds * 45 // 60}-"
+                f"{self._max_rounds * 60 // 60} minutes."
             ),
             iteration=0,
         )
@@ -198,10 +209,23 @@ The final output should be a structured research report."""
                     if agent_event:
                         if isinstance(event, MagenticAgentMessageEvent):
                             iteration += 1
+
+                            # Progress estimation
+                            rounds_remaining = self._max_rounds - iteration
+                            est_seconds = rounds_remaining * 45
+                            if est_seconds >= 60:
+                                est_display = f"{est_seconds // 60}m {est_seconds % 60}s"
+                            else:
+                                est_display = f"{est_seconds}s"
+
+                            progress_msg = (
+                                f"Round {iteration}/{self._max_rounds} (~{est_display} remaining)"
+                            )
+
                             # Yield progress update before the agent action
                             yield AgentEvent(
                                 type="progress",
-                                message=f"Round {iteration}/{self._max_rounds}...",
+                                message=progress_msg,
                                 iteration=iteration,
                             )
 
