@@ -89,6 +89,19 @@ When asked to evaluate:
    - Insufficient: Gaps in mechanism OR weak clinical evidence
 4. If insufficient, suggest specific search queries to fill gaps
 
+## CRITICAL OUTPUT FORMAT
+To ensure the workflow terminates when appropriate, you MUST follow these rules:
+
+IF evidence is SUFFICIENT (confidence >= 70%):
+   Start your response with a line like:
+   "✅ SUFFICIENT EVIDENCE (confidence: 72%). STOP SEARCHING. Delegate to ReportAgent NOW."
+   Use your actual numeric confidence instead of 72.
+   Then explain why.
+
+IF evidence is INSUFFICIENT:
+   Start with "❌ INSUFFICIENT: <Reason>."
+   Then provide scores and next queries.
+
 Be rigorous but fair. Look for:
 - Molecular targets and pathways
 - Animal model studies
