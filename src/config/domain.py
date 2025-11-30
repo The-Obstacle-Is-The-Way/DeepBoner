@@ -22,10 +22,12 @@ from pydantic import BaseModel
 
 
 class ResearchDomain(str, Enum):
-    """Available research domains."""
+    """Available research domains.
 
-    GENERAL = "general"
-    DRUG_REPURPOSING = "drug_repurposing"
+    DeepBoner is a focused Sexual Health Research Specialist.
+    Only SEXUAL_HEALTH domain is supported.
+    """
+
     SEXUAL_HEALTH = "sexual_health"
 
 
@@ -64,56 +66,8 @@ class DomainConfig(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────
-# Domain Definitions
+# Domain Configuration - Sexual Health Only
 # ─────────────────────────────────────────────────────────────────
-
-GENERAL_CONFIG = DomainConfig(
-    name="General Research",
-    description="General-purpose biomedical research agent",
-    report_title="## Research Analysis",
-    report_focus="comprehensive research synthesis",
-    judge_system_prompt="""You are an expert research judge.
-Your role is to evaluate evidence quality, assess relevance to the research query,
-and determine if sufficient evidence exists to synthesize findings.""",
-    judge_scoring_prompt="""Score this evidence for research relevance.
-Provide ONLY scores and extracted data.""",
-    hypothesis_system_prompt="""You are a biomedical research scientist.
-Your role is to generate evidence-based hypotheses from the literature,
-identifying key mechanisms, targets, and potential therapeutic implications.""",
-    report_system_prompt="""You are a scientific writer specializing in research reports.
-Your role is to synthesize evidence into clear, well-structured reports with
-proper citations and evidence-based conclusions.""",
-    search_description="Searches biomedical literature for relevant evidence",
-    search_example_query="metformin aging mechanisms",
-    search_agent_description="Searches PubMed, ClinicalTrials.gov, and Europe PMC for evidence",
-    hypothesis_agent_description="Generates mechanistic hypotheses from evidence",
-)
-
-DRUG_REPURPOSING_CONFIG = DomainConfig(
-    name="Drug Repurposing",
-    description="Drug repurposing research specialist",
-    report_title="## Drug Repurposing Analysis",
-    report_focus="drug repurposing opportunities",
-    judge_system_prompt="""You are an expert drug repurposing research judge.
-Your role is to evaluate evidence for drug repurposing potential, assess
-mechanism plausibility, and determine if compounds warrant further investigation.""",
-    judge_scoring_prompt="""Score this evidence for drug repurposing potential.
-Provide ONLY scores and extracted data.""",
-    hypothesis_system_prompt=(
-        """You are a biomedical research scientist specializing in drug repurposing.
-Your role is to generate mechanistic hypotheses for how existing drugs might
-treat new indications, based on shared pathways and targets."""
-    ),
-    report_system_prompt=(
-        """You are a scientific writer specializing in drug repurposing research reports.
-Your role is to synthesize evidence into actionable drug repurposing recommendations
-with clear mechanistic rationale and clinical translation potential."""
-    ),
-    search_description="Searches biomedical literature for drug repurposing evidence",
-    search_example_query="metformin alzheimer repurposing",
-    search_agent_description="Searches PubMed for drug repurposing evidence",
-    hypothesis_agent_description="Generates mechanistic hypotheses for drug repurposing",
-)
 
 SEXUAL_HEALTH_CONFIG = DomainConfig(
     name="Sexual Health Research",
@@ -146,13 +100,11 @@ interventions with proper safety considerations."""
 # ─────────────────────────────────────────────────────────────────
 
 DOMAIN_CONFIGS: dict[ResearchDomain, DomainConfig] = {
-    ResearchDomain.GENERAL: GENERAL_CONFIG,
-    ResearchDomain.DRUG_REPURPOSING: DRUG_REPURPOSING_CONFIG,
     ResearchDomain.SEXUAL_HEALTH: SEXUAL_HEALTH_CONFIG,
 }
 
-# Default domain
-DEFAULT_DOMAIN = ResearchDomain.GENERAL
+# Default domain - DeepBoner is Sexual Health focused
+DEFAULT_DOMAIN = ResearchDomain.SEXUAL_HEALTH
 
 
 def get_domain_config(domain: ResearchDomain | str | None = None) -> DomainConfig:

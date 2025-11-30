@@ -1,6 +1,7 @@
 """Tests for domain configuration."""
 
 from src.config.domain import (
+    SEXUAL_HEALTH_CONFIG,
     ResearchDomain,
     get_domain_config,
 )
@@ -8,38 +9,31 @@ from src.config.domain import (
 
 class TestResearchDomain:
     def test_enum_values(self):
-        assert ResearchDomain.GENERAL.value == "general"
-        assert ResearchDomain.DRUG_REPURPOSING.value == "drug_repurposing"
+        # DeepBoner only supports sexual health
         assert ResearchDomain.SEXUAL_HEALTH.value == "sexual_health"
+        assert len(ResearchDomain) == 1
 
 
 class TestGetDomainConfig:
-    def test_default_returns_general(self):
+    def test_default_returns_sexual_health(self):
         config = get_domain_config()
-        assert config.name == "General Research"
+        assert config.name == "Sexual Health Research"
 
-    def test_explicit_general(self):
-        config = get_domain_config(ResearchDomain.GENERAL)
-        assert "Research Analysis" in config.report_title
-
-    def test_drug_repurposing(self):
-        config = get_domain_config(ResearchDomain.DRUG_REPURPOSING)
-        assert "Drug Repurposing" in config.report_title
-        assert "drug repurposing" in config.judge_system_prompt.lower()
-
-    def test_sexual_health(self):
+    def test_explicit_sexual_health(self):
         config = get_domain_config(ResearchDomain.SEXUAL_HEALTH)
         assert "Sexual Health" in config.report_title
+        assert "sexual health" in config.judge_system_prompt.lower()
 
     def test_accepts_string(self):
-        config = get_domain_config("drug_repurposing")
-        assert "Drug Repurposing" in config.name
+        config = get_domain_config("sexual_health")
+        assert "Sexual Health" in config.name
 
     def test_invalid_string_returns_default(self):
+        # Invalid domains fall back to default (sexual_health)
         config = get_domain_config("invalid_domain")
-        assert config.name == "General Research"
+        assert config.name == "Sexual Health Research"
 
-    def test_all_domains_have_required_fields(self):
+    def test_config_has_required_fields(self):
         required_fields = [
             "name",
             "report_title",
@@ -47,7 +41,10 @@ class TestGetDomainConfig:
             "hypothesis_system_prompt",
             "report_system_prompt",
         ]
-        for domain in ResearchDomain:
-            config = get_domain_config(domain)
-            for field in required_fields:
-                assert getattr(config, field), f"{domain} missing {field}"
+        config = get_domain_config(ResearchDomain.SEXUAL_HEALTH)
+        for field in required_fields:
+            assert getattr(config, field), f"SEXUAL_HEALTH missing {field}"
+
+    def test_sexual_health_config_exported(self):
+        # Verify the config constant is exported
+        assert SEXUAL_HEALTH_CONFIG.name == "Sexual Health Research"

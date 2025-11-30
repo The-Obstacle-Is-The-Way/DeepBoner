@@ -58,15 +58,13 @@ class TestJudgeHandlerDomain:
         evidence = [MagicMock()]  # Provide some evidence
         mock_select.return_value = evidence
 
-        # Test
-        handler = JudgeHandler(domain=ResearchDomain.DRUG_REPURPOSING)
+        # Test with sexual health domain
+        handler = JudgeHandler(domain=ResearchDomain.SEXUAL_HEALTH)
         await handler.assess("query", evidence)
 
         # Verify format_user_prompt called with domain
         mock_format.assert_called_once()
         call_kwargs = mock_format.call_args.kwargs
-        # Or check args if positional
-        # format_user_prompt signature: (question, evidence, iteration, max_iterations, ...)
 
         # Check if domain was passed in kwargs
-        assert call_kwargs.get("domain") == ResearchDomain.DRUG_REPURPOSING
+        assert call_kwargs.get("domain") == ResearchDomain.SEXUAL_HEALTH

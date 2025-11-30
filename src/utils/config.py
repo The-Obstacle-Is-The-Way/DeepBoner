@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     )
 
     # Domain configuration
-    research_domain: ResearchDomain = ResearchDomain.GENERAL
+    research_domain: ResearchDomain = ResearchDomain.SEXUAL_HEALTH
 
     # LLM Configuration
     openai_api_key: str | None = Field(default=None, description="OpenAI API key")

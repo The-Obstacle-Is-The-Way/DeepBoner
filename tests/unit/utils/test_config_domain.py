@@ -6,10 +6,10 @@ from src.utils.config import Settings
 
 def test_research_domain_default():
     settings = Settings()
-    assert settings.research_domain == ResearchDomain.GENERAL
+    assert settings.research_domain == ResearchDomain.SEXUAL_HEALTH
 
 
 def test_research_domain_from_env(monkeypatch):
-    monkeypatch.setenv("RESEARCH_DOMAIN", "drug_repurposing")
+    monkeypatch.setenv("RESEARCH_DOMAIN", "sexual_health")
     settings = Settings()
-    assert settings.research_domain == ResearchDomain.DRUG_REPURPOSING
+    assert settings.research_domain == ResearchDomain.SEXUAL_HEALTH

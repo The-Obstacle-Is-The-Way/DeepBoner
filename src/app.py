@@ -262,9 +262,9 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
                 None,
             ],
             [
-                "Metformin mechanism for Alzheimer's?",
+                "Testosterone therapy for hypoactive sexual desire disorder?",
                 "simple",
-                "general",
+                "sexual_health",
                 None,
                 None,
             ],
@@ -286,9 +286,10 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
             ),
             gr.Dropdown(
                 choices=[d.value for d in ResearchDomain],
-                value="general",
+                value="sexual_health",
                 label="Research Domain",
-                info="Select research focus area (adjusts prompts)",
+                info="DeepBoner specializes in sexual health research",
+                visible=False,  # Hidden - only sexual_health supported
             ),
             gr.Textbox(
                 label="🔑 API Key (Optional)",
