@@ -30,6 +30,9 @@ class ClinicalTrialsTool:
         "InterventionName",
         "StartDate",
         "BriefSummary",
+        # NEW: Outcome measures
+        "OutcomesModule",
+        "HasResults",
     ]
 
     # Status filter: Only active/completed studies with potential data
@@ -99,6 +102,7 @@ class ClinicalTrialsTool:
         design_module = protocol.get("designModule", {})
         conditions_module = protocol.get("conditionsModule", {})
         arms_module = protocol.get("armsInterventionsModule", {})
+        outcomes_module = protocol.get("outcomesModule", {})
 
         nct_id = id_module.get("nctId", "Unknown")
         title = id_module.get("briefTitle", "Untitled Study")
@@ -121,14 +125,53 @@ class ClinicalTrialsTool:
         # Get summary
         summary = desc_module.get("briefSummary", "No summary available.")
 
+        # Extract outcome measures
+        primary_outcomes = outcomes_module.get("primaryOutcomes", [])
+        primary_outcome_str = ""
+        if primary_outcomes:
+            # Get first primary outcome measure and timeframe
+            first = primary_outcomes[0]
+            measure = first.get("measure", "")
+            timeframe = first.get("timeFrame", "")
+            # Truncate long outcome descriptions
+            primary_outcome_str = measure[:200]
+            if timeframe:
+                primary_outcome_str += f" (measured at {timeframe})"
+
+        secondary_outcomes = outcomes_module.get("secondaryOutcomes", [])
+        secondary_count = len(secondary_outcomes)
+
+        # Check if results are available (hasResults is TOP-LEVEL, not in protocol!)
+        has_results = study.get("hasResults", False)
+
+        # Results date is in statusModule (nested inside date struct)
+        results_date_struct = status_module.get("resultsFirstPostDateStruct", {})
+        results_date = results_date_struct.get("date", "")
+
         # Build content with key trial info
-        content = (
-            f"{summary[:500]}... "
-            f"Trial Phase: {phase}. "
-            f"Status: {status}. "
-            f"Conditions: {conditions_str}. "
-            f"Interventions: {interventions_str}."
-        )
+        content_parts = [
+            f"{summary[:400]}...",
+            f"Trial Phase: {phase}.",
+            f"Status: {status}.",
+            f"Conditions: {conditions_str}.",
+            f"Interventions: {interventions_str}.",
+        ]
+
+        if primary_outcome_str:
+            content_parts.append(f"Primary Outcome: {primary_outcome_str}.")
+
+        if secondary_count > 0:
+            content_parts.append(f"Secondary Outcomes: {secondary_count} additional endpoints.")
+
+        if has_results:
+            results_info = "Results Available: Yes"
+            if results_date:
+                results_info += f" (posted {results_date})"
+            content_parts.append(results_info + ".")
+        else:
+            content_parts.append("Results Available: Not yet posted.")
+
+        content = " ".join(content_parts)
 
         return Evidence(
             content=content[:2000],
@@ -139,5 +182,5 @@ class ClinicalTrialsTool:
                 date=start_date,
                 authors=[],  # Trials don't have traditional authors
             ),
-            relevance=0.85,  # Trials are highly relevant for repurposing
+            relevance=0.90 if has_results else 0.85,  # Boost relevance for trials with results
         )
