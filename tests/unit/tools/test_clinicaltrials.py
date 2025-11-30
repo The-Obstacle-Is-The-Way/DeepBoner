@@ -204,6 +204,10 @@ class TestClinicalTrialsOutcomes:
         """Test that missing results are indicated."""
         mock_study = {
             "protocolSection": {
+                "identificationModule": {
+                    "nctId": "NCT99999999",
+                    "briefTitle": "Test Study",
+                },
                 "statusModule": {
                     "overallStatus": "RECRUITING",
                     "startDateStruct": {"date": "2024"},
