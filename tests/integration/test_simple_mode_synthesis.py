@@ -136,9 +136,9 @@ async def test_partial_synthesis_generation():
         events.append(event)
 
     complete_events = [e for e in events if e.type == "complete"]
-    assert (
-        len(complete_events) == 1
-    ), f"Expected exactly one complete event, got {len(complete_events)}"
+    assert len(complete_events) == 1, (
+        f"Expected exactly one complete event, got {len(complete_events)}"
+    )
     complete_event = complete_events[0]
     assert complete_event.data.get("max_reached") is True
 
