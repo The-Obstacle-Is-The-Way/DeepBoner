@@ -36,9 +36,10 @@ class LangGraphOrchestrator(OrchestratorProtocol):
         self._max_iterations = max_iterations
         self._checkpoint_path = checkpoint_path
 
-        # Initialize the LLM (Llama 3.1 via HF Inference)
+        # Initialize the LLM (Qwen 2.5 via HF Inference)
         # We use the serverless API by default
-        repo_id = "meta-llama/Llama-3.1-70B-Instruct"
+        # NOTE: Llama-3.1-70B routes to Hyperbolic (unreliable staging mode)
+        repo_id = "Qwen/Qwen2.5-72B-Instruct"
 
         # Ensure we have an API key
         api_key = settings.hf_token

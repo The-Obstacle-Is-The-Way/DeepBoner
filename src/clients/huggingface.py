@@ -37,14 +37,12 @@ class HuggingFaceChatClient(BaseChatClient):  # type: ignore[misc]
         """Initialize the HuggingFace chat client.
 
         Args:
-            model_id: The HuggingFace model ID (default: configured value or Llama-3.1-70B).
+            model_id: The HuggingFace model ID (default: configured value or Qwen2.5-72B).
             api_key: HF_TOKEN (optional, defaults to env var).
             **kwargs: Additional arguments passed to BaseChatClient.
         """
         super().__init__(**kwargs)
-        self.model_id = (
-            model_id or settings.huggingface_model or "meta-llama/Llama-3.1-70B-Instruct"
-        )
+        self.model_id = model_id or settings.huggingface_model or "Qwen/Qwen2.5-72B-Instruct"
         self.api_key = api_key or settings.hf_token
 
         # Initialize the HF Inference Client
