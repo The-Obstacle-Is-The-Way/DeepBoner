@@ -31,13 +31,16 @@ def get_pydantic_ai_model() -> Any:
     from pydantic_ai.providers.anthropic import AnthropicProvider
     from pydantic_ai.providers.openai import OpenAIProvider
 
-    if settings.llm_provider == "openai":
+    # Normalize provider for case-insensitive matching
+    provider_lower = settings.llm_provider.lower() if settings.llm_provider else ""
+
+    if provider_lower == "openai":
         if not settings.openai_api_key:
             raise ConfigurationError("OPENAI_API_KEY not set for pydantic-ai")
         provider = OpenAIProvider(api_key=settings.openai_api_key)
         return OpenAIChatModel(settings.openai_model, provider=provider)
 
-    if settings.llm_provider == "anthropic":
+    if provider_lower == "anthropic":
         if not settings.anthropic_api_key:
             raise ConfigurationError("ANTHROPIC_API_KEY not set for pydantic-ai")
         anthropic_provider = AnthropicProvider(api_key=settings.anthropic_api_key)

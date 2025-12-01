@@ -94,12 +94,15 @@ class Settings(BaseSettings):
 
     def get_api_key(self) -> str:
         """Get the API key for the configured provider."""
-        if self.llm_provider == "openai":
+        # Normalize provider for case-insensitive matching
+        provider_lower = self.llm_provider.lower() if self.llm_provider else ""
+
+        if provider_lower == "openai":
             if not self.openai_api_key:
                 raise ConfigurationError("OPENAI_API_KEY not set")
             return self.openai_api_key
 
-        if self.llm_provider == "anthropic":
+        if provider_lower == "anthropic":
             if not self.anthropic_api_key:
                 raise ConfigurationError("ANTHROPIC_API_KEY not set")
             return self.anthropic_api_key
