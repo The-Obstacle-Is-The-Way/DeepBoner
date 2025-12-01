@@ -13,22 +13,25 @@ _No active P0 bugs._
 
 ## P2 - UX Friction
 
-### P2 - Advanced Mode Cold Start Has No User Feedback (Phase 1 Complete)
+### P2 - Advanced Mode Cold Start Has No User Feedback (✅ FIXED)
 **File:** `docs/bugs/P2_ADVANCED_MODE_COLD_START_NO_FEEDBACK.md`
 **Issue:** [#108](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/108)
 **Found:** 2025-12-01 (Gradio Testing)
 
 **Problem:** Three "dead zones" with no visual feedback during Advanced Mode startup:
 1. **Dead Zone #1** (5-15s): Between STARTED → THINKING ✅ FIXED (granular events)
-2. **Dead Zone #2** (10-30s): Between THINKING → PROGRESS (first LLM call)
-3. **Dead Zone #3** (30-90s): After PROGRESS (SearchAgent executing)
+2. **Dead Zone #2** (10-30s): Between THINKING → PROGRESS (first LLM call) ✅ FIXED (Progress Bar)
+3. **Dead Zone #3** (30-90s): After PROGRESS (SearchAgent executing) ✅ FIXED (Pre-warming + Progress Bar)
 
 **Phase 1 Fix (commit dbf888c):**
 - Added granular progress events during initialization
 - Users now see "Loading embedding service...", "Initializing research memory...", "Building agent team..."
 - Significantly improves perceived responsiveness
 
-**Remaining:** Phase 2 (pre-warm services), Phase 3 (Gradio progress bar)
+**Phase 2/3 Fix (Latest):**
+- Implemented service pre-warming (`service_loader.warmup_services`)
+- Added native Gradio progress bar (`gr.Progress`) to `research_agent`
+- Visual feedback is now continuous throughout the entire lifecycle
 
 ---
 

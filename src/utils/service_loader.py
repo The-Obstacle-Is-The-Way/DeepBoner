@@ -9,6 +9,7 @@ Design Patterns:
 - Strategy Pattern: Selects between EmbeddingService and LlamaIndexRAGService
 """
 
+import threading
 from typing import TYPE_CHECKING
 
 import structlog
@@ -20,6 +21,28 @@ if TYPE_CHECKING:
     from src.services.statistical_analyzer import StatisticalAnalyzer
 
 logger = structlog.get_logger()
+
+
+def warmup_services() -> None:
+    """Pre-warm expensive services in a background thread.
+
+    This reduces the "cold start" latency for the first user request by
+    loading heavy models (like SentenceTransformer or LlamaIndex) into memory
+    during application startup.
+    """
+
+    def _warmup() -> None:
+        logger.info("🔥 Warmup: Starting background service initialization...")
+        try:
+            # Trigger model loading (cached globally)
+            get_embedding_service_if_available()
+            logger.info("🔥 Warmup: Embedding service ready")
+        except Exception as e:
+            logger.warning("🔥 Warmup: Failed to warm up services", error=str(e))
+
+    # Run in daemon thread so it doesn't block shutdown
+    thread = threading.Thread(target=_warmup, daemon=True)
+    thread.start()
 
 
 def get_embedding_service() -> "EmbeddingServiceProtocol":

@@ -21,6 +21,7 @@ from src.tools.search_handler import SearchHandler
 from src.utils.config import settings
 from src.utils.exceptions import ConfigurationError
 from src.utils.models import OrchestratorConfig
+from src.utils.service_loader import warmup_services
 
 OrchestratorMode = Literal["simple", "magentic", "advanced", "hierarchical"]
 
@@ -137,6 +138,38 @@ def configure_orchestrator(
     return orchestrator, backend_info
 
 
+def _validate_inputs(
+    mode: str,
+    api_key: str | None,
+    api_key_state: str | None,
+) -> tuple[OrchestratorMode, str | None, bool]:
+    """Validate inputs and determine mode/key status.
+
+    Returns:
+        Tuple of (validated_mode, effective_user_key, has_paid_key)
+    """
+    # Validate mode
+    valid_modes: set[str] = {"simple", "magentic", "advanced", "hierarchical"}
+    mode_validated: OrchestratorMode = mode if mode in valid_modes else "simple"  # type: ignore[assignment]
+
+    # Determine effective key
+    user_api_key = (api_key or api_key_state or "").strip() or None
+
+    # Check available keys
+    has_openai = settings.has_openai_key
+    has_anthropic = settings.has_anthropic_key
+    is_openai_user_key = (
+        user_api_key and user_api_key.startswith("sk-") and not user_api_key.startswith("sk-ant-")
+    )
+    has_paid_key = has_openai or has_anthropic or bool(user_api_key)
+
+    # Fallback logic for Advanced mode
+    if mode_validated == "advanced" and not (has_openai or is_openai_user_key):
+        mode_validated = "simple"
+
+    return mode_validated, user_api_key, has_paid_key
+
+
 async def research_agent(
     message: str,
     history: list[dict[str, Any]],
@@ -144,6 +177,7 @@ async def research_agent(
     domain: str = "sexual_health",
     api_key: str = "",
     api_key_state: str = "",
+    progress: gr.Progress = gr.Progress(),  # noqa: B008
 ) -> AsyncGenerator[str, None]:
     """
     Gradio chat function that runs the research agent.
@@ -155,6 +189,7 @@ async def research_agent(
         domain: Research domain
         api_key: Optional user-provided API key (BYOK - auto-detects provider)
         api_key_state: Persistent API key state (survives example clicks)
+        progress: Gradio progress tracker
 
     Yields:
         Markdown-formatted responses for streaming
@@ -164,38 +199,19 @@ async def research_agent(
         return
 
     # BUG FIX: Handle None values from Gradio example caching
-    # Gradio passes None for missing example columns, overriding defaults
-    api_key_str = api_key or ""
-    api_key_state_str = api_key_state or ""
     domain_str = domain or "sexual_health"
 
-    # Validate and cast mode to proper type
-    valid_modes: set[str] = {"simple", "magentic", "advanced", "hierarchical"}
-    mode_validated: OrchestratorMode = mode if mode in valid_modes else "simple"  # type: ignore[assignment]
+    # Validate inputs using helper to reduce complexity
+    mode_validated, user_api_key, has_paid_key = _validate_inputs(mode, api_key, api_key_state)
 
-    # BUG FIX: Prefer freshly-entered key, then persisted state
-    user_api_key = (api_key_str.strip() or api_key_state_str.strip()) or None
-
-    # Check available keys
-    has_openai = settings.has_openai_key
-    has_anthropic = settings.has_anthropic_key
-    # Check for OpenAI user key
-    is_openai_user_key = (
-        user_api_key and user_api_key.startswith("sk-") and not user_api_key.startswith("sk-ant-")
-    )
-    has_paid_key = has_openai or has_anthropic or bool(user_api_key)
-
-    # Advanced mode requires OpenAI specifically (due to agent-framework binding)
-    if mode_validated == "advanced" and not (has_openai or is_openai_user_key):
+    # Inform user about fallback/tier status
+    if mode == "advanced" and mode_validated == "simple":
         yield (
             "⚠️ **Warning**: Advanced mode currently requires OpenAI API key. "
             "Anthropic keys only work in Simple mode. Falling back to Simple.\n\n"
         )
-        mode_validated = "simple"
 
-    # Inform user about fallback if no keys
     if not has_paid_key:
-        # No paid keys - will use FREE HuggingFace Inference
         yield (
             "🤗 **Free Tier**: Using HuggingFace Inference (Llama 3.1 / Mistral) for AI analysis.\n"
             "For premium models, enter an OpenAI or Anthropic API key below.\n\n"
@@ -207,9 +223,8 @@ async def research_agent(
 
     try:
         # use_mock=False - let configure_orchestrator decide based on available keys
-        # It will use: Paid API > HF Inference (free tier)
         orchestrator, backend_name = configure_orchestrator(
-            use_mock=False,  # Never use mock in production - HF Inference is the free fallback
+            use_mock=False,
             mode=mode_validated,
             user_api_key=user_api_key,
             domain=domain_str,
@@ -224,6 +239,28 @@ async def research_agent(
         )
 
         async for event in orchestrator.run(message):
+            # Update progress bar
+            if event.type == "started":
+                progress(0, desc="Starting research...")
+            elif event.type == "thinking":
+                progress(0.1, desc="Multi-agent reasoning...")
+            elif event.type == "progress":
+                # Try to calculate percentage based on max rounds/iterations
+                p = None
+                max_iters = 10  # default
+                if hasattr(orchestrator, "_max_rounds"):
+                    max_iters = orchestrator._max_rounds
+                elif hasattr(orchestrator, "config") and hasattr(
+                    orchestrator.config, "max_iterations"
+                ):
+                    max_iters = orchestrator.config.max_iterations
+
+                if event.iteration:
+                    # Map 0..max to 0.2..0.9
+                    p = 0.2 + (0.7 * (min(event.iteration, max_iters) / max_iters))
+
+                progress(p, desc=event.message)
+
             # BUG FIX: Handle streaming events separately to avoid token-by-token spam
             if event.type == "streaming":
                 # Accumulate streaming tokens without emitting individual events
@@ -349,6 +386,7 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
 
 def main() -> None:
     """Run the Gradio app with MCP server enabled."""
+    warmup_services()  # Phase 2: Pre-warm services
     demo, _ = create_demo()
     demo.launch(
         server_name=os.getenv("GRADIO_SERVER_NAME", "0.0.0.0"),  # nosec B104
