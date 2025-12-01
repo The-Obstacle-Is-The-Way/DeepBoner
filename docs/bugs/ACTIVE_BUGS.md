@@ -23,16 +23,9 @@ _No active P0 bugs._
 - `Manager (task_ledger): We are working to address...`
 - `Manager (instruction): Conduct targeted searches on PubMed...`
 
-These are framework-internal bookkeeping truncated at 200 chars, making them uninterpretable.
-
 **Root Cause:** `_process_event()` in `advanced.py` doesn't filter or transform `MagenticOrchestratorMessageEvent` events from `agent-framework-core`.
 
-**Solution Options:**
-1. Filter internal events (`user_task`, `task_ledger`, `instruction`)
-2. Transform to user-friendly messages ("Manager assigning search task...")
-3. Add verbose mode for debugging
-
-**Status:** Open
+**Status:** PR [#107](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/pull/107) open, pending merge.
 
 ---
 
