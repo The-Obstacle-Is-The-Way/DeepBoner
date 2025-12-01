@@ -1,4 +1,5 @@
-"""Advanced Orchestrator using Microsoft Agent Framework.
+"""
+Advanced Orchestrator using Microsoft Agent Framework.
 
 This orchestrator uses the ChatAgent pattern from Microsoft's agent-framework-core
 package for multi-agent coordination. It provides richer orchestration capabilities
@@ -140,31 +141,9 @@ class AdvancedOrchestrator(OrchestratorProtocol):
             .build()
         )
 
-    async def run(self, query: str) -> AsyncGenerator[AgentEvent, None]:
-        """
-        Run the workflow.
-
-        Args:
-            query: User's research question
-
-        Yields:
-            AgentEvent objects for real-time UI updates
-        """
-        logger.info("Starting Advanced orchestrator", query=query)
-
-        yield AgentEvent(
-            type="started",
-            message=f"Starting research (Advanced mode): {query}",
-            iteration=0,
-        )
-
-        # Initialize context state
-        embedding_service = self._init_embedding_service()
-        init_magentic_state(query, embedding_service)
-
-        workflow = self._build_workflow()
-
-        task = f"""Research {self.domain_config.report_focus} for: {query}
+    def _create_task_prompt(self, query: str) -> str:
+        """Create the initial task prompt for the manager agent."""
+        return f"""Research {self.domain_config.report_focus} for: {query}
 
 ## CRITICAL RULE
 When JudgeAgent says "SUFFICIENT EVIDENCE" or "STOP SEARCHING":
@@ -185,6 +164,59 @@ Focus on:
 - Finding clinical evidence supporting hypotheses
 
 The final output should be a structured research report."""
+
+    def _get_progress_message(self, iteration: int) -> str:
+        """Generate progress message with time estimation."""
+        rounds_remaining = max(self._max_rounds - iteration, 0)
+        est_seconds = rounds_remaining * 45
+        if est_seconds >= 60:
+            est_display = f"{est_seconds // 60}m {est_seconds % 60}s"
+        else:
+            est_display = f"{est_seconds}s"
+
+        return f"Round {iteration}/{self._max_rounds} (~{est_display} remaining)"
+
+    async def run(self, query: str) -> AsyncGenerator[AgentEvent, None]:
+        """
+        Run the workflow.
+
+        Args:
+            query: User's research question
+
+        Yields:
+            AgentEvent objects for real-time UI updates
+        """
+        logger.info("Starting Advanced orchestrator", query=query)
+
+        yield AgentEvent(
+            type="started",
+            message=f"Starting research (Advanced mode): {query}",
+            iteration=0,
+        )
+
+        # Initialize context state
+        yield AgentEvent(
+            type="progress",
+            message="Loading embedding service (LlamaIndex/ChromaDB)...",
+            iteration=0,
+        )
+        embedding_service = self._init_embedding_service()
+
+        yield AgentEvent(
+            type="progress",
+            message="Initializing research memory...",
+            iteration=0,
+        )
+        init_magentic_state(query, embedding_service)
+
+        yield AgentEvent(
+            type="progress",
+            message="Building agent team (Search, Judge, Hypothesis, Report)...",
+            iteration=0,
+        )
+        workflow = self._build_workflow()
+
+        task = self._create_task_prompt(query)
 
         # UX FIX: Yield thinking state before blocking workflow call
         # The workflow.run_stream() blocks for 2+ minutes on first LLM call
@@ -208,18 +240,7 @@ The final output should be a structured research report."""
                     if agent_event:
                         if isinstance(event, MagenticAgentMessageEvent):
                             iteration += 1
-
-                            # Progress estimation (clamp to avoid negative values)
-                            rounds_remaining = max(self._max_rounds - iteration, 0)
-                            est_seconds = rounds_remaining * 45
-                            if est_seconds >= 60:
-                                est_display = f"{est_seconds // 60}m {est_seconds % 60}s"
-                            else:
-                                est_display = f"{est_seconds}s"
-
-                            progress_msg = (
-                                f"Round {iteration}/{self._max_rounds} (~{est_display} remaining)"
-                            )
+                            progress_msg = self._get_progress_message(iteration)
 
                             # Yield progress update before the agent action
                             yield AgentEvent(
