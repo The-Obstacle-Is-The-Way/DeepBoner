@@ -27,12 +27,15 @@
 
 ### ~~P0 - Free Tier Synthesis Incorrectly Uses Server-Side API Keys~~ FIXED
 **File:** `docs/bugs/P1_SYNTHESIS_BROKEN_KEY_FALLBACK.md`
+**PR:** [#103](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/pull/103)
 **Found:** 2025-11-30 (Testing)
 **Resolved:** 2025-11-30
+**Verified:** Free Tier now produces full LLM-synthesized research reports ✅
 
 - Problem: Simple Mode crashed with "OpenAIError" on HuggingFace Spaces when user provided no key but admin key was invalid.
 - Root Cause: Synthesis logic bypassed the Free Tier judge and incorrectly used server-side keys via `get_model()`.
 - Fix: Implemented `synthesize()` in `HFInferenceJudgeHandler` to use free HuggingFace Inference, ensuring consistency with the judge phase.
+- Key files: `src/agent_factory/judges.py`, `src/orchestrators/simple.py`
 
 ### ~~P0 - Synthesis Fails with OpenAIError in Free Mode~~ FIXED
 **File:** `docs/bugs/P0_SYNTHESIS_PROVIDER_MISMATCH.md`
