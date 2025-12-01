@@ -64,6 +64,9 @@ class AdvancedOrchestrator(OrchestratorProtocol):
     - Configurable timeouts and round limits
     """
 
+    # Estimated seconds per coordination round (for progress UI)
+    _EST_SECONDS_PER_ROUND: int = 45
+
     def __init__(
         self,
         max_rounds: int | None = None,
@@ -168,7 +171,7 @@ The final output should be a structured research report."""
     def _get_progress_message(self, iteration: int) -> str:
         """Generate progress message with time estimation."""
         rounds_remaining = max(self._max_rounds - iteration, 0)
-        est_seconds = rounds_remaining * 45
+        est_seconds = rounds_remaining * self._EST_SECONDS_PER_ROUND
         if est_seconds >= 60:
             est_display = f"{est_seconds // 60}m {est_seconds % 60}s"
         else:

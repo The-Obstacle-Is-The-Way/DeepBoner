@@ -12,15 +12,15 @@ Eliminate the Simple Mode / Advanced Mode parallel universe by implementing a pl
 
 ## Strategic Goals
 
-1.  **Namespace Neutrality**: Decouple the core orchestrator from the `OpenAI` namespace. The system should speak `ChatClient`, not `OpenAIChatClient`.
-2.  **Full-Stack Provider Chain**: Prioritize providers that offer both LLM and Embeddings (OpenAI, Gemini, HuggingFace+Local) to ensure a unified environment.
-3.  **Fragmentation Reduction**: Remove "LLM-only" providers (Anthropic) that force complex hybrid dependency chains (e.g., Anthropic LLM + OpenAI Embeddings).
+1. **Namespace Neutrality**: Decouple the core orchestrator from the `OpenAI` namespace. The system should speak `ChatClient`, not `OpenAIChatClient`.
+2. **Full-Stack Provider Chain**: Prioritize providers that offer both LLM and Embeddings (OpenAI, Gemini, HuggingFace+Local) to ensure a unified environment.
+3. **Fragmentation Reduction**: Remove "LLM-only" providers (Anthropic) that force complex hybrid dependency chains (e.g., Anthropic LLM + OpenAI Embeddings).
 
 ## Problem Statement
 
 ### Current Architecture: Two Parallel Universes
 
-```
+```text
 User Query
     │
     ├── Has API Key? ──Yes──→ Advanced Mode (488 lines)
@@ -42,7 +42,7 @@ User Query
 
 ### Architecture After Implementation
 
-```
+```text
 User Query
     │
     └──→ Advanced Mode (unified)
@@ -55,7 +55,7 @@ User Query
 
 ### New Files
 
-```
+```text
 src/
 ├── clients/
 │   ├── __init__.py
@@ -250,9 +250,9 @@ def has_gemini_key(self) -> bool:
 
 ## Why This is "Elegant"
 
-1.  **One System**: We stop maintaining two parallel universes.
-2.  **Dependency Injection**: The specific LLM provider is injected, not hardcoded.
-3.  **Full Stack Alignment**: We prioritize providers (OpenAI, Gemini) that own the whole vertical (LLM + Embeddings), reducing environment complexity.
+1. **One System**: We stop maintaining two parallel universes.
+2. **Dependency Injection**: The specific LLM provider is injected, not hardcoded.
+3. **Full-Stack Alignment**: We prioritize providers (OpenAI, Gemini) that own the whole vertical (LLM + Embeddings), reducing environment complexity.
 
 ---
 

@@ -245,20 +245,14 @@ async def research_agent(
             elif event.type == "thinking":
                 progress(0.1, desc="Multi-agent reasoning...")
             elif event.type == "progress":
-                # Try to calculate percentage based on max rounds/iterations
-                p = None
-                max_iters = 10  # default
-                if hasattr(orchestrator, "_max_rounds"):
-                    max_iters = orchestrator._max_rounds
-                elif hasattr(orchestrator, "config") and hasattr(
-                    orchestrator.config, "max_iterations"
-                ):
-                    max_iters = orchestrator.config.max_iterations
-
+                # Calculate progress percentage (fallback to 0.15 for events without iteration)
+                p = 0.15
+                max_iters = getattr(orchestrator, "_max_rounds", None) or getattr(
+                    getattr(orchestrator, "config", None), "max_iterations", 10
+                )
                 if event.iteration:
                     # Map 0..max to 0.2..0.9
                     p = 0.2 + (0.7 * (min(event.iteration, max_iters) / max_iters))
-
                 progress(p, desc=event.message)
 
             # BUG FIX: Handle streaming events separately to avoid token-by-token spam

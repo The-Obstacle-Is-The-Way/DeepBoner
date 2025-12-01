@@ -2,7 +2,11 @@
 
 from unittest.mock import patch
 
+import pytest
+
 from src.agents.magentic_agents import create_judge_agent
+
+pytestmark = pytest.mark.unit
 
 
 def test_judge_agent_has_termination_instructions() -> None:

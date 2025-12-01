@@ -6,6 +6,7 @@ from src.orchestrators.advanced import AdvancedOrchestrator
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_advanced_initialization_events():
     """Verify granular progress events are emitted during initialization."""
     # Mock dependencies
@@ -44,10 +45,6 @@ async def test_advanced_initialization_events():
         # Verify sequence
         messages = [e.message for e in events]
         types = [e.type for e in events]
-
-        print("\nEvents received:")
-        for t, m in zip(types, messages, strict=True):
-            print(f"- {t}: {m}")
 
         # Expected sequence:
         # 1. started
