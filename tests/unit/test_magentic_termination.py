@@ -144,5 +144,7 @@ async def test_termination_on_timeout(mock_magentic_requirements):
         completion_events = [e for e in events if e.type == "complete"]
         assert len(completion_events) > 0
         last_event = completion_events[-1]
-        assert "timed out" in last_event.message
-        assert last_event.data.get("reason") == "timeout"
+
+        # New behavior: synthesis is attempted on timeout
+        # The message contains the report, so we check the reason code
+        assert last_event.data.get("reason") in ("timeout", "timeout_synthesis")

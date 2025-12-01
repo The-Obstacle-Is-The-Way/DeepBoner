@@ -56,6 +56,27 @@ class ModalError(DeepBonerError):
 
 
 class SynthesisError(DeepBonerError):
-    """Raised when report synthesis fails."""
+    """Raised when report synthesis fails after trying all available models.
 
-    pass
+    Attributes:
+        message: Human-readable error description
+        attempted_models: List of model IDs that were tried
+        errors: List of error messages from each failed attempt
+    """
+
+    def __init__(
+        self,
+        message: str,
+        attempted_models: list[str] | None = None,
+        errors: list[str] | None = None,
+    ) -> None:
+        """Initialize SynthesisError with context.
+
+        Args:
+            message: Human-readable error description
+            attempted_models: Models that were tried before failing
+            errors: Error messages from each failed model attempt
+        """
+        super().__init__(message)
+        self.attempted_models = attempted_models or []
+        self.errors = errors or []

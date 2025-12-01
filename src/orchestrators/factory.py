@@ -91,7 +91,7 @@ def create_orchestrator(
     if effective_mode == "advanced":
         orchestrator_cls = _get_advanced_orchestrator_class()
         return orchestrator_cls(
-            max_rounds=effective_config.max_iterations,
+            max_rounds=settings.advanced_max_rounds,
             api_key=api_key,
             domain=domain,
         )

@@ -536,16 +536,16 @@ class Orchestrator:
         system_prompt = get_synthesis_system_prompt(self.domain)
 
         try:
-            # Check if judge has its own synthesize method (Free Tier uses HF Inference)
-            # This ensures Free Tier uses consistent free inference for BOTH judge AND synthesis
-            if hasattr(self.judge, "synthesize"):
+            # Type-safe tier detection using Protocol (CodeRabbit review recommendation)
+            # This replaces hasattr() with isinstance() for compile-time type safety
+            from src.orchestrators.base import SynthesizableJudge
+            from src.utils.exceptions import SynthesisError
+
+            if isinstance(self.judge, SynthesizableJudge):
                 logger.info("Using judge's free-tier synthesis method")
+                # synthesize() now raises SynthesisError on failure (CodeRabbit fix)
                 narrative = await self.judge.synthesize(system_prompt, user_prompt)
-                if narrative:
-                    logger.info("Free-tier synthesis completed", chars=len(narrative))
-                else:
-                    # Free tier synthesis failed, use template
-                    raise RuntimeError("Free tier HF synthesis returned no content")
+                logger.info("Free-tier synthesis completed", chars=len(narrative))
             else:
                 # Paid tier: use PydanticAI with get_model()
                 from pydantic_ai import Agent
@@ -564,6 +564,24 @@ class Orchestrator:
                 narrative = result.output
 
                 logger.info("LLM narrative synthesis completed", chars=len(narrative))
+
+        except SynthesisError as e:
+            # Handle SynthesisError with detailed context (CodeRabbit recommendation)
+            logger.error(
+                "Free-tier synthesis failed",
+                attempted_models=e.attempted_models,
+                errors=e.errors,
+                evidence_count=len(evidence),
+            )
+            # Surface detailed error to user
+            models_str = ", ".join(e.attempted_models) if e.attempted_models else "unknown"
+            error_note = (
+                f"\n\n> ⚠️ **Note**: AI narrative synthesis unavailable. "
+                f"Showing structured summary.\n"
+                f"> _Attempted models: {models_str}_\n"
+            )
+            template = self._generate_template_synthesis(query, evidence, assessment)
+            return f"{error_note}\n{template}"
 
         except Exception as e:
             # Fallback to template synthesis if LLM fails
