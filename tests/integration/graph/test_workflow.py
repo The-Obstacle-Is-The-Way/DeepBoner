@@ -70,13 +70,22 @@ async def test_graph_execution_flow(mocker):
     async for event in graph.astream(initial_state):
         events.append(event)
 
-    # Verify flow
-    # 1. Supervisor (start) -> decides search
-    # 2. Search node runs
-    # 3. Supervisor runs again -> max_iter reached -> synthesize
-    # 4. Synthesize runs
-    # 5. End
+    # Verify flow executed correctly
+    # Expected sequence: supervisor -> search -> supervisor -> search -> supervisor -> synthesize
+    assert len(events) >= 3, f"Expected at least 3 events, got {len(events)}"
 
-    # Just check we hit synthesis
+    # Verify we executed key nodes
+    node_names = [next(iter(e.keys())) for e in events]
+    assert "supervisor" in node_names, "Supervisor node should have executed"
+    assert "search" in node_names, "Search node should have executed"
+    assert "synthesize" in node_names, "Synthesize node should have executed"
+
+    # Verify final event is synthesis (the terminal node)
     final_event = events[-1]
-    assert "synthesize" in final_event or "messages" in str(final_event)
+    assert "synthesize" in final_event, (
+        f"Final event should be synthesis, got: {list(final_event.keys())}"
+    )
+
+    # Verify synthesis produced messages (the report markdown)
+    synth_output = final_event.get("synthesize", {})
+    assert "messages" in synth_output, "Synthesis should produce messages"
