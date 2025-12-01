@@ -1,6 +1,6 @@
 # Active Bugs
 
-> Last updated: 2025-12-01 (01:00 PST)
+> Last updated: 2025-12-01 (02:50 PST)
 >
 > **Note:** Completed bug docs archived to `docs/bugs/archive/`
 > **See also:** [Code Quality Audit Findings (2025-11-30)](AUDIT_FINDINGS_2025_11_30.md)
@@ -12,6 +12,29 @@ _No active P0 bugs._
 ---
 
 ## P1 - Important
+
+### P1 - Advanced Mode Exposes Uninterpretable Chain-of-Thought
+**Issue:** [#106](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/106)
+**File:** [P1_ADVANCED_MODE_UNINTERPRETABLE_CHAIN_OF_THOUGHT.md](P1_ADVANCED_MODE_UNINTERPRETABLE_CHAIN_OF_THOUGHT.md)
+**Found:** 2025-12-01 (Manual Testing)
+
+**Problem:** Advanced orchestrator exposes raw internal framework events to users:
+- `Manager (user_task): Research sexual health and wellness interventions for...`
+- `Manager (task_ledger): We are working to address...`
+- `Manager (instruction): Conduct targeted searches on PubMed...`
+
+These are framework-internal bookkeeping truncated at 200 chars, making them uninterpretable.
+
+**Root Cause:** `_process_event()` in `advanced.py` doesn't filter or transform `MagenticOrchestratorMessageEvent` events from `agent-framework-core`.
+
+**Solution Options:**
+1. Filter internal events (`user_task`, `task_ledger`, `instruction`)
+2. Transform to user-friendly messages ("Manager assigning search task...")
+3. Add verbose mode for debugging
+
+**Status:** Open
+
+---
 
 ### P1 - Memory Layer Not Integrated (Post-Hackathon)
 **Issue:** [#73](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/73)
