@@ -90,7 +90,7 @@ class AdvancedOrchestrator(OrchestratorProtocol):
         self.domain = domain or ResearchDomain.SEXUAL_HEALTH
         self.domain_config = get_domain_config(self.domain)
         self._timeout_seconds = timeout_seconds or settings.advanced_timeout
-        
+
         self.logger = logger.bind(orchestrator="advanced")
 
         # Use provided client or create one via factory
@@ -98,10 +98,10 @@ class AdvancedOrchestrator(OrchestratorProtocol):
             provider=provider,
             api_key=api_key,
         )
-        
+
         # Event stream for UI updates
         self._events: list[AgentEvent] = []
-        
+
         # Initialize services lazily
         self._embedding_service: EmbeddingServiceProtocol | None = None
 

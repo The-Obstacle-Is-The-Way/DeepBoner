@@ -52,7 +52,7 @@ def get_chat_client(
         # For now, fall through or raise if explicitly requested
         if provider == "gemini":
             raise NotImplementedError("Gemini client not yet implemented (Planned Phase 4)")
-        
+
         # If implied (has key but not explicit), log warning and fall through?
         # Or just fail? The spec says "GeminiChatClient [Future]".
         # So we skip this block effectively for now unless explicitly implemented.

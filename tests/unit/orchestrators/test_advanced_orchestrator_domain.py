@@ -12,7 +12,7 @@ class TestAdvancedOrchestratorDomain:
         # Mock to avoid API key validation
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        
+
         orch = AdvancedOrchestrator(domain=ResearchDomain.SEXUAL_HEALTH, api_key="sk-test")
         assert orch.domain == ResearchDomain.SEXUAL_HEALTH
 
@@ -33,20 +33,14 @@ class TestAdvancedOrchestratorDomain:
     ):
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        
+
         orch = AdvancedOrchestrator(domain=ResearchDomain.SEXUAL_HEALTH, api_key="sk-test")
 
         # Call private method to verify agent creation calls
         orch._build_workflow()
 
         # Verify agents created with domain and correct client
-        mock_create_search.assert_called_with(
-            mock_client, domain=ResearchDomain.SEXUAL_HEALTH
-        )
+        mock_create_search.assert_called_with(mock_client, domain=ResearchDomain.SEXUAL_HEALTH)
         mock_create_judge.assert_called_with(mock_client, domain=ResearchDomain.SEXUAL_HEALTH)
-        mock_create_hypothesis.assert_called_with(
-            mock_client, domain=ResearchDomain.SEXUAL_HEALTH
-        )
-        mock_create_report.assert_called_with(
-            mock_client, domain=ResearchDomain.SEXUAL_HEALTH
-        )
+        mock_create_hypothesis.assert_called_with(mock_client, domain=ResearchDomain.SEXUAL_HEALTH)
+        mock_create_report.assert_called_with(mock_client, domain=ResearchDomain.SEXUAL_HEALTH)
