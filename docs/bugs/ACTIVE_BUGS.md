@@ -1,9 +1,33 @@
 # Active Bugs
 
-> Last updated: 2025-12-01 (16:15 PST)
+> Last updated: 2025-12-01 (16:30 PST)
 >
 > **Note:** Completed bug docs archived to `docs/bugs/archive/`
 > **See also:** [Code Quality Audit Findings (2025-11-30)](AUDIT_FINDINGS_2025_11_30.md)
+
+## P0 - Critical
+
+### P0 - AIFunction Not JSON Serializable (Free Tier Broken)
+**File:** `docs/bugs/P0_AIFUNCTION_NOT_JSON_SERIALIZABLE.md`
+**Found:** 2025-12-01 (HuggingFace Spaces)
+
+**Problem:** Every search round fails with "Object of type AIFunction is not JSON serializable".
+
+**Error:**
+```
+📚 SEARCH_COMPLETE: searcher: Agent searcher: Error processing request -
+Object of type AIFunction is not JSON serializable
+```
+
+**Root Cause:** `HuggingFaceChatClient` passes raw `AIFunction` objects to `InferenceClient.chat_completion()`. When `requests` tries to serialize them to JSON, it fails.
+
+**Impact:** Free Tier cannot do any research. 5 rounds of errors, no results.
+
+**Proposed Fix:** Either:
+1. **Quick**: Disable tools with `tools=None` (agents use natural language)
+2. **Proper**: Convert `AIFunction` to JSON schema before passing to HF API
+
+---
 
 ## P3 - UX Polish
 
