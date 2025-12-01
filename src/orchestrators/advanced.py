@@ -377,17 +377,19 @@ The final output should be a structured research report."""
             if event.kind in ("task_ledger", "instruction"):
                 return None
 
-            text = self._extract_text(event.message)
-            if not text:
-                return None
-
-            # TRANSFORMATION: Make manager events user-friendly
+            # TRANSFORMATION: Handle user_task BEFORE text extraction
+            # (user_task uses static message, doesn't need text content)
             if event.kind == "user_task":
                 return AgentEvent(
                     type="progress",
                     message="Manager assigning research task to agents...",
                     iteration=iteration,
                 )
+
+            # For other manager events, extract and validate text
+            text = self._extract_text(event.message)
+            if not text:
+                return None
 
             # Default fallback for other manager events
             return AgentEvent(

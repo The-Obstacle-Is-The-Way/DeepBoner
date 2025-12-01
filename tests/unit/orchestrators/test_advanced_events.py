@@ -1,13 +1,12 @@
 """Test for AdvancedOrchestrator event processing (P1 Bug)."""
 
-from unittest.mock import MagicMock
-
 import pytest
-from agent_framework import MagenticAgentMessageEvent, MagenticOrchestratorMessageEvent
+from agent_framework import MagenticOrchestratorMessageEvent
 
 from src.orchestrators.advanced import AdvancedOrchestrator
 
 
+@pytest.mark.unit
 class TestAdvancedEventProcessing:
     """Test event processing logic in AdvancedOrchestrator."""
 
@@ -77,21 +76,34 @@ class TestAdvancedEventProcessing:
 
     def test_prevents_mid_sentence_truncation(self, orchestrator: AdvancedOrchestrator) -> None:
         """
-        Bug P1: Long messages should be smart-truncated, not hard cut at 200 chars.
+        Bug P1: Long messages should be smart-truncated at sentence boundaries.
+
+        Tests _smart_truncate directly to ensure regression protection.
+        The function truncates at sentence boundary if period is after halfway point.
         """
-        # A long message (> 200 chars)
-        long_text = "A" * 250
+        # First sentence ends at position ~55, which is > 50 (100//2)
+        long_text = (
+            "This is a longer first sentence that ends past the midpoint. "
+            "Second sentence continues with more text that would be cut."
+        )
 
-        # Mock a standard agent message
-        mock_message = MagicMock()
-        mock_message.content = long_text
-        mock_message.text = long_text
+        # Call the helper directly to test its behavior explicitly
+        truncated = orchestrator._smart_truncate(long_text, max_len=100)
 
-        raw_event = MagenticAgentMessageEvent(agent_id="SearchAgent", message=mock_message)
+        # Should truncate at the end of the first sentence (period > max_len//2)
+        assert truncated.endswith("midpoint.")
+        assert "Second sentence" not in truncated
+        assert len(truncated) <= 100
 
-        result = orchestrator._process_event(raw_event, iteration=1)
+    def test_smart_truncate_word_boundary_fallback(
+        self, orchestrator: AdvancedOrchestrator
+    ) -> None:
+        """Test that truncation falls back to word boundary when no sentence end."""
+        # No sentence ending in the first 80 chars
+        long_text = "This is a very long text without any sentence ending in the limit"
 
-        assert result is not None
-        # Current buggy behavior: len(message) == 200 + len("SearchAgent: ...")
-        # We want to verify we don't just slice randomly.
-        assert len(result.message) < 300  # Sanity check
+        truncated = orchestrator._smart_truncate(long_text, max_len=50)
+
+        # Should end with "..." and not cut mid-word
+        assert truncated.endswith("...")
+        assert len(truncated) <= 53  # 50 + "..."
