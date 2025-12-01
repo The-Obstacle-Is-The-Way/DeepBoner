@@ -45,27 +45,14 @@ class HuggingFaceChatClient(BaseChatClient):  # type: ignore[misc]
         self.model_id = model_id or settings.huggingface_model or "Qwen/Qwen2.5-72B-Instruct"
         self.api_key = api_key or settings.hf_token
 
-        # Debug logging for auth issues
-        if self.api_key:
-            masked_key = (
-                f"{self.api_key[:4]}...{self.api_key[-4:]}" if len(self.api_key) > 8 else "***"
-            )
-            logger.info(f"HuggingFaceChatClient using explicit API token: {masked_key}")
-        else:
-            logger.warning(
-                "HuggingFaceChatClient initialized WITHOUT explicit API token "
-                "(relying on cached token or anonymous access)"
-            )
-
-        try:
-            self._client = InferenceClient(
-                model=self.model_id,
-                token=self.api_key,
-                timeout=kwargs.get("timeout", 120),  # Default to 120s
-            )
-        except Exception as e:
-            logger.error(f"Failed to initialize HuggingFace client: {e}")
-            raise
+        # Initialize the HF Inference Client
+        # timeout=60 to prevent premature timeouts on long reasonings
+        self._client = InferenceClient(
+            model=self.model_id,
+            token=self.api_key,
+            timeout=60,
+        )
+        logger.info("Initialized HuggingFaceChatClient", model=self.model_id)
 
     def _convert_messages(self, messages: MutableSequence[ChatMessage]) -> list[dict[str, Any]]:
         """Convert framework messages to HuggingFace format."""
