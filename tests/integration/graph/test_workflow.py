@@ -1,16 +1,18 @@
 """Integration tests for the research graph."""
 
 import pytest
+from pydantic_ai.models.test import TestModel
 
 from src.agents.graph.workflow import create_research_graph
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_graph_execution_flow(mocker):
     """Test the graph runs from start to finish (simulated)."""
-    # Mock get_model to return a valid model string (pydantic-ai parses this)
-    # Using "test" provider which pydantic-ai accepts for testing
-    mocker.patch("src.agents.graph.nodes.get_model", return_value="test")
+    # Mock get_model to return TestModel for deterministic testing
+    # TestModel provides schema-driven responses without hitting real APIs
+    mocker.patch("src.agents.graph.nodes.get_model", return_value=TestModel())
 
     # Mock Agent.run to avoid API calls
     mock_run = mocker.patch("pydantic_ai.Agent.run")
