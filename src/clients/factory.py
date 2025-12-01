@@ -35,9 +35,21 @@ def get_chat_client(
 
     Returns:
         Configured BaseChatClient instance (Namespace Neutral)
+
+    Raises:
+        ValueError: If an unsupported provider is explicitly requested
+        NotImplementedError: If Gemini is explicitly requested (not yet implemented)
     """
+    # Normalize provider to lowercase for case-insensitive matching
+    normalized = provider.lower() if provider is not None else None
+
+    # Validate explicit provider requests early
+    valid_providers = (None, "openai", "gemini", "huggingface")
+    if normalized not in valid_providers:
+        raise ValueError(f"Unsupported provider: {provider!r}")
+
     # 1. OpenAI (Standard / Paid Tier)
-    if provider == "openai" or (provider is None and settings.has_openai_key):
+    if normalized == "openai" or (normalized is None and settings.has_openai_key):
         logger.info("Using OpenAI Chat Client")
         return OpenAIChatClient(
             model_id=model_id or settings.openai_model,
@@ -46,17 +58,13 @@ def get_chat_client(
         )
 
     # 2. Gemini (High Performance / Alternative)
-    if provider == "gemini" or (provider is None and settings.has_gemini_key):
-        logger.info("Using Gemini Chat Client")
-        # TODO: Implement GeminiChatClient in Phase 4
-        # For now, fall through or raise if explicitly requested
-        if provider == "gemini":
-            raise NotImplementedError("Gemini client not yet implemented (Planned Phase 4)")
+    if normalized == "gemini":
+        # Explicit request for Gemini - fail loudly
+        raise NotImplementedError("Gemini client not yet implemented (Planned Phase 4)")
 
-        # If implied (has key but not explicit), log warning and fall through?
-        # Or just fail? The spec says "GeminiChatClient [Future]".
-        # So we skip this block effectively for now unless explicitly implemented.
-        pass
+    if normalized is None and settings.has_gemini_key:
+        # Implicit (has key but not explicit) - log warning and fall through
+        logger.warning("Gemini key detected but client not yet implemented; falling back")
 
     # 3. HuggingFace (Free Fallback)
     # This is the default if no other keys are present

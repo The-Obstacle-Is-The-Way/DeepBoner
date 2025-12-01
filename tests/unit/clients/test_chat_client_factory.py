@@ -82,6 +82,37 @@ class TestChatClientFactory:
             with pytest.raises(NotImplementedError, match="Gemini client not yet implemented"):
                 get_chat_client(provider="gemini")
 
+    def test_unsupported_provider_raises_value_error(self) -> None:
+        """Unsupported provider should raise ValueError, not silently fallback."""
+        with patch("src.clients.factory.settings") as mock_settings:
+            mock_settings.has_openai_key = False
+            mock_settings.has_gemini_key = False
+
+            from src.clients.factory import get_chat_client
+
+            with pytest.raises(ValueError, match="Unsupported provider"):
+                get_chat_client(provider="anthropic")
+
+    def test_provider_is_case_insensitive(self) -> None:
+        """Provider matching should be case-insensitive."""
+        with patch("src.clients.factory.settings") as mock_settings:
+            mock_settings.has_openai_key = False
+            mock_settings.has_gemini_key = False
+            mock_settings.openai_api_key = None
+            mock_settings.openai_model = "gpt-5"
+
+            from src.clients.factory import get_chat_client
+
+            # "OpenAI" should work same as "openai"
+            client = get_chat_client(provider="OpenAI", api_key="sk-test")
+            assert "OpenAI" in type(client).__name__
+
+            # "HUGGINGFACE" should work same as "huggingface"
+            mock_settings.huggingface_model = "meta-llama/Llama-3.1-70B-Instruct"
+            mock_settings.hf_token = None
+            client = get_chat_client(provider="HUGGINGFACE")
+            assert "HuggingFace" in type(client).__name__
+
 
 @pytest.mark.unit
 class TestHuggingFaceChatClient:
@@ -134,6 +165,36 @@ class TestHuggingFaceChatClient:
             assert len(result) == 2
             assert result[0] == {"role": "user", "content": "Hello"}
             assert result[1] == {"role": "assistant", "content": "Hi there!"}
+
+    def test_convert_messages_handles_role_enum(self) -> None:
+        """Should extract .value from Role enum, not stringify the enum itself."""
+        with patch("src.clients.huggingface.settings") as mock_settings:
+            mock_settings.huggingface_model = "meta-llama/Llama-3.1-70B-Instruct"
+            mock_settings.hf_token = None
+
+            from enum import Enum
+
+            from agent_framework import ChatMessage
+
+            from src.clients.huggingface import HuggingFaceChatClient
+
+            # Simulate a Role enum like agent_framework might use
+            class Role(Enum):
+                USER = "user"
+                ASSISTANT = "assistant"
+
+            client = HuggingFaceChatClient()
+
+            # Create mock message with enum role
+            mock_msg = MagicMock(spec=ChatMessage)
+            mock_msg.role = Role.USER  # Enum, not string
+            mock_msg.text = "Hello"
+
+            result = client._convert_messages([mock_msg])
+
+            # Should be "user", NOT "Role.USER"
+            assert result[0]["role"] == "user"
+            assert "Role" not in result[0]["role"]
 
     def test_inherits_from_base_chat_client(self) -> None:
         """Should inherit from agent_framework.BaseChatClient."""

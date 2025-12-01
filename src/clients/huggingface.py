@@ -62,9 +62,13 @@ class HuggingFaceChatClient(BaseChatClient):  # type: ignore[misc]
         for msg in messages:
             # Basic conversion - extend as needed for multi-modal
             content = msg.text or ""
-            # msg.role can be string or enum, convert to string
-            role = str(msg.role) if hasattr(msg.role, "value") else msg.role
-            hf_messages.append({"role": role, "content": content})
+            # msg.role can be string or enum - extract .value for enums
+            # str(Role.USER) -> "Role.USER" (wrong), Role.USER.value -> "user" (correct)
+            if hasattr(msg.role, "value"):
+                role_str = str(msg.role.value)
+            else:
+                role_str = str(msg.role)
+            hf_messages.append({"role": role_str, "content": content})
         return hf_messages
 
     async def _inner_get_response(
@@ -89,14 +93,19 @@ class HuggingFaceChatClient(BaseChatClient):  # type: ignore[misc]
             # For NONE or other, leave as None
 
         try:
+            # Use explicit None checks - 'or' treats 0/0.0 as falsy
+            # temperature=0.0 is valid (deterministic output)
+            max_tokens = chat_options.max_tokens if chat_options.max_tokens is not None else 2048
+            temperature = chat_options.temperature if chat_options.temperature is not None else 0.7
+
             # Use partial to create a callable with keyword args for to_thread
             call_fn = partial(
                 self._client.chat_completion,
                 messages=hf_messages,
                 tools=tools,
                 tool_choice=hf_tool_choice,
-                max_tokens=chat_options.max_tokens or 2048,
-                temperature=chat_options.temperature or 0.7,
+                max_tokens=max_tokens,
+                temperature=temperature,
                 stream=False,
             )
 
@@ -143,14 +152,19 @@ class HuggingFaceChatClient(BaseChatClient):  # type: ignore[misc]
                 hf_tool_choice = "auto"
 
         try:
+            # Use explicit None checks - 'or' treats 0/0.0 as falsy
+            # temperature=0.0 is valid (deterministic output)
+            max_tokens = chat_options.max_tokens if chat_options.max_tokens is not None else 2048
+            temperature = chat_options.temperature if chat_options.temperature is not None else 0.7
+
             # Use partial for streaming call
             call_fn = partial(
                 self._client.chat_completion,
                 messages=hf_messages,
                 tools=tools,
                 tool_choice=hf_tool_choice,
-                max_tokens=chat_options.max_tokens or 2048,
-                temperature=chat_options.temperature or 0.7,
+                max_tokens=max_tokens,
+                temperature=temperature,
                 stream=True,
             )
 
