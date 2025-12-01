@@ -1,13 +1,13 @@
 # Active Bugs
 
-> Last updated: 2025-11-30
+> Last updated: 2025-12-01 (01:00 PST)
 >
 > **Note:** Completed bug docs archived to `docs/bugs/archive/`
 > **See also:** [Code Quality Audit Findings (2025-11-30)](AUDIT_FINDINGS_2025_11_30.md)
 
 ## P0 - Blocker
 
-(None)
+_No active P0 bugs._
 
 ---
 
@@ -25,14 +25,34 @@
 
 ## Resolved Bugs
 
+### ~~P0 - Advanced Mode Timeout Yields No Synthesis~~ FIXED
+**File:** `docs/bugs/P0_ADVANCED_MODE_TIMEOUT_NO_SYNTHESIS.md`
+**Found:** 2025-11-30 (Manual Testing)
+**Resolved:** 2025-12-01
+
+- Problem: Advanced mode timed out and displayed "Synthesizing..." but no synthesis occurred.
+- Root Causes:
+  1. Timeout handler yielded misleading message without calling ReportAgent
+  2. Factory used wrong setting (`max_iterations=10` instead of `advanced_max_rounds=5`)
+  3. Missing `get_context_summary()` in ResearchMemory
+- Fix:
+  1. Implemented actual synthesis on timeout via ReportAgent invocation
+  2. Factory now uses `settings.advanced_max_rounds` (5)
+  3. Added `get_context_summary()` to ResearchMemory
+- Tests: `tests/unit/orchestrators/test_advanced_timeout.py`
+- Key files: `src/orchestrators/advanced.py`, `src/orchestrators/factory.py`, `src/services/research_memory.py`
+
 ### ~~P0 - Free Tier Synthesis Incorrectly Uses Server-Side API Keys~~ FIXED
 **File:** `docs/bugs/P1_SYNTHESIS_BROKEN_KEY_FALLBACK.md`
+**PR:** [#103](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/pull/103)
 **Found:** 2025-11-30 (Testing)
 **Resolved:** 2025-11-30
+**Verified:** Free Tier now produces full LLM-synthesized research reports ✅
 
 - Problem: Simple Mode crashed with "OpenAIError" on HuggingFace Spaces when user provided no key but admin key was invalid.
 - Root Cause: Synthesis logic bypassed the Free Tier judge and incorrectly used server-side keys via `get_model()`.
 - Fix: Implemented `synthesize()` in `HFInferenceJudgeHandler` to use free HuggingFace Inference, ensuring consistency with the judge phase.
+- Key files: `src/agent_factory/judges.py`, `src/orchestrators/simple.py`
 
 ### ~~P0 - Synthesis Fails with OpenAIError in Free Mode~~ FIXED
 **File:** `docs/bugs/P0_SYNTHESIS_PROVIDER_MISMATCH.md`

@@ -62,6 +62,35 @@ class JudgeHandlerProtocol(Protocol):
 
 
 @runtime_checkable
+class SynthesizableJudge(Protocol):
+    """Protocol for judge handlers that support free-tier synthesis.
+
+    This protocol enables type-safe tier detection using isinstance() instead
+    of hasattr(), following the recommendation from CodeRabbit review.
+
+    Implementations: HFInferenceJudgeHandler
+
+    Raises:
+        SynthesisError: If all models fail (with context about what was tried)
+    """
+
+    async def synthesize(self, system_prompt: str, user_prompt: str) -> str:
+        """Generate synthesis using free-tier resources.
+
+        Args:
+            system_prompt: System context for synthesis
+            user_prompt: User prompt with evidence to synthesize
+
+        Returns:
+            Synthesized narrative text.
+
+        Raises:
+            SynthesisError: If all models fail, with attempted_models and errors context.
+        """
+        ...
+
+
+@runtime_checkable
 class OrchestratorProtocol(Protocol):
     """Protocol for orchestrators.
 

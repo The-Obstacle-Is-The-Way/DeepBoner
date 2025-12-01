@@ -120,6 +120,32 @@ class ResearchMemory:
 
         return evidence_list
 
+    async def get_context_summary(self) -> str:
+        """Generate a summary of all collected evidence for the final report."""
+        if not self.evidence_ids:
+            return "No evidence collected."
+
+        summary = [f"Research Query: {self.query}\n"]
+
+        # Add Hypotheses
+        if self.hypotheses:
+            summary.append("## Hypotheses")
+            for h in self.hypotheses:
+                summary.append(f"- {h.statement} (Conf: {h.confidence})")
+            summary.append("")
+
+        # Add Top Evidence (limit to avoid token overflow)
+        # We use get_all_evidence() but might need to summarize if too large
+        evidence = self.get_all_evidence()
+        summary.append(f"## Evidence ({len(evidence)} items)")
+
+        # Group by source for cleaner summary
+        for i, ev in enumerate(evidence[:20], 1):  # Limit to top 20 items
+            summary.append(f"{i}. {ev.citation.title} ({ev.citation.date})")
+            summary.append(f"   {ev.content[:200]}...")  # Brief snippet
+
+        return "\n".join(summary)
+
     def add_hypothesis(self, hypothesis: Hypothesis) -> None:
         """Add a hypothesis to tracking."""
         self.hypotheses.append(hypothesis)

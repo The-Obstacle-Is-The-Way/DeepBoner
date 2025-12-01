@@ -253,12 +253,51 @@ The final output should be a structured research report."""
 
         except TimeoutError:
             logger.warning("Workflow timed out", iterations=iteration)
-            yield AgentEvent(
-                type="complete",
-                message="Research timed out. Synthesizing available evidence...",
-                data={"reason": "timeout", "iterations": iteration},
-                iteration=iteration,
-            )
+
+            # ACTUALLY synthesize from gathered evidence
+            try:
+                from src.agents.magentic_agents import create_report_agent
+                from src.agents.state import get_magentic_state
+
+                state = get_magentic_state()
+                memory = state.memory
+
+                # Get evidence summary from memory
+                evidence_summary = await memory.get_context_summary()
+
+                # Create and invoke ReportAgent for synthesis
+                report_agent = create_report_agent(self._chat_client, domain=self.domain)
+
+                yield AgentEvent(
+                    type="synthesizing",
+                    message="Workflow timed out. Synthesizing available evidence...",
+                    iteration=iteration,
+                )
+
+                # Invoke ReportAgent directly
+                # Note: ChatAgent.run() returns the final response string
+                synthesis_result = await report_agent.run(
+                    "Synthesize research report from this evidence. "
+                    f"If evidence is sparse, say so.\n\n{evidence_summary}"
+                )
+
+                yield AgentEvent(
+                    type="complete",
+                    message=str(synthesis_result),
+                    data={"reason": "timeout_synthesis", "iterations": iteration},
+                    iteration=iteration,
+                )
+            except Exception as synth_error:
+                logger.error("Timeout synthesis failed", error=str(synth_error))
+                yield AgentEvent(
+                    type="complete",
+                    message=(
+                        f"Research timed out after {iteration} rounds. "
+                        f"Evidence gathered but synthesis failed: {synth_error}"
+                    ),
+                    data={"reason": "timeout_synthesis_failed", "iterations": iteration},
+                    iteration=iteration,
+                )
 
         except Exception as e:
             logger.error("Workflow failed", error=str(e))

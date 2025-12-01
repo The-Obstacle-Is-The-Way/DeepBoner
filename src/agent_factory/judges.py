@@ -230,6 +230,17 @@ class HFInferenceJudgeHandler:
     """
     JudgeHandler using HuggingFace Inference API for FREE LLM calls.
     Defaults to Llama-3.1-8B-Instruct (requires HF_TOKEN) or falls back to public models.
+
+    Important: Handler Instance Lifecycle
+    -------------------------------------
+    This handler maintains query-scoped state (consecutive_failures, last_question).
+    Create a NEW instance per research query to avoid state leakage between users.
+
+    In the current architecture (app.py), a new handler is created per Gradio request,
+    so this is safe. However, if refactoring to share handlers across requests (e.g.,
+    connection pooling), the state management would need to be redesigned.
+
+    See CodeRabbit review PR #104 for details on this architectural consideration.
     """
 
     FALLBACK_MODELS: ClassVar[list[str]] = [
@@ -318,14 +329,21 @@ class HFInferenceJudgeHandler:
                 self.consecutive_failures = 0  # Reset on success
                 return result
             except Exception as e:
-                # Check for 402/Quota errors to fail fast
+                # Check for 402/Quota AND 429/Rate-limit errors to fail fast
+                # (CodeRabbit review: added 429 handling)
                 error_str = str(e)
-                if (
-                    "402" in error_str
-                    or "quota" in error_str.lower()
-                    or "payment required" in error_str.lower()
+                if any(
+                    indicator in error_str.lower()
+                    for indicator in [
+                        "402",
+                        "quota",
+                        "payment required",
+                        "429",
+                        "rate limit",
+                        "too many requests",
+                    ]
                 ):
-                    logger.error("HF Quota Exhausted", error=error_str)
+                    logger.error("HF API limit reached", error=error_str)
                     return self._create_quota_exhausted_assessment(question, evidence)
 
                 logger.warning("Model failed", model=model, error=str(e))
@@ -556,7 +574,7 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
             reasoning=f"HF Inference failed: {error}. Recommend configuring OpenAI/Anthropic key.",
         )
 
-    async def synthesize(self, system_prompt: str, user_prompt: str) -> str | None:
+    async def synthesize(self, system_prompt: str, user_prompt: str) -> str:
         """
         Synthesize a research report using free HuggingFace Inference.
 
@@ -564,10 +582,16 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
         consistent behavior across judge AND synthesis.
 
         Returns:
-            Narrative text if successful, None if all models fail.
+            Narrative text if successful.
+
+        Raises:
+            SynthesisError: If all models fail, with context about what was tried.
         """
+        from src.utils.exceptions import SynthesisError
+
         loop = asyncio.get_running_loop()
         models_to_try = [self.model_id] if self.model_id else self.FALLBACK_MODELS
+        errors: list[str] = []
 
         messages = [
             {"role": "system", "content": system_prompt},
@@ -591,12 +615,21 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
                 if content and len(content.strip()) > 50:
                     logger.info("HF synthesis success", model=model, chars=len(content))
                     return content.strip()
+                # Response too short - log and try next model
+                length = len(content.strip()) if content else 0
+                errors.append(f"{model}: Response too short ({length} chars)")
+                logger.warning("HF synthesis response too short", model=model, length=length)
             except Exception as e:
+                errors.append(f"{model}: {e!s}")
                 logger.warning("HF synthesis model failed", model=model, error=str(e))
                 continue
 
-        logger.error("All HF synthesis models failed")
-        return None
+        logger.error("All HF synthesis models failed", models=models_to_try, errors=errors)
+        raise SynthesisError(
+            "All HuggingFace synthesis models failed",
+            attempted_models=models_to_try,
+            errors=errors,
+        )
 
 
 class MockJudgeHandler:
