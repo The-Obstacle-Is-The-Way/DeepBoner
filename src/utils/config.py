@@ -1,6 +1,7 @@
 """Application configuration using Pydantic Settings."""
 
 import logging
+import os
 from typing import Literal
 
 import structlog
@@ -42,7 +43,9 @@ class Settings(BaseSettings):
         default="Qwen/Qwen2.5-72B-Instruct", description="HuggingFace model name"
     )
     hf_token: str | None = Field(
-        default=None, alias="HF_TOKEN", description="HuggingFace API token"
+        default_factory=lambda: os.environ.get("HF_TOKEN"),
+        alias="HF_TOKEN",
+        description="HuggingFace API token",
     )
 
     # Embedding Configuration
