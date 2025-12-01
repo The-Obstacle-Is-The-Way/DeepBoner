@@ -358,16 +358,45 @@ The final output should be a structured research report."""
             return "synthesizing"
         return "judging"  # Default for unknown agents
 
+    def _smart_truncate(self, text: str, max_len: int = 200) -> str:
+        """Truncate at sentence boundary to avoid cutting words."""
+        if len(text) <= max_len:
+            return text
+        # Find last sentence boundary before limit
+        truncated = text[:max_len]
+        last_period = truncated.rfind(". ")
+        if last_period > max_len // 2:
+            return truncated[: last_period + 1]
+        # Fallback to word boundary
+        return truncated.rsplit(" ", 1)[0] + "..."
+
     def _process_event(self, event: Any, iteration: int) -> AgentEvent | None:
         """Process workflow event into AgentEvent."""
         if isinstance(event, MagenticOrchestratorMessageEvent):
-            text = self._extract_text(event.message)
-            if text:
+            # FILTERING: Skip internal framework bookkeeping
+            if event.kind in ("task_ledger", "instruction"):
+                return None
+
+            # TRANSFORMATION: Handle user_task BEFORE text extraction
+            # (user_task uses static message, doesn't need text content)
+            if event.kind == "user_task":
                 return AgentEvent(
-                    type="judging",
-                    message=f"Manager ({event.kind}): {text[:200]}...",
+                    type="progress",
+                    message="Manager assigning research task to agents...",
                     iteration=iteration,
                 )
+
+            # For other manager events, extract and validate text
+            text = self._extract_text(event.message)
+            if not text:
+                return None
+
+            # Default fallback for other manager events
+            return AgentEvent(
+                type="judging",
+                message=f"Manager ({event.kind}): {self._smart_truncate(text)}",
+                iteration=iteration,
+            )
 
         elif isinstance(event, MagenticAgentMessageEvent):
             agent_name = event.agent_id or "unknown"
@@ -377,7 +406,7 @@ The final output should be a structured research report."""
             # All returned types are valid AgentEvent.type literals
             return AgentEvent(
                 type=event_type,  # type: ignore[arg-type]
-                message=f"{agent_name}: {text[:200]}...",
+                message=f"{agent_name}: {self._smart_truncate(text)}",
                 iteration=iteration + 1,
             )
 

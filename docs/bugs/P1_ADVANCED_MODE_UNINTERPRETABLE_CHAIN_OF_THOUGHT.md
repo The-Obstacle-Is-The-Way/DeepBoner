@@ -2,8 +2,9 @@
 
 **Priority**: P1 (UX Degradation)
 **Component**: `src/orchestrators/advanced.py`
-**Status**: Open
+**Status**: Fix Ready (PR #107 open)
 **Issue**: [#106](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/106)
+**PR**: [#107](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/pull/107)
 **Created**: 2025-12-01
 
 ## Summary
@@ -14,6 +15,16 @@ The Advanced orchestrator exposes raw internal framework events from `agent-fram
 2. Use internal framework terminology (`user_task`, `task_ledger`, `instruction`)
 3. Shown with misleading "JUDGING" event type
 4. Not meaningful to end users
+
+## Resolution
+
+Implemented "Smart Filter + Transform" logic in `src/orchestrators/advanced.py`:
+
+1. **Filtered**: `task_ledger` and `instruction` events are now hidden.
+2. **Transformed**: `user_task` events are mapped to `type="progress"` with a friendly "Manager assigning research task..." message.
+3. **Smart Truncation**: Text is now truncated at sentence boundaries or word boundaries, preventing mid-word cuts.
+
+Verified with new unit tests in `tests/unit/orchestrators/test_advanced_events.py`.
 
 ## Example of Bad Output
 
