@@ -116,9 +116,10 @@ Given the rapid advancements, as of November 29, 2025, the DeepBoner project use
 - **Anthropic:** `claude-sonnet-4-5-20250929`
   - This is the mid-range Claude 4.5 model, released on September 29, 2025.
   - The flagship `Claude Opus 4.5` (released November 24, 2025) is also available and can be configured by advanced users for enhanced capabilities.
-- **HuggingFace (Free Tier):** `Qwen/Qwen2.5-72B-Instruct`
-  - Changed from Llama-3.1-70B (Dec 2025) due to HuggingFace routing Llama to Hyperbolic provider which has unreliable "staging mode" auth.
-  - Qwen 2.5 72B offers comparable quality and works reliably via HuggingFace's native infrastructure.
+- **HuggingFace (Free Tier):** `Qwen/Qwen2.5-7B-Instruct`
+  - Large models (70B+) are routed to third-party providers (Novita, Hyperbolic) with unreliable free tiers.
+  - Qwen 2.5 7B is small enough to run on HuggingFace's native serverless infrastructure.
+  - See `HF_FREE_TIER_ANALYSIS.md` for detailed analysis.
 
 It is crucial to keep these defaults updated as the LLM landscape evolves.
 
