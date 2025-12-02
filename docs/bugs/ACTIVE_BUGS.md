@@ -1,33 +1,41 @@
 # Active Bugs
 
-> Last updated: 2025-12-01 (21:00 PST)
+> Last updated: 2025-12-02 (07:30 EST)
 >
 > **Note:** Completed bug docs archived to `docs/bugs/archive/`
 > **See also:** [Code Quality Audit Findings (2025-11-30)](AUDIT_FINDINGS_2025_11_30.md)
 > **See also:** [ARCHITECTURE.md](../ARCHITECTURE.md) for unified architecture plan
 
-## P0 - Critical (BLOCKED)
+## P1 - High (ACTIVE)
 
-### Free Tier Broken (Upstream #2562)
+### HuggingFace Novita Provider 500 Error
 
-**Issue:** [#105](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/105), [#113](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/113)
-**Status:** BLOCKED - Waiting for upstream PR #2566
+**File:** `docs/bugs/P1_HUGGINGFACE_NOVITA_500_ERROR.md`
+**Status:** ACTIVE - Upstream Infrastructure Issue
 
-**Problem:** Free tier (Advanced Mode + HuggingFace) shows repr garbage output.
+**Problem:** Free tier (no API key) fails with 500 error from Novita provider.
 
-**Cause:** Microsoft Agent Framework upstream bug #2562.
+**Cause:** HuggingFace routes Qwen/Qwen2.5-72B-Instruct to Novita (third-party), and Novita is returning 500 errors.
 
-**Fix:** Upstream PR #2566 will fix this. Once merged:
-1. Update `agent-framework` dependency
-2. Verify Advanced + HuggingFace works
-3. Unified architecture complete
-
-**Architecture Note:** We have ONE unified architecture. `simple.py` is deleted.
-Simple Mode behavior is INTEGRATED via `HuggingFaceChatClient`, not a parallel orchestrator.
+**Fix Options:**
+1. Switch to a model hosted natively by HuggingFace
+2. Implement fallback model logic
+3. Wait for Novita to fix their infrastructure
 
 ---
 
 ## Resolved Bugs
+
+### ~~P0 - Repr Bug (Display Garbage)~~ FIXED
+
+**File:** `P0_REPR_BUG_ROOT_CAUSE_ANALYSIS.md`, `docs/specs/SPEC_17_ACCUMULATOR_PATTERN.md`
+**Found:** 2025-12-01
+**Resolved:** 2025-12-02 (PR #117)
+
+- Problem: Free tier showed `<agent_framework._types.ChatMessage object at 0x...>` instead of text
+- Root Cause: We were using API incorrectly - reading from `MagenticAgentMessageEvent.message` instead of `MagenticAgentDeltaEvent.text`
+- Fix: Implemented **Accumulator Pattern** (SPEC-17) - bypasses the upstream bug by using the API correctly
+- Note: Upstream fix (PR #2566) is now moot - we don't need it anymore
 
 ### ~~P0 - AIFunction Not JSON Serializable~~ FIXED
 
