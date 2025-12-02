@@ -257,9 +257,14 @@ def _determine_mode(explicit_mode: str | None, api_key: str | None) -> str:
 ```
 
 This requires:
-1. **Restore `simple.py`** from git history or MCP space reference
-2. **Update factory** to auto-detect mode
-3. **Test** both paths work
+1. **Implement Simple Mode cleanly** (DO NOT blindly restore old buggy code)
+2. **Consider git revert** in this repo - MAY be possible but review for bugs first
+3. **DO NOT use MCP reference repo** - that implementation has known bugs
+4. **Update factory** to auto-detect mode
+5. **Test** both paths work
+
+> ⚠️ **WARNING**: The MCP reference repo contains buggy implementation.
+> If restoring from git history, use THIS repo only and carefully review for bugs.
 
 **Long-term**: Once upstream #2566 merges, we can revisit Unified Architecture.
 

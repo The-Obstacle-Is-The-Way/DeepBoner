@@ -54,7 +54,9 @@
 
 - Problem: Simple Mode was deleted before verifying Advanced+HF worked.
 - Advanced Mode + HuggingFace has upstream repr bug (#2562).
-- **Required Fix**: Restore `simple.py` from git history or MCP reference repo.
+- **Required Fix**: Implement Simple Mode cleanly (DO NOT blindly restore old buggy code).
+- **NOTE**: Git revert in this repo MAY be possible but needs careful review for bugs.
+- **WARNING**: Do NOT use MCP reference repo - that implementation has bugs.
 
 ### ~~P1 - Advanced Mode Exposes Uninterpretable Chain-of-Thought~~ FIXED
 **File:** `docs/bugs/P1_ADVANCED_MODE_UNINTERPRETABLE_CHAIN_OF_THOUGHT.md`

@@ -38,10 +38,15 @@
 
 ### Required Action
 
-1. **RESTORE** `simple.py` from git history or MCP reference repo
-2. **RESTORE** `search_handler.py`
-3. **UPDATE** factory to auto-detect mode (Simple for free tier)
-4. **KEEP** Simple Mode indefinitely until upstream is verified fixed
+1. **IMPLEMENT** Simple Mode cleanly (DO NOT blindly restore old buggy code)
+2. **CONSIDER** git revert in this repo - MAY be possible but review for bugs first
+3. **DO NOT** use MCP reference repo - that implementation has known bugs
+4. **UPDATE** factory to auto-detect mode (Simple for free tier)
+5. **KEEP** Simple Mode indefinitely until upstream is verified fixed
+
+> ⚠️ **WARNING**: The MCP reference repo (`reference_repos/mcp-deepboner`) contains buggy
+> implementation code. Do NOT copy from there. If restoring, use git history from THIS
+> repo only, and carefully review for bugs before merging.
 
 ---
 
