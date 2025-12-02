@@ -5,6 +5,7 @@ This tests SPEC 17: We use MagenticAgentDeltaEvent.text as the sole source of co
 and MagenticAgentMessageEvent as a signal only (ignoring .message to avoid repr bug).
 """
 
+import importlib
 import sys
 import types
 from unittest.mock import MagicMock, patch
@@ -12,7 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
-# --- Create real event classes BEFORE mocking agent_framework ---
+# --- Create real event classes ---
 class MockDeltaEvent:
     """Simulates MagenticAgentDeltaEvent with streaming text."""
 
@@ -43,10 +44,10 @@ class MockFinalResultEvent:
 class MockOrchestratorMessageEvent:
     """Simulates MagenticOrchestratorMessageEvent."""
 
-    def __init__(self, kind: str = "user_task"):
+    def __init__(self, kind: str = "user_task", message: str = "test"):
         self.kind = kind
         self.message = MagicMock()
-        self.message.text = "test"
+        self.message.text = message
 
 
 class MockWorkflowOutputEvent:
@@ -54,26 +55,6 @@ class MockWorkflowOutputEvent:
 
     def __init__(self, data=None):
         self.data = data
-
-
-# --- MOCK SETUP: Use our real classes as the event types ---
-mock_af = types.ModuleType("agent_framework")
-sys.modules["agent_framework"] = mock_af
-
-mock_af_openai = types.ModuleType("agent_framework.openai")
-sys.modules["agent_framework.openai"] = mock_af_openai
-
-mock_af_middleware = types.ModuleType("agent_framework._middleware")
-sys.modules["agent_framework._middleware"] = mock_af_middleware
-
-mock_af_tools = types.ModuleType("agent_framework._tools")
-sys.modules["agent_framework._tools"] = mock_af_tools
-
-mock_af_types = types.ModuleType("agent_framework._types")
-sys.modules["agent_framework._types"] = mock_af_types
-
-mock_af_observability = types.ModuleType("agent_framework.observability")
-sys.modules["agent_framework.observability"] = mock_af_observability
 
 
 # Pass-through decorators
@@ -85,41 +66,97 @@ def mock_use_observability(func=None):
     return func if func else lambda f: f
 
 
-# Assign our REAL event classes as the module-level types
-# This way isinstance() will work correctly
-mock_af.MagenticAgentDeltaEvent = MockDeltaEvent
-mock_af.MagenticAgentMessageEvent = MockMessageEvent
-mock_af.MagenticFinalResultEvent = MockFinalResultEvent
-mock_af.MagenticOrchestratorMessageEvent = MockOrchestratorMessageEvent
-mock_af.WorkflowOutputEvent = MockWorkflowOutputEvent
-mock_af.MagenticBuilder = MagicMock
-mock_af.ChatAgent = MagicMock
-mock_af.ai_function = MagicMock
-mock_af.BaseChatClient = MagicMock
-mock_af.ToolProtocol = MagicMock
-mock_af.ChatMessage = MagicMock
-mock_af.ChatResponse = MagicMock
-mock_af.ChatResponseUpdate = MagicMock
-mock_af.ChatOptions = MagicMock
-mock_af.FinishReason = MagicMock
-mock_af.Role = MagicMock
+@pytest.fixture
+def mock_agent_framework():
+    """
+    Mock the agent_framework module structure in sys.modules.
+    """
+    # Create the mock module structure
+    mock_af = types.ModuleType("agent_framework")
+    mock_af_openai = types.ModuleType("agent_framework.openai")
+    mock_af_middleware = types.ModuleType("agent_framework._middleware")
+    mock_af_tools = types.ModuleType("agent_framework._tools")
+    mock_af_types = types.ModuleType("agent_framework._types")
+    mock_af_observability = types.ModuleType("agent_framework.observability")
 
-mock_af_openai.OpenAIChatClient = MagicMock
-mock_af_middleware.use_chat_middleware = MagicMock
-mock_af_tools.use_function_invocation = mock_use_function_invocation
-mock_af_types.FunctionCallContent = MagicMock
-mock_af_types.FunctionResultContent = MagicMock
-mock_af_observability.use_observability = mock_use_observability
+    # Populate submodules
+    mock_af.openai = mock_af_openai
+    mock_af._middleware = mock_af_middleware
+    mock_af._tools = mock_af_tools
+    mock_af._types = mock_af_types
+    mock_af.observability = mock_af_observability
 
-# --- MOCK SETUP END ---
+    # Assign our REAL event classes as the module-level types
+    mock_af.MagenticAgentDeltaEvent = MockDeltaEvent
+    mock_af.MagenticAgentMessageEvent = MockMessageEvent
+    mock_af.MagenticFinalResultEvent = MockFinalResultEvent
+    mock_af.MagenticOrchestratorMessageEvent = MockOrchestratorMessageEvent
+    mock_af.WorkflowOutputEvent = MockWorkflowOutputEvent
 
-# Now import the orchestrator - it will use our mock event types
-from src.orchestrators.advanced import AdvancedOrchestrator  # noqa: E402
+    # Mock other classes
+    mock_af.MagenticBuilder = MagicMock
+    mock_af.ChatAgent = MagicMock
+    mock_af.ai_function = MagicMock
+    mock_af.BaseChatClient = MagicMock
+    mock_af.ToolProtocol = MagicMock
+    mock_af.ChatMessage = MagicMock
+    mock_af.ChatResponse = MagicMock
+    mock_af.ChatResponseUpdate = MagicMock
+    mock_af.ChatOptions = MagicMock
+    mock_af.FinishReason = MagicMock
+    mock_af.Role = MagicMock
+
+    # Populate symbols in submodules
+    mock_af_openai.OpenAIChatClient = MagicMock
+    mock_af_middleware.use_chat_middleware = MagicMock
+    mock_af_tools.use_function_invocation = mock_use_function_invocation
+    mock_af_types.FunctionCallContent = MagicMock
+    mock_af_types.FunctionResultContent = MagicMock
+    mock_af_observability.use_observability = mock_use_observability
+
+    # Patch sys.modules to include our mocks
+    with patch.dict(
+        sys.modules,
+        {
+            "agent_framework": mock_af,
+            "agent_framework.openai": mock_af_openai,
+            "agent_framework._middleware": mock_af_middleware,
+            "agent_framework._tools": mock_af_tools,
+            "agent_framework._types": mock_af_types,
+            "agent_framework.observability": mock_af_observability,
+        },
+    ):
+        yield mock_af
+
+
+@pytest.fixture(scope="module", autouse=True)
+def cleanup_orchestrator_module():
+    """
+    Ensure src.orchestrators.advanced is restored to a clean state after tests.
+    This prevents 'Mock' classes from leaking into other tests via module globals.
+    """
+    yield
+    # After all tests in this module, reload the orchestrator module
+    # This will use the REAL agent_framework (since the mock fixture is teardown)
+    import src.orchestrators.advanced
+
+    importlib.reload(src.orchestrators.advanced)
 
 
 @pytest.fixture
-def mock_orchestrator():
-    """Create an AdvancedOrchestrator with all dependencies mocked."""
+def mock_orchestrator(mock_agent_framework):
+    """
+    Create an AdvancedOrchestrator with all dependencies mocked.
+    Relies on reloading the module to pick up the mocked agent_framework.
+    """
+    # Import locally
+    import src.orchestrators.advanced
+
+    # RELOAD to ensure it picks up the mocked agent_framework from sys.modules
+    importlib.reload(src.orchestrators.advanced)
+
+    from src.orchestrators.advanced import AdvancedOrchestrator
+
     with (
         patch("src.orchestrators.advanced.get_chat_client"),
         patch("src.orchestrators.advanced.get_embedding_service_if_available", return_value=None),
