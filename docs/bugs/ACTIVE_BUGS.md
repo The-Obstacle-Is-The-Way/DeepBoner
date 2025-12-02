@@ -36,16 +36,25 @@
 - Fix: Generated new valid HF_TOKEN, updated `.env` and Spaces secrets
 - Also switched default model to `Qwen/Qwen2.5-72B-Instruct` for better reliability
 
-### ~~P0 - Simple Mode Ignores Forced Synthesis~~ FIXED
+### P0 - Simple Mode Ignores Forced Synthesis - **NEEDS PATCH**
 **File:** `docs/bugs/P0_SIMPLE_MODE_FORCED_SYNTHESIS_BYPASS.md`
 **Issue:** [#113](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/113)
-**PR:** [#115](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/pull/115) (SPEC-16)
 **Found:** 2025-12-01
-**Resolved:** 2025-12-01
+**Status:** **OPEN - Needs simple.py patch**
 
 - Problem: Simple Mode ignored forced synthesis signals from Judge.
-- Fix: SPEC-16 unified architecture - removed Simple Mode entirely, integrated HuggingFace into Advanced Mode.
-- Simple Mode code deleted, capability preserved via `HuggingFaceChatClient` adapter.
+- **CORRECTION**: Simple Mode is NOT being deleted. The SPEC-16 approach was premature.
+- **Required Fix**: Patch `_should_synthesize()` in `simple.py` to respect forced synthesis.
+- **Note**: Simple Mode MUST be restored as free-tier fallback (deleted prematurely).
+
+### P1 - Simple Mode Removal Breaks Free Tier UX - **NEW**
+**File:** `docs/bugs/P1_SIMPLE_MODE_REMOVED_BREAKS_FREE_TIER_UX.md`
+**Found:** 2025-12-01
+**Status:** **OPEN - Restore Simple Mode**
+
+- Problem: Simple Mode was deleted before verifying Advanced+HF worked.
+- Advanced Mode + HuggingFace has upstream repr bug (#2562).
+- **Required Fix**: Restore `simple.py` from git history or MCP reference repo.
 
 ### ~~P1 - Advanced Mode Exposes Uninterpretable Chain-of-Thought~~ FIXED
 **File:** `docs/bugs/P1_ADVANCED_MODE_UNINTERPRETABLE_CHAIN_OF_THOUGHT.md`

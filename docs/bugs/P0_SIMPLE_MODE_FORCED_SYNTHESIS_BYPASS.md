@@ -1,19 +1,25 @@
 # P0 BUG: Simple Mode Ignores Forced Synthesis from HF Inference Failures
 
-**Status**: Open → **Fix via SPEC_16 (Integration)**
+**Status**: OPEN - **Needs patch in simple.py**
 **Priority**: P0 (Demo-blocking)
 **Discovered**: 2025-12-01
 **Affected Component**: `src/orchestrators/simple.py`
-**Strategic Fix**: [SPEC_16: Unified Chat Client Architecture](../specs/SPEC_16_UNIFIED_CHAT_CLIENT_ARCHITECTURE.md)
 **GitHub Issue**: [#113](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/113)
 
-> **Decision**: Instead of patching Simple Mode, we will **INTEGRATE its capability into Advanced Mode** per SPEC_16.
+---
+
+## ⚠️ CRITICAL CLARIFICATION: Simple Mode is NOT Being Deleted
+
+> **SIMPLE MODE MUST BE KEPT** as the free-tier fallback.
 >
-> **What this means:**
-> - ✅ Free-tier HuggingFace capability is PRESERVED via `HuggingFaceChatClient`
-> - ✅ Users without API keys still get full functionality (Advanced Mode + HuggingFace backend)
-> - 🗑️ Simple Mode's redundant orchestration CODE is retired (not the capability!)
-> - 🐛 The bug disappears because Advanced Mode's Manager agent handles termination correctly
+> The previous decision to "delete Simple Mode and unify on Advanced Mode" was **PREMATURE**.
+> Advanced Mode + HuggingFace has an upstream bug (#2562) that breaks the display.
+>
+> **Correct approach:**
+> - ✅ **KEEP** Simple Mode as the default for free-tier users (no API key)
+> - ✅ **FIX** this bug by patching `_should_synthesize()` in simple.py
+> - ✅ **USE** Advanced Mode only when paid API key is available
+> - ❌ **DO NOT DELETE** Simple Mode until upstream bug is fixed AND verified
 
 ---
 
@@ -100,47 +106,49 @@ def _should_synthesize(self, assessment, iteration, max_iterations, evidence_cou
 
 ## Proposed Fix
 
-### ~~Option A: Patch Simple Mode~~ (REJECTED)
+### ✅ Option A: Patch Simple Mode (APPROVED)
 
-We considered patching `_should_synthesize()` to respect forced synthesis signals. However, this adds MORE complexity to an already complex system that we plan to delete.
+Patch `_should_synthesize()` to respect forced synthesis signals:
 
-### ✅ Strategic Fix: SPEC_16 Unification (APPROVED)
+```python
+# src/orchestrators/simple.py
+def _should_synthesize(self, assessment, iteration, max_iterations, evidence_count):
+    # NEW: Priority 0 - Forced synthesis from error recovery
+    # When judge explicitly says "synthesize" with forced=True, DO IT
+    if assessment.sufficient and assessment.recommendation == "synthesize":
+        if getattr(assessment, 'forced', False):
+            return True, "forced_synthesis"
 
-**Delete Simple Mode entirely and unify on Advanced Mode.**
+    combined_score = mechanism_score + clinical_evidence_score
 
-See: [SPEC_16: Unified Chat Client Architecture](../specs/SPEC_16_UNIFIED_CHAT_CLIENT_ARCHITECTURE.md)
+    # Rest of existing logic...
+```
 
-The implementation path:
+### ~~Option B: SPEC_16 Unification~~ (DEFERRED)
 
-1. **Phase 1**: Create `HuggingFaceChatClient` adapter (~150 lines)
-   - Implements `agent_framework.BaseChatClient`
-   - Wraps `huggingface_hub.InferenceClient`
-   - Enables Advanced Mode to work with free tier
+The original plan was to delete Simple Mode and unify on Advanced Mode. **This was PREMATURE**.
 
-2. **Phase 2**: Delete Simple Mode
-   - Remove `src/orchestrators/simple.py` (~778 lines)
-   - Remove `src/tools/search_handler.py` (~219 lines)
-   - Update factory to always use `AdvancedOrchestrator`
+**Why it failed:**
+1. Advanced Mode + HuggingFace has upstream bug (#2562) - repr garbage output
+2. Simple Mode was deleted BEFORE verifying Advanced+HF worked
+3. No fallback exists for free-tier users
 
-3. **Why this works**: Advanced Mode uses Microsoft Agent Framework's built-in termination. When JudgeAgent returns "SUFFICIENT EVIDENCE" (per SPEC_15), the Manager agent immediately delegates to ReportAgent. **No custom `_should_synthesize()` thresholds needed.**
-
-### Why Unification > Patching
-
-| Approach | Lines Changed | Bug Fixed? | Technical Debt |
-|----------|---------------|------------|----------------|
-| Patch Simple Mode | +20 lines | Temporarily | Adds complexity |
-| **SPEC_16 Unification** | **-997 lines** | **Permanently** | **Eliminates 778 lines** |
+**Correct order:**
+1. ✅ Keep Simple Mode as free-tier fallback
+2. ✅ Patch this bug in simple.py
+3. ⏳ Wait for upstream #2562 fix
+4. ⏳ THEN consider unification (maybe)
 
 ---
 
-## Files to DELETE (via SPEC_16)
+## Files to KEEP
 
 | File | Lines | Reason |
 |------|-------|--------|
-| `src/orchestrators/simple.py` | 778 | Contains buggy `_should_synthesize()` - entire file deleted |
-| `src/tools/search_handler.py` | 219 | Manager agent handles orchestration in Advanced Mode |
+| `src/orchestrators/simple.py` | 778 | **KEEP** - Free tier fallback |
+| `src/tools/search_handler.py` | 219 | **KEEP** - Required by Simple Mode |
 
-## Files to CREATE (via SPEC_16)
+## Files Already Created (for future unification)
 
 | File | Lines | Purpose |
 |------|-------|---------|
@@ -148,19 +156,17 @@ The implementation path:
 | `src/clients/factory.py` | ~50 | `get_chat_client()` factory |
 | `src/clients/huggingface.py` | ~150 | `HuggingFaceChatClient` adapter |
 
-**Net change: -997 lines deleted, +210 lines added = ~787 lines removed**
+**These are useful for Advanced Mode + HuggingFace, but Simple Mode is still needed.**
 
 ---
 
-## Acceptance Criteria (SPEC_16 Implementation)
+## Acceptance Criteria (Simple Mode Patch)
 
-- [ ] `HuggingFaceChatClient` implements `agent_framework.BaseChatClient`
-- [ ] `get_chat_client()` returns HuggingFace client when no OpenAI key
-- [ ] `AdvancedOrchestrator` works with HuggingFace backend
-- [ ] `simple.py` is deleted (778 lines removed)
-- [ ] Free tier users get Advanced Mode with HuggingFace
+- [ ] `_should_synthesize()` respects forced synthesis signals
+- [ ] Add `forced` attribute to `JudgeAssessment` in error recovery
 - [ ] No more "continue_searching" loops when HF fails
-- [ ] Manager agent respects "SUFFICIENT EVIDENCE" signal (SPEC_15)
+- [ ] Simple Mode remains the default for free-tier users
+- [ ] Simple Mode works correctly on HuggingFace Spaces
 
 ---
 

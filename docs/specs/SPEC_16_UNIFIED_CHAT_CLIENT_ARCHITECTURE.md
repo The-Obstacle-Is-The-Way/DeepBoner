@@ -1,44 +1,53 @@
 # SPEC_16: Unified Chat Client Architecture
 
-**Status**: PARTIALLY IMPLEMENTED - **ROLLBACK REQUIRED**
-**Priority**: P0 (Fixes Critical Bug #113)
-**Issue**: Updates [#105](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/105), [#109](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/109), **[#113](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/113)** (P0 Bug)
+**Status**: ON HOLD - **Simple Mode Must Be Restored First**
+**Priority**: P2 (Deferred until upstream bug is fixed)
+**Issue**: Updates [#105](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/105), [#109](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/109)
 **Created**: 2025-12-01
 **Last Updated**: 2025-12-01
 
 ---
 
-## ⛔ CRITICAL WARNING: PREMATURE IMPLEMENTATION
+## ⛔ SIMPLE MODE IS NOT BEING DELETED
 
-**Simple Mode was deleted BEFORE verifying Advanced Mode + HuggingFace worked in production.**
+> **This is NON-NEGOTIABLE. Simple Mode MUST remain in the codebase.**
 
-### What Happened
+### The Rule
 
-| Step | Expected | Actual |
-|------|----------|--------|
-| 1. Create HuggingFaceChatClient | ✅ Done | ✅ Done |
-| 2. Test Advanced+HF in production | Verify no regressions | ❌ **SKIPPED** |
-| 3. Delete Simple Mode | Only after verification | ❌ Deleted prematurely |
-| 4. Discover upstream bug | - | Found repr bug #2562 |
-| 5. No fallback exists | - | Users see garbage |
+| Tier | Mode | Backend |
+|------|------|---------|
+| **Free (no API key)** | **Simple Mode** | HuggingFace via Pydantic AI |
+| **Paid (OpenAI key)** | Advanced Mode | OpenAI via Agent Framework |
+| **Paid (Anthropic key)** | Advanced Mode | Anthropic via Agent Framework |
 
-### Current State (Broken)
+### Why Simple Mode Cannot Be Deleted
 
-- **Free tier users** → Advanced Mode + HuggingFace → **REPR GARBAGE**
-- **Paid users** → Advanced Mode + OpenAI → Works fine
-- **Simple Mode** → **DELETED** → No fallback available
+1. **Upstream Bug #2562**: Advanced Mode + HuggingFace shows repr garbage
+2. **No Fallback**: If Simple Mode is deleted, free-tier users have no working option
+3. **Different Stacks**: Simple Mode uses Pydantic AI (works), Advanced uses Agent Framework (has bug)
+
+### What Went Wrong (Lesson Learned)
+
+| Date | Action | Result |
+|------|--------|--------|
+| Nov 2025 | Deleted `simple.py` (778 lines) | ❌ PREMATURE |
+| Dec 1, 2025 | Discovered upstream repr bug | Free tier broken |
+| Dec 1, 2025 | No Simple Mode to fall back to | Users see garbage |
+
+**Simple Mode was deleted BEFORE verifying Advanced+HuggingFace worked.**
 
 ### Required Action
 
-**Restore Simple Mode as free-tier fallback** until upstream PR #2566 merges.
-
-See: [P1 Bug: Simple Mode Removal](../bugs/P1_SIMPLE_MODE_REMOVED_BREAKS_FREE_TIER_UX.md)
+1. **RESTORE** `simple.py` from git history or MCP reference repo
+2. **RESTORE** `search_handler.py`
+3. **UPDATE** factory to auto-detect mode (Simple for free tier)
+4. **KEEP** Simple Mode indefinitely until upstream is verified fixed
 
 ---
 
-## ⚠️ CRITICAL CLARIFICATION: Integration, Not Deletion
+## ⚠️ SPEC INTENT: Integration, Not Deletion
 
-**This spec INTEGRATES Simple Mode's free-tier capability into Advanced Mode.**
+**This spec was SUPPOSED to integrate Simple Mode's capability, NOT delete it.**
 
 | What We're Doing | What We're NOT Doing |
 |------------------|----------------------|
