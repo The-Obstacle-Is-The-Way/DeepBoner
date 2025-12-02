@@ -19,7 +19,7 @@ The bug will NOT be fixed by restoring Simple Mode. Instead, it will be **automa
 
 When HuggingFace Inference API failed, Simple Mode's `_should_synthesize()` ignored forced synthesis signals due to overly strict thresholds.
 
-```
+```text
 ✅ JUDGE_COMPLETE: Assessment: synthesize (confidence: 10%)
 🔄 LOOPING: Gathering more evidence...  ← BUG: Should have synthesized!
 ```
