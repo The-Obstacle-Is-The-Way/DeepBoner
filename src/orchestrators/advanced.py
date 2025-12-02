@@ -17,7 +17,7 @@ Design Patterns:
 
 import asyncio
 from collections.abc import AsyncGenerator
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import structlog
 from agent_framework import (
@@ -220,7 +220,7 @@ The final output should be a structured research report."""
             )
 
             # Invoke ReportAgent directly
-            # Note: ChatAgent.run() returns the final response string
+            # Note: ChatAgent.run() returns AgentRunResponse; access text via .text
             synthesis_result = await report_agent.run(
                 "Synthesize research report from this evidence. "
                 f"If evidence is sparse, say so.\n\n{evidence_summary}"
@@ -228,7 +228,7 @@ The final output should be a structured research report."""
 
             yield AgentEvent(
                 type="complete",
-                message=str(synthesis_result),
+                message=synthesis_result.text,
                 data={"reason": "timeout_synthesis", "iterations": iteration},
                 iteration=iteration,
             )
@@ -390,7 +390,7 @@ The final output should be a structured research report."""
         event_type = self._get_event_type_for_agent(agent_name)
 
         completion_event = AgentEvent(
-            type=event_type,  # type: ignore[arg-type]
+            type=event_type,
             message=f"{agent_name}: {text_content[:200]}...",
             iteration=iteration,
         )
@@ -461,7 +461,9 @@ The final output should be a structured research report."""
         # The repr is useless for display purposes
         return ""
 
-    def _get_event_type_for_agent(self, agent_name: str) -> str:
+    def _get_event_type_for_agent(
+        self, agent_name: str
+    ) -> Literal["search_complete", "judge_complete", "hypothesizing", "synthesizing", "judging"]:
         """Map agent name to appropriate event type.
 
         Args:

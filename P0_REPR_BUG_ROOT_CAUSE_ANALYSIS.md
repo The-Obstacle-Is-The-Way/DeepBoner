@@ -89,10 +89,10 @@ By **never reading** `MagenticAgentMessageEvent.message.text`, we never hit this
 - [x] `MagenticAgentMessageEvent` used as signal only (buffer consumed, not `.message`)
 - [x] `MagenticFinalResultEvent.message.text` extracted for final result
 - [x] Buffer reset on agent switch and completion
-- [ ] Remove dead code path in `_process_event()` that still calls `_extract_text` on `MagenticAgentMessageEvent`
+- [x] Remove dead code path in `_process_event()` that still calls `_extract_text` on `MagenticAgentMessageEvent`
 
 ---
 
 ## Remaining Cleanup
 
-The `_process_event()` method (lines 503-513) still has a dead code path for `MagenticAgentMessageEvent`. This is never reached due to `continue` at line 309, but should be removed for clarity.
+✅ **DONE** - Dead code paths for `MagenticAgentMessageEvent` and `MagenticAgentDeltaEvent` have been removed from `_process_event()`. Comments now explain these events are handled by the Accumulator Pattern in `run()`.

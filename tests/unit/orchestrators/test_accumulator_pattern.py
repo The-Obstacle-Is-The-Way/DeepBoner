@@ -168,6 +168,7 @@ def mock_orchestrator(mock_agent_framework):
         yield orch
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_accumulator_pattern_scenario_a_standard_text(mock_orchestrator):
     """
@@ -208,6 +209,7 @@ async def test_accumulator_pattern_scenario_a_standard_text(mock_orchestrator):
     assert "<ChatMessage" not in final_event.message, f"Repr bug! Got: {final_event.message}"
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_accumulator_pattern_scenario_b_tool_call(mock_orchestrator):
     """
@@ -247,6 +249,7 @@ async def test_accumulator_pattern_scenario_b_tool_call(mock_orchestrator):
     assert "Action completed" in final_event.message or "Tool" in final_event.message
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_accumulator_pattern_buffer_clearing(mock_orchestrator):
     """
