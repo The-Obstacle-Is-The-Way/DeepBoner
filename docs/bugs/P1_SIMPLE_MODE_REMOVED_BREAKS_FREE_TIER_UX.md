@@ -1,13 +1,17 @@
 # P1 Bug: Simple Mode Removal Breaks Free Tier UX
 
 **Severity**: P1 (High) - Free Tier shows garbage repr output instead of clean Simple mode
-**Status**: OPEN - Requires design decision
+**Status**: OPEN - **PREMATURE DELETION** of Simple Mode
 **Discovered**: 2025-12-01
 **Investigator**: Claude Code
 
 ## Executive Summary
 
-The Unified Architecture (SPEC-16) deprecated Simple Mode and routes ALL users to Advanced Mode. When no API key is provided, Advanced Mode falls back to HuggingFace Free Tier, which triggers the upstream agent-framework repr bug (#2562). This results in degraded UX compared to the old Simple Mode.
+SPEC-16 "Unified Architecture" **correctly** integrated Simple Mode's HuggingFace capability into Advanced Mode. However, **Simple Mode code was deleted prematurely** before verifying that Advanced Mode + HuggingFace actually worked.
+
+**The Problem**: The upstream agent-framework has a repr bug (#2562) that breaks Advanced Mode when using HuggingFace. We deleted Simple Mode (the working fallback) before this was fixed.
+
+**The Result**: Free tier users now see garbage repr output instead of the clean Simple Mode experience.
 
 ## Observed Behavior
 
@@ -162,13 +166,102 @@ def _determine_mode(explicit_mode: str | None, api_key: str | None) -> str:
 3. Click any example or type a question
 4. Observe repr garbage in output
 
+## What Went Wrong: Timeline of Decisions
+
+| Date | Decision | Problem |
+|------|----------|---------|
+| Nov 2025 | SPEC-16: "Integrate Simple Mode into Advanced Mode" | ✅ Correct approach |
+| Nov 2025 | Created HuggingFaceChatClient | ✅ Works |
+| Nov 2025 | **Deleted simple.py (778 lines)** | ❌ **PREMATURE** - didn't verify Advanced+HF worked |
+| Dec 1, 2025 | Discovered upstream repr bug #2562 | Advanced+HF is broken |
+| Dec 1, 2025 | No fallback exists | Simple Mode is GONE |
+
+### The Mistake
+
+SPEC-16 Issue #105 comments show the evolution:
+1. Original: "Deprecate Simple Mode"
+2. Reframed: "Integrate Simple Mode's capability into Advanced Mode"
+3. Implementation: Deleted simple.py **BEFORE** verifying Advanced+HF worked in production
+
+**The correct order should have been:**
+1. Implement HuggingFaceChatClient ✅
+2. **Test Advanced Mode + HuggingFace in production** ❌ SKIPPED
+3. Verify no regressions ❌ SKIPPED
+4. THEN delete Simple Mode
+
+---
+
+## Gradio UI Confusion
+
+### Symptom
+
+User reports confusing behavior:
+- **Clicking Example** → Shows output immediately (but with repr garbage)
+- **Clicking Chat Arrow** → Shows progress bar, then errors or garbage
+
+### Stack Trace
+
+Both paths call the same function:
+
+```python
+# src/app.py:279-303
+demo = gr.ChatInterface(
+    fn=research_agent,  # <-- SAME FUNCTION
+    examples=[
+        ["What drugs improve female libido?", "sexual_health", None, None],
+    ],
+)
+```
+
+The `research_agent` function:
+```python
+# src/app.py:160-197
+async def research_agent(message, history, domain, api_key, api_key_state):
+    # Line 182: ALWAYS uses mode="advanced"
+    orchestrator, backend_name = configure_orchestrator(
+        user_api_key=effective_key,
+        mode="advanced",  # <-- HARDCODED
+        domain=domain,
+    )
+```
+
+### Why Examples and Chat Look Different
+
+1. **Gradio caches example outputs** - Old cached output may show different behavior
+2. **Progress bar timing** - Examples may complete faster, hiding the progress bar
+3. **Error timing** - Chat arrow may trigger visible errors before output renders
+
+**Both paths are actually Advanced Mode + HuggingFace** - the difference is just Gradio's rendering behavior.
+
+---
+
 ## Recommendation
 
-**Short-term**: Wait for upstream #2566 to merge (has 1 approval, all checks passed)
+**IMMEDIATE**: Restore Simple Mode as fallback for HuggingFace backend
 
-**Medium-term**: If #2566 doesn't merge within 1 week, consider Option B (restore Simple Mode for free tier)
+The upstream fix (PR #2566) may take days/weeks. We should NOT leave users with broken UX.
 
-**Long-term**: Once upstream is fixed, the Unified Architecture will work as intended
+### Option B Implementation (Recommended)
+
+```python
+# src/orchestrators/factory.py
+def _determine_mode(explicit_mode: str | None, api_key: str | None) -> str:
+    if explicit_mode == "hierarchical":
+        return "hierarchical"
+
+    # RESTORE AUTO-DETECTION: Simple Mode for free tier
+    if settings.has_openai_key or (api_key and api_key.startswith("sk-")):
+        return "advanced"
+
+    return "simple"  # <-- Free tier gets Simple Mode (working!)
+```
+
+This requires:
+1. **Restore `simple.py`** from git history or MCP space reference
+2. **Update factory** to auto-detect mode
+3. **Test** both paths work
+
+**Long-term**: Once upstream #2566 merges, we can revisit Unified Architecture.
 
 ---
 

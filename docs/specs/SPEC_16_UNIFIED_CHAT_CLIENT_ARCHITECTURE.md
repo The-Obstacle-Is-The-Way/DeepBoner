@@ -1,10 +1,38 @@
 # SPEC_16: Unified Chat Client Architecture
 
-**Status**: Proposed
+**Status**: PARTIALLY IMPLEMENTED - **ROLLBACK REQUIRED**
 **Priority**: P0 (Fixes Critical Bug #113)
 **Issue**: Updates [#105](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/105), [#109](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/109), **[#113](https://github.com/The-Obstacle-Is-The-Way/DeepBoner/issues/113)** (P0 Bug)
 **Created**: 2025-12-01
 **Last Updated**: 2025-12-01
+
+---
+
+## ⛔ CRITICAL WARNING: PREMATURE IMPLEMENTATION
+
+**Simple Mode was deleted BEFORE verifying Advanced Mode + HuggingFace worked in production.**
+
+### What Happened
+
+| Step | Expected | Actual |
+|------|----------|--------|
+| 1. Create HuggingFaceChatClient | ✅ Done | ✅ Done |
+| 2. Test Advanced+HF in production | Verify no regressions | ❌ **SKIPPED** |
+| 3. Delete Simple Mode | Only after verification | ❌ Deleted prematurely |
+| 4. Discover upstream bug | - | Found repr bug #2562 |
+| 5. No fallback exists | - | Users see garbage |
+
+### Current State (Broken)
+
+- **Free tier users** → Advanced Mode + HuggingFace → **REPR GARBAGE**
+- **Paid users** → Advanced Mode + OpenAI → Works fine
+- **Simple Mode** → **DELETED** → No fallback available
+
+### Required Action
+
+**Restore Simple Mode as free-tier fallback** until upstream PR #2566 merges.
+
+See: [P1 Bug: Simple Mode Removal](../bugs/P1_SIMPLE_MODE_REMOVED_BREAKS_FREE_TIER_UX.md)
 
 ---
 
