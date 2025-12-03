@@ -12,16 +12,19 @@
 ### P2 - 7B Model Produces Garbage Streaming Output
 
 **File:** `docs/bugs/P2_7B_MODEL_GARBAGE_OUTPUT.md`
-**Status:** OPEN - Investigating
+**Status:** OPEN - Investigating (Updated 2025-12-03)
 
-**Problem:** When running Free Tier (Qwen2.5-7B-Instruct), the streaming output shows garbage tokens like "yarg", "PostalCodes", "FunctionFlags" instead of coherent agent reasoning.
+**Problem:** When running Free Tier (Qwen2.5-7B-Instruct), the streaming output shows:
+1. **Garbage tokens** like "yarg", "PostalCodes", "oleon", "UrlParser"
+2. **Raw tool call JSON** output as text: `{"name": "search_pubmed", ...}`
+3. **XML-style tags** like `</tool_call>` (wrong format)
 
-**Root Cause:** The 7B model has insufficient reasoning capacity for the complex multi-agent framework prompts.
+**Root Cause:** The 7B model has insufficient reasoning capacity for the complex multi-agent framework prompts. It's attempting tool calls but outputting them as TEXT instead of using proper API structure.
 
 **Potential Fixes:**
 1. Switch to a better small model (Mistral-7B, Phi-3, Gemma-2-9B, Qwen2.5-14B)
 2. Simplify Free Tier architecture to single-agent mode
-3. Add output filtering/validation
+3. Add streaming content filter for garbage/raw JSON
 4. Prompt engineering specifically for 7B models
 
 ---
