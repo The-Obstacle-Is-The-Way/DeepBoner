@@ -42,6 +42,10 @@ Special class attributes (dunder methods/variables) that control framework behav
 *   **Default Clients (OpenAI/HuggingFace):** Should generally **NOT** set this marker. Rely on `@use_function_invocation` to handle execution.
 *   **Special Clients:** Only set to `True` if you are implementing a custom loop that executes tools and feeds results back without the framework's help.
 
+### Setting Responsibility
+*   **Default:** Do not set `__function_invoking_chat_client__` in the class body. The `@use_function_invocation` decorator sets it automatically after wrapping.
+*   **Custom Loop:** Only set to `True` if you have implemented a custom tool execution loop that does not rely on the framework's decorator.
+
 ---
 
 ## 3. Tool Inventory
@@ -52,12 +56,12 @@ These are the `@ai_function` decorated functions that agents can invoke. The fra
 
 | Function Name | File Path | Description |
 |:---|:---|:---|
-| `search_pubmed` | `src/agents/tools.py:20` | Searches PubMed for biomedical literature |
-| `search_clinical_trials` | `src/agents/tools.py:80` | Searches ClinicalTrials.gov for clinical studies |
-| `search_preprints` | `src/agents/tools.py:120` | Searches Europe PMC for preprints and papers |
-| `get_bibliography` | `src/agents/tools.py:160` | Returns collected references for final report |
-| `execute_code` | `src/agents/code_executor_agent.py:15` | Executes Python code in Modal sandbox |
-| `retrieve_context` | `src/agents/retrieval_agent.py:16` | Retrieves context from RAG memory |
+| `search_pubmed` | `src/agents/tools.py:21` | Searches PubMed for biomedical literature |
+| `search_clinical_trials` | `src/agents/tools.py:81` | Searches ClinicalTrials.gov for clinical studies |
+| `search_preprints` | `src/agents/tools.py:121` | Searches Europe PMC for preprints and papers |
+| `get_bibliography` | `src/agents/tools.py:161` | Returns collected references for final report |
+| `execute_python_code` | `src/agents/code_executor_agent.py:16` | Executes Python code in Modal sandbox |
+| `search_web` | `src/agents/retrieval_agent.py:17` | Searches the web for additional context |
 
 ### 3.2 Tool Classes (Internal Wrappers)
 
@@ -68,9 +72,9 @@ These are **internal implementation wrappers** used by the AI Functions. They ar
 | `PubMedTool` | `src/tools/pubmed.py` | `search_pubmed` |
 | `ClinicalTrialsTool` | `src/tools/clinicaltrials.py` | `search_clinical_trials` |
 | `EuropePMCTool` | `src/tools/europepmc.py` | `search_preprints` |
-| `CodeExecutionTool` | `src/tools/code_execution.py` | `execute_code` |
+| `ModalCodeExecutor` | `src/tools/code_execution.py:44` | `execute_python_code` (via `get_code_executor()`) |
 | `OpenAlexTool` | `src/tools/openalex.py` | (Reserved for future use) |
-| `WebSearchTool` | `src/tools/web_search.py` | (Reserved for future use) |
+| `WebSearchTool` | `src/tools/web_search.py` | `search_web` |
 | `SearchHandler` | `src/tools/search_handler.py` | Orchestrates parallel searches |
 
 ---
@@ -127,6 +131,7 @@ When adding or modifying a ChatClient:
 
 - [ ] Decorators applied in correct order: `@use_function_invocation` → `@use_observability` → `@use_chat_middleware`
 - [ ] `__function_invoking_chat_client__` is NOT set in class body (unless implementing custom execution loop)
+- [ ] Verify `@use_function_invocation` decorator actually wraps methods (check `__wrapped__` attribute at runtime)
 - [ ] Tool calls parsed into `FunctionCallContent` objects
 - [ ] Streaming yields `FunctionCallContent` at end of stream
 - [ ] Run `make check` to verify all tests pass

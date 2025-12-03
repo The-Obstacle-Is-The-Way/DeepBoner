@@ -24,7 +24,7 @@ Users on Free Tier see:
 2. **Raw tool call XML tags**: `<tool_call>`, `</tool_call>` appearing as text
 3. **Raw JSON tool calls**: `{"name": "search_pubmed", "arguments": {...}}`
 4. **Hallucinated tool results**: Fake JSON responses that were never returned by actual tools:
-   ```
+   ```json
    {"response": "[{'title': 'Effect of Flibanserin...', ...}]"}
    ```
 5. **No actual database searches**: PubMed, ClinicalTrials.gov never queried
