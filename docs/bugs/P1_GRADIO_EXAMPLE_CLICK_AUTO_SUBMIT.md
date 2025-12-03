@@ -1,6 +1,6 @@
 # P1: Gradio Example Click Auto-Submits Instead of Loading
 
-**Status:** OPEN
+**Status:** FIXED (PR #120, merged 2025-12-03)
 **Priority:** P1 (High - UX breaks BYOK flow)
 **Discovered:** 2025-12-03
 **Component:** `src/app.py` (Gradio UI)
