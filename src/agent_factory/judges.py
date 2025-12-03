@@ -82,7 +82,8 @@ def get_model() -> Any:
 
     # Priority 3: HuggingFace (requires HF_TOKEN)
     if settings.has_huggingface_key:
-        model_name = settings.huggingface_model or "Qwen/Qwen2.5-72B-Instruct"
+        # FIX: Use 7B model to stay on HuggingFace native infrastructure (avoid Novita 500s)
+        model_name = settings.huggingface_model or "Qwen/Qwen2.5-7B-Instruct"
         hf_provider = HuggingFaceProvider(api_key=settings.hf_token)
         return HuggingFaceModel(model_name, provider=hf_provider)
 

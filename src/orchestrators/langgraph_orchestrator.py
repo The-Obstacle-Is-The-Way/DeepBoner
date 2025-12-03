@@ -38,8 +38,9 @@ class LangGraphOrchestrator(OrchestratorProtocol):
 
         # Initialize the LLM (Qwen 2.5 via HF Inference)
         # We use the serverless API by default
-        # NOTE: Llama-3.1-70B routes to Hyperbolic (unreliable staging mode)
-        repo_id = "Qwen/Qwen2.5-72B-Instruct"
+        # FIX: Use 7B model to stay on HuggingFace native infrastructure
+        # Large models (70B+) route to Novita/Hyperbolic providers (500/401 errors)
+        repo_id = settings.huggingface_model or "Qwen/Qwen2.5-7B-Instruct"
 
         # Ensure we have an API key
         api_key = settings.hf_token
