@@ -35,7 +35,7 @@ from src.agents.magentic_agents import (
     create_report_agent,
     create_search_agent,
 )
-from src.agents.state import init_magentic_state
+from src.agents.state import get_magentic_state, init_magentic_state
 from src.clients.base import BaseChatClient
 from src.clients.factory import get_chat_client
 from src.config.domain import ResearchDomain, get_domain_config
@@ -48,6 +48,12 @@ if TYPE_CHECKING:
     from src.services.embedding_protocol import EmbeddingServiceProtocol
 
 logger = structlog.get_logger()
+
+# Agent ID constants - prevents silent breakage if agents are renamed
+REPORTER_AGENT_ID = "reporter"
+SEARCHER_AGENT_ID = "searcher"
+JUDGE_AGENT_ID = "judge"
+HYPOTHESIZER_AGENT_ID = "hypothesizer"
 
 
 class AdvancedOrchestrator(OrchestratorProtocol):
@@ -198,81 +204,39 @@ The final output should be a structured research report."""
             iteration=0,
         )
 
-    async def _handle_timeout(self, iteration: int) -> AsyncGenerator[AgentEvent, None]:
-        """Handle workflow timeout by attempting synthesis."""
-        logger.warning("Workflow timed out", iterations=iteration)
-
-        # ACTUALLY synthesize from gathered evidence
-        try:
-            from src.agents.magentic_agents import create_report_agent
-            from src.agents.state import get_magentic_state
-
-            state = get_magentic_state()
-            memory = state.memory
-
-            # Get evidence summary from memory
-            evidence_summary = await memory.get_context_summary()
-
-            # Create and invoke ReportAgent for synthesis
-            report_agent = create_report_agent(self._chat_client, domain=self.domain)
-
-            yield AgentEvent(
-                type="synthesizing",
-                message="Workflow timed out. Synthesizing available evidence...",
-                iteration=iteration,
-            )
-
-            # Invoke ReportAgent directly
-            # Note: ChatAgent.run() returns AgentRunResponse; access text via .text
-            synthesis_result = await report_agent.run(
-                "Synthesize research report from this evidence. "
-                f"If evidence is sparse, say so.\n\n{evidence_summary}"
-            )
-
-            yield AgentEvent(
-                type="complete",
-                message=synthesis_result.text,
-                data={"reason": "timeout_synthesis", "iterations": iteration},
-                iteration=iteration,
-            )
-        except Exception as synth_error:
-            logger.error("Timeout synthesis failed", error=str(synth_error))
-            yield AgentEvent(
-                type="complete",
-                message=(
-                    f"Research timed out after {iteration} rounds. "
-                    f"Evidence gathered but synthesis failed: {synth_error}"
-                ),
-                data={"reason": "timeout_synthesis_failed", "iterations": iteration},
-                iteration=iteration,
-            )
-
-    async def _force_synthesis(self, iteration: int) -> AsyncGenerator[AgentEvent, None]:
-        """Force synthesis when workflow ends without ReportAgent running (P1 Fix).
-
-        This is a safety net for when the Manager agent (especially 7B models)
-        fails to properly delegate to ReportAgent before workflow termination.
+    async def _synthesize_fallback(
+        self, iteration: int, reason: str
+    ) -> AsyncGenerator[AgentEvent, None]:
         """
+        Unified fallback synthesis for all termination scenarios.
+
+        This method handles synthesis when the workflow terminates without
+        a proper report from ReportAgent. It's a safety net for:
+        - Timeout scenarios
+        - Manager model failing to delegate to ReportAgent (7B model limitation)
+        - Max rounds reached without synthesis
+
+        Args:
+            iteration: Current workflow iteration count
+            reason: Why synthesis is being forced ("timeout", "no_reporter", "max_rounds")
+        """
+        status_messages = {
+            "timeout": "Workflow timed out. Synthesizing available evidence...",
+            "no_reporter": "Synthesizing research findings...",
+            "max_rounds": "Max rounds reached. Synthesizing findings...",
+        }
+
         try:
-            from src.agents.magentic_agents import create_report_agent
-            from src.agents.state import get_magentic_state
-
             state = get_magentic_state()
-            memory = state.memory
-
-            # Get evidence summary from memory
-            evidence_summary = await memory.get_context_summary()
-
-            # Create and invoke ReportAgent for synthesis
+            evidence_summary = await state.memory.get_context_summary()
             report_agent = create_report_agent(self._chat_client, domain=self.domain)
 
             yield AgentEvent(
                 type="synthesizing",
-                message="Synthesizing research findings...",
+                message=status_messages.get(reason, "Synthesizing..."),
                 iteration=iteration,
             )
 
-            # Invoke ReportAgent directly
             synthesis_result = await report_agent.run(
                 "Synthesize research report from this evidence. "
                 f"If evidence is sparse, say so.\n\n{evidence_summary}"
@@ -281,18 +245,15 @@ The final output should be a structured research report."""
             yield AgentEvent(
                 type="complete",
                 message=synthesis_result.text,
-                data={"reason": "forced_synthesis", "iterations": iteration},
+                data={"reason": f"{reason}_synthesis", "iterations": iteration},
                 iteration=iteration,
             )
         except Exception as synth_error:
-            logger.error("Forced synthesis failed", error=str(synth_error))
+            logger.error(f"{reason} synthesis failed", error=str(synth_error))
             yield AgentEvent(
                 type="complete",
-                message=(
-                    f"Research completed after {iteration} rounds. "
-                    f"Evidence gathered but synthesis failed: {synth_error}"
-                ),
-                data={"reason": "forced_synthesis_failed", "iterations": iteration},
+                message=f"Research completed. Synthesis failed: {synth_error}",
+                data={"reason": f"{reason}_synthesis_failed", "iterations": iteration},
                 iteration=iteration,
             )
 
@@ -382,7 +343,7 @@ The final output should be a structured research report."""
 
                         # P1 FIX: Track if ReportAgent produced output
                         agent_name = (event.agent_id or "").lower()
-                        if "report" in agent_name:
+                        if REPORTER_AGENT_ID in agent_name:
                             reporter_ran = True
 
                         comp_event, prog_event = self._handle_completion_event(
@@ -409,7 +370,9 @@ The final output should be a structured research report."""
                                 "ReportAgent never ran - forcing synthesis",
                                 iterations=iteration,
                             )
-                            async for synth_event in self._force_synthesis(iteration):
+                            async for synth_event in self._synthesize_fallback(
+                                iteration, "no_reporter"
+                            ):
                                 yield synth_event
                         else:
                             yield self._handle_final_event(event, iteration, last_streamed_length)
@@ -429,7 +392,7 @@ The final output should be a structured research report."""
                 )
                 # P1 FIX: Force synthesis if ReportAgent never ran
                 if not reporter_ran:
-                    async for synth_event in self._force_synthesis(iteration):
+                    async for synth_event in self._synthesize_fallback(iteration, "max_rounds"):
                         yield synth_event
                 else:
                     yield AgentEvent(
@@ -444,7 +407,7 @@ The final output should be a structured research report."""
                     )
 
         except TimeoutError:
-            async for event in self._handle_timeout(iteration):
+            async for event in self._synthesize_fallback(iteration, "timeout"):
                 yield event
 
         except Exception as e:
@@ -591,13 +554,13 @@ The final output should be a structured research report."""
             Event type string matching AgentEvent.type Literal
         """
         agent_lower = agent_name.lower()
-        if "search" in agent_lower:
+        if SEARCHER_AGENT_ID in agent_lower:
             return "search_complete"
-        if "judge" in agent_lower:
+        if JUDGE_AGENT_ID in agent_lower:
             return "judge_complete"
-        if "hypothes" in agent_lower:
+        if HYPOTHESIZER_AGENT_ID in agent_lower:
             return "hypothesizing"
-        if "report" in agent_lower:
+        if REPORTER_AGENT_ID in agent_lower:
             return "synthesizing"
         return "judging"  # Default for unknown agents
 
