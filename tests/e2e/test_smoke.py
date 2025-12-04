@@ -9,6 +9,8 @@ Usage:
     make smoke-paid   # Test Paid Tier (OpenAI BYOK)
 """
 
+import os
+
 import pytest
 
 from src.orchestrators.advanced import AdvancedOrchestrator
@@ -47,8 +49,6 @@ async def test_free_tier_synthesis():
 @pytest.mark.timeout(300)  # 5 minute timeout for Paid Tier
 async def test_paid_tier_synthesis():
     """Verify Paid Tier (BYOK) produces synthesis."""
-    import os
-
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         pytest.skip("OPENAI_API_KEY not set")

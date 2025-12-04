@@ -230,9 +230,9 @@ class WorkflowState:
 
 **CRITICAL**: Each phase MUST pass smoke tests before merge. Unit tests alone are insufficient.
 
-> **Implementation Status**: PLANNED (Part of Priority 8)
-> The smoke tests below are documented but NOT YET IMPLEMENTED.
-> They should be created as a prerequisite before starting Priority 4-8 refactors.
+> **Implementation Status**: IMPLEMENTED (PR #125)
+> Smoke tests are now live in `tests/e2e/test_smoke.py` with Makefile targets.
+> Run `make smoke-free` or `make smoke-paid` before any refactoring PR.
 
 ### Smoke Test Infrastructure
 
