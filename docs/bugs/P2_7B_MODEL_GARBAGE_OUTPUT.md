@@ -12,7 +12,7 @@
 When running a research query on Free Tier (Qwen2.5-7B-Instruct), the streaming output shows **garbage tokens** and **malformed tool calls** instead of coherent agent reasoning:
 
 ### Symptom A: Random Garbage Tokens
-```
+```text
 📡 **STREAMING**: yarg
 📡 **STREAMING**: PostalCodes
 📡 **STREAMING**: FunctionFlags
@@ -21,7 +21,7 @@ When running a research query on Free Tier (Qwen2.5-7B-Instruct), the streaming 
 ```
 
 ### Symptom B: Raw Tool Call JSON in Text (NEW - 2025-12-03)
-```
+```text
 📡 **STREAMING**:
 oleon
 {"name": "search_preprints", "arguments": {"query": "female libido post-menopause drug", "max_results": 10}}

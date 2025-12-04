@@ -38,10 +38,6 @@ logger = structlog.get_logger()
 class HuggingFaceChatClient(BaseChatClient):  # type: ignore[misc]
     """Adapter for HuggingFace Inference API with full function calling support."""
 
-    # Marker to tell agent_framework that this client supports function calling
-    # Without this, the framework warns and ignores tools
-    __function_invoking_chat_client__ = True
-
     def __init__(
         self,
         model_id: str | None = None,

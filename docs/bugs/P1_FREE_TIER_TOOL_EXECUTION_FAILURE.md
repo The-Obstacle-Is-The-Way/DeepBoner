@@ -1,9 +1,10 @@
 # P1 Bug: Free Tier Tool Execution Failure
 
 **Date**: 2025-12-03
-**Status**: OPEN - Root Cause Identified
+**Status**: FIXED (PR fix/P1-free-tier-tool-execution)
 **Severity**: P1 (Critical - Free Tier Completely Broken)
 **Component**: HuggingFaceChatClient + Together.ai Routing + Tool Calling
+**Resolution**: Removed premature `__function_invoking_chat_client__ = True` marker from class body
 
 ---
 
@@ -23,7 +24,7 @@ Users on Free Tier see:
 2. **Raw tool call XML tags**: `<tool_call>`, `</tool_call>` appearing as text
 3. **Raw JSON tool calls**: `{"name": "search_pubmed", "arguments": {...}}`
 4. **Hallucinated tool results**: Fake JSON responses that were never returned by actual tools:
-   ```
+   ```json
    {"response": "[{'title': 'Effect of Flibanserin...', ...}]"}
    ```
 5. **No actual database searches**: PubMed, ClinicalTrials.gov never queried
