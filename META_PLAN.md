@@ -9,7 +9,7 @@
 ## Executive Summary
 
 **Codebase Health**: PRODUCTION-READY
-- 313 tests passing
+- 317 tests passing
 - No type errors (mypy clean)
 - No linting issues (ruff clean)
 - 1 open bug (P3 - low priority UX)
@@ -27,7 +27,7 @@
 | Document | Status | Action |
 |----------|--------|--------|
 | `docs/STATUS_LLAMAINDEX_INTEGRATION.md` | DONE | Keep as-is |
-| `docs/specs/SPEC_13_EVIDENCE_DEDUPLICATION.md` | SPEC DONE, CODE NOT | **Implement** |
+| `docs/specs/SPEC_13_EVIDENCE_DEDUPLICATION.md` | ✅ IMPLEMENTED | Verify in production |
 | `docs/specs/SPEC_14_CLINICALTRIALS_OUTCOMES.md` | SPEC DONE, CODE NOT | **Implement** |
 | `docs/future-roadmap/TOOL_ANALYSIS_CRITICAL.md` | ANALYSIS DONE | Reference for future |
 | `docs/ARCHITECTURE.md` | PARTIAL | Expand with diagrams |
@@ -39,7 +39,7 @@
 |-----------|--------|-------|
 | `src/orchestrators/` | COMPLETE | Factory pattern, protocols |
 | `src/clients/` | COMPLETE | OpenAI/HuggingFace working, Anthropic partial (tech debt) |
-| `src/tools/` | FUNCTIONAL | Missing deduplication, outcomes extraction |
+| `src/tools/` | FUNCTIONAL | Deduplication done, missing outcomes extraction |
 | `src/agents/` | FUNCTIONAL | All agents wired, some experimental |
 | `src/services/` | COMPLETE | Embeddings, RAG, memory all working |
 
@@ -47,7 +47,7 @@
 
 | Issue | Priority | Effort |
 |-------|----------|--------|
-| Evidence deduplication (SPEC_13) | HIGH | 3-4 hours |
+| ~~Evidence deduplication (SPEC_13)~~ | ~~HIGH~~ | ✅ DONE |
 | ClinicalTrials outcomes (SPEC_14) | HIGH | 2-3 hours |
 | Remove Anthropic wiring (P3) | P3 | 1 hour |
 | Expand ARCHITECTURE.md | MEDIUM | 2 hours |
@@ -57,17 +57,18 @@
 
 ## The Next 5 Steps
 
-### Step 1: Implement SPEC_13 - Evidence Deduplication
-**Priority**: HIGH | **Effort**: 3-4 hours | **Impact**: 30-50% token savings
+### ~~Step 1: Implement SPEC_13 - Evidence Deduplication~~ ✅ COMPLETE
+**Priority**: ~~HIGH~~ DONE | **Effort**: ~~3-4 hours~~ | **Impact**: 30-50% token savings
 
-Currently, PubMed/Europe PMC/OpenAlex return duplicate papers. This wastes tokens and confuses the judge.
+✅ **COMPLETED** - Deduplication now removes duplicate papers from PubMed/Europe PMC/OpenAlex.
 
-**Files to modify**:
-- `src/tools/search_handler.py` - Add `extract_paper_id()` and dedup logic
-- `src/tools/openalex.py` - Extract PMID from metadata
-- `tests/unit/tools/test_search_handler.py` - Add dedup tests
+**Files modified**:
+- `src/tools/search_handler.py` - Added `extract_paper_id()` and `deduplicate_evidence()`
+- `src/tools/openalex.py` - Extracts PMID from `work.ids.pmid`
+- `tests/unit/tools/test_search_handler.py` - 22 dedup tests
+- `tests/integration/test_search_deduplication.py` - Integration test
 
-**Spec**: `docs/specs/SPEC_13_EVIDENCE_DEDUPLICATION.md`
+**Spec**: `docs/specs/SPEC_13_EVIDENCE_DEDUPLICATION.md` (Status: Implemented)
 
 ---
 
@@ -137,7 +138,7 @@ Update `docs/index.md` or create `docs/IMPLEMENTATION_STATUS.md` with:
 **Total docs**: 91 markdown files in `docs/`
 
 **Organization**:
-```
+```text
 docs/
 ├── architecture/      # Canonical architecture docs (4 files)
 ├── brainstorming/     # Ideas, not commitments (6 files)
@@ -152,7 +153,7 @@ docs/
 └── index.md           # Entry point
 ```
 
-**Recommendation**: Structure is fine. Main issue is SPEC_13/SPEC_14 not implemented despite detailed specs.
+**Recommendation**: Structure is fine. SPEC_13 is done; SPEC_14 remains to be implemented.
 
 ---
 
@@ -160,7 +161,7 @@ docs/
 
 After completing Steps 1-5:
 
-- [ ] Evidence deduplication reduces duplicate papers by 80%+
+- [x] Evidence deduplication reduces duplicate papers by 80%+ ✅
 - [ ] ClinicalTrials shows outcome measures and results status
 - [ ] No Anthropic references in codebase
 - [ ] ARCHITECTURE.md has flow diagrams
@@ -175,6 +176,7 @@ After completing Steps 1-5:
 | 2025-12-03 | Implement specs before doc cleanup | Specs are ready, high impact |
 | 2025-12-03 | Remove Anthropic over adding Gemini | Tech debt cleanup > new features |
 | 2025-12-03 | Defer full-text retrieval | Stabilize core first |
+| 2025-12-03 | Mark SPEC_13 complete | All acceptance criteria verified, PR #122 |
 
 ---
 

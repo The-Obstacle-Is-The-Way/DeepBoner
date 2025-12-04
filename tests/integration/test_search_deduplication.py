@@ -7,6 +7,7 @@ from src.tools.search_handler import SearchHandler, extract_paper_id
 
 
 @pytest.mark.integration
+@pytest.mark.slow
 async def test_real_search_deduplicates() -> None:
     """Integration test: Real search should deduplicate PubMed/Europe PMC."""
 
@@ -31,24 +32,11 @@ async def test_real_search_deduplicates() -> None:
     # A better check is to verify uniqueness explicitly.
 
     # 2. Verify no duplicate IDs in the returned evidence
+    # extract_paper_id filter already excludes falsy values (including None)
     paper_ids = [extract_paper_id(e) for e in result.evidence if extract_paper_id(e)]
 
-    # Filter out None IDs (which are unique by default)
-    valid_ids = [pid for pid in paper_ids if pid is not None]
-
     # Check for duplicates
-    unique_ids = set(valid_ids)
-    assert len(valid_ids) == len(unique_ids), (
-        f"Duplicate IDs found: {[x for x in valid_ids if valid_ids.count(x) > 1]}"
+    unique_ids = set(paper_ids)
+    assert len(paper_ids) == len(unique_ids), (
+        f"Duplicate IDs found: {[x for x in paper_ids if paper_ids.count(x) > 1]}"
     )
-
-    # 3. Verify source priority (if duplicates were removed)
-    # This is harder to test on live data without knowing ground truth,
-    # but we can check that if we have a PMID, the source is likely PubMed
-    for evidence in result.evidence:
-        pid = extract_paper_id(evidence)
-        if pid and pid.startswith("PMID:"):
-            # If it's a PMID, it SHOULD ideally come from PubMed if PubMed found it.
-            # But if PubMed missed it and EuropePMC found it, it might be EuropePMC.
-            # So we can't strictly assert source == "pubmed".
-            pass
