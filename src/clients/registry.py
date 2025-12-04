@@ -10,6 +10,7 @@ import structlog
 from agent_framework import BaseChatClient
 
 from src.utils.config import Settings
+from src.utils.exceptions import ConfigurationError
 
 logger = structlog.get_logger()
 
@@ -87,4 +88,4 @@ class ProviderRegistry:
                 logger.info(f"Using {p.name} Chat Client")
                 return p.create(settings, api_key, model_id, **kwargs)
 
-        raise ValueError(f"No suitable provider found for provider={provider}")
+        raise ConfigurationError(f"No suitable provider found for provider={provider}")
