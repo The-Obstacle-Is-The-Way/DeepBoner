@@ -313,7 +313,7 @@ async def test_paid_tier_synthesis():
 
 Before merging ANY refactoring PR:
 
-```
+```text
 [ ] make check          # All 318+ unit tests pass
 [ ] make smoke-free     # Free Tier produces real synthesis
 [ ] make smoke-paid     # Paid Tier works (if you have key)

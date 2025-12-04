@@ -45,7 +45,7 @@ The `with_standard_manager()` in Microsoft Agent Framework uses the provided cha
 
 ### Secondary Issue: Duplicate Complete Events
 
-Both `MagenticFinalResultEvent` AND `WorkflowOutputEvent` are emitted when the workflow ends. The previous code handled both, yielding "Research complete." twice.
+Both `MagenticFinalResultEvent` and `WorkflowOutputEvent` are emitted when the workflow ends. The previous code handled both, yielding "Research complete." twice.
 
 ---
 
