@@ -12,7 +12,7 @@
 - 317 tests passing
 - No type errors (mypy clean)
 - No linting issues (ruff clean)
-- 1 open bug (P3 - low priority UX)
+- 1 open bug (P3 - low-priority UX)
 
 **Key Finding**: Architecture is sound. Two high-impact specs are written but not implemented. Documentation is sprawling but mostly accurate.
 
