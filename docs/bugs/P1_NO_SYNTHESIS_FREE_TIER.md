@@ -16,7 +16,7 @@ The workflow terminates without the ReportAgent ever producing a synthesis repor
 
 ## Symptom
 
-```
+```text
 📚 **SEARCH_COMPLETE**: searcher: [search results]
 ⏱️ **PROGRESS**: Round 1/5 (~3m 0s remaining)
 🔬 **HYPOTHESIZING**: hypothesizer: [hypotheses]
