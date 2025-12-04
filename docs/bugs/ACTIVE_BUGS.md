@@ -9,6 +9,19 @@
 
 ## Currently Active Bugs
 
+### P2 - Duplicate Report Content in Output
+
+**File:** `docs/bugs/P2_DUPLICATE_REPORT_CONTENT.md`
+**Status:** OPEN - UX Bug
+
+**Problem:** The final research report appears twice in the UI - once as streaming content, then again as a complete event. This is a **stack bug**, not a model issue.
+
+**Root Cause:** Both `MagenticFinalResultEvent` and `WorkflowOutputEvent` emit the full report content that was already streamed. No deduplication exists.
+
+**Recommended Fix:** Track streamed content length in orchestrator; emit minimal "Research complete." message instead of repeating content.
+
+---
+
 ### P3 - Progress Bar Positioning in ChatInterface
 
 **File:** `docs/bugs/P3_PROGRESS_BAR_POSITIONING.md`
