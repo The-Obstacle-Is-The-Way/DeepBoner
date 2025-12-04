@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.utils.exceptions import ConfigurationError
+
 # Skip if agent-framework-core not installed
 pytest.importorskip("agent_framework")
 
@@ -71,15 +73,15 @@ class TestChatClientFactory:
 
             assert "HuggingFace" in type(client).__name__
 
-    def test_unsupported_provider_raises_value_error(self) -> None:
-        """Unsupported provider should raise ValueError, not silently fallback."""
+    def test_unsupported_provider_raises_configuration_error(self) -> None:
+        """Unsupported provider should raise ConfigurationError, not silently fallback."""
         with patch("src.clients.factory.settings") as mock_settings:
             mock_settings.has_openai_key = False
             mock_settings.has_gemini_key = False
 
             from src.clients.factory import get_chat_client
 
-            with pytest.raises(ValueError, match="No suitable provider found"):
+            with pytest.raises(ConfigurationError, match="No suitable provider found"):
                 get_chat_client(provider="invalid_provider")
 
     def test_byok_auto_detects_openai_from_key_prefix(self) -> None:
