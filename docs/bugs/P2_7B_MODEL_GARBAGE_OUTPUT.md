@@ -9,18 +9,36 @@
 
 ## Symptoms
 
-When running a research query on Free Tier (Qwen2.5-7B-Instruct), the streaming output shows **garbage tokens** instead of coherent agent reasoning:
+When running a research query on Free Tier (Qwen2.5-7B-Instruct), the streaming output shows **garbage tokens** and **malformed tool calls** instead of coherent agent reasoning:
 
-```
+### Symptom A: Random Garbage Tokens
+```text
 📡 **STREAMING**: yarg
 📡 **STREAMING**: PostalCodes
-📡 **STREAMING**: PostalCodes
 📡 **STREAMING**: FunctionFlags
-📡 **STREAMING**: search_pubmed
-📡 **STREAMING**: search_clinical_trials
 📡 **STREAMING**: system
 📡 **STREAMING**: Transferred to searcher, adopt the persona immediately.
 ```
+
+### Symptom B: Raw Tool Call JSON in Text (NEW - 2025-12-03)
+```text
+📡 **STREAMING**:
+oleon
+{"name": "search_preprints", "arguments": {"query": "female libido post-menopause drug", "max_results": 10}}
+</tool_call>
+system
+
+UrlParser
+{"name": "search_clinical_trials", "arguments": {"query": "female libido post-menopause drug", "max_results": 10}}
+```
+
+The model is outputting:
+1. **Garbage tokens**: "oleon", "UrlParser" - meaningless fragments
+2. **Raw JSON tool calls**: `{"name": "search_preprints", ...}` - intended tool calls output as TEXT
+3. **XML-style tags**: `</tool_call>` - model trying to use wrong tool calling format
+4. **"system" keyword**: Model confusing role markers with content
+
+**Root Cause of Symptom B**: The 7B model is attempting to make tool calls but outputting them as **text content** instead of using the HuggingFace API's native `tool_calls` structure. The model may have been trained on a different tool calling format (XML-style like Claude's `<tool_call>` tags) and doesn't properly use the OpenAI-compatible JSON format.
 
 The model outputs random tokens like "yarg", "PostalCodes", "FunctionFlags" instead of actual research reasoning.
 
@@ -166,6 +184,30 @@ Significantly simplify the agent prompts for 7B compatibility:
 - More explicit step-by-step instructions
 - Remove abstract concepts
 - Use few-shot examples
+
+### Option 6: Streaming Content Filter (For Symptom B)
+
+Filter raw tool call JSON from streaming output:
+
+```python
+def should_stream_content(text: str) -> bool:
+    """Filter garbage and raw tool calls from streaming."""
+    # Don't stream raw JSON tool calls
+    if text.strip().startswith('{"name":'):
+        return False
+    # Don't stream XML-style tool tags
+    if '</tool_call>' in text or '<tool_call>' in text:
+        return False
+    # Don't stream garbage tokens (extend as needed)
+    garbage = ["oleon", "UrlParser", "yarg", "PostalCodes", "FunctionFlags"]
+    if any(g in text for g in garbage):
+        return False
+    return True
+```
+
+**Location**: `src/orchestrators/advanced.py` lines 315-322
+
+This would prevent the raw tool call JSON from being shown to users, even if the model produces it.
 
 ---
 
