@@ -27,8 +27,8 @@
 | Document | Status | Action |
 |----------|--------|--------|
 | `docs/STATUS_LLAMAINDEX_INTEGRATION.md` | DONE | Keep as-is |
-| `docs/specs/SPEC_13_EVIDENCE_DEDUPLICATION.md` | ✅ IMPLEMENTED | Verify in production |
-| `docs/specs/SPEC_14_CLINICALTRIALS_OUTCOMES.md` | ✅ IMPLEMENTED | Verify in production |
+| `docs/specs/archive/SPEC_13_EVIDENCE_DEDUPLICATION.md` | ✅ IMPLEMENTED | Archived |
+| `docs/specs/archive/SPEC_14_CLINICALTRIALS_OUTCOMES.md` | ✅ IMPLEMENTED | Archived |
 | `docs/future-roadmap/TOOL_ANALYSIS_CRITICAL.md` | ANALYSIS DONE | Reference for future |
 | `docs/ARCHITECTURE.md` | PARTIAL | Expand with diagrams |
 | `docs/architecture/system_registry.md` | DONE | Canonical SSOT for wiring |
@@ -68,7 +68,7 @@
 - `tests/unit/tools/test_search_handler.py` - 22 dedup tests
 - `tests/integration/test_search_deduplication.py` - Integration test
 
-**Spec**: `docs/specs/SPEC_13_EVIDENCE_DEDUPLICATION.md` (Status: Implemented)
+**Spec**: `docs/specs/archive/SPEC_13_EVIDENCE_DEDUPLICATION.md` (Status: Implemented)
 
 ---
 
@@ -81,7 +81,7 @@
 - `src/tools/clinicaltrials.py` - Added `OutcomesModule`, `HasResults` fields, `_extract_primary_outcome()`
 - `tests/unit/tools/test_clinicaltrials.py` - 4 outcome tests + 2 integration tests
 
-**Spec**: `docs/specs/SPEC_14_CLINICALTRIALS_OUTCOMES.md` (Status: Implemented)
+**Spec**: `docs/specs/archive/SPEC_14_CLINICALTRIALS_OUTCOMES.md` (Status: Implemented)
 
 ---
 
