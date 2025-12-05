@@ -25,6 +25,7 @@
 All resolved bugs have been moved to `docs/bugs/archive/`. Summary:
 
 ### P0 Bugs (All FIXED)
+- **P0 MCP ToolUseContent Missing** - FIXED, requirements.txt missing `mcp>=1.23.0` pin (HF Spaces crashed)
 - **P0 Repr Bug** - FIXED in PR #117 via Accumulator Pattern
 - **P0 AIFunction Not JSON Serializable** - FIXED, full tool support for HuggingFace
 - **P0 HuggingFace Tool Calling Broken** - FIXED, history serialization + Accumulator Pattern

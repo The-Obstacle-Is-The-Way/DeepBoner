@@ -60,8 +60,8 @@ These are the `@ai_function` decorated functions that agents can invoke. The fra
 | `search_clinical_trials` | `src/agents/tools.py:81` | Searches ClinicalTrials.gov for clinical studies |
 | `search_preprints` | `src/agents/tools.py:121` | Searches Europe PMC for preprints and papers |
 | `get_bibliography` | `src/agents/tools.py:161` | Returns collected references for final report |
-| `execute_python_code` | `src/agents/code_executor_agent.py:16` | Executes Python code in Modal sandbox |
-| `search_web` | `src/agents/retrieval_agent.py:17` | Searches the web for additional context |
+| ~~`execute_python_code`~~ | ~~`src/agents/code_executor_agent.py`~~ | REMOVED in PR #130 (Modal deleted) |
+| ~~`search_web`~~ | ~~`src/agents/retrieval_agent.py`~~ | REMOVED in PR #130 (unused) |
 
 ### 3.2 Tool Classes (Internal Wrappers)
 
@@ -72,10 +72,10 @@ These are **internal implementation wrappers** used by the AI Functions. They ar
 | `PubMedTool` | `src/tools/pubmed.py` | `search_pubmed` |
 | `ClinicalTrialsTool` | `src/tools/clinicaltrials.py` | `search_clinical_trials` |
 | `EuropePMCTool` | `src/tools/europepmc.py` | `search_preprints` |
-| `ModalCodeExecutor` | `src/tools/code_execution.py:44` | `execute_python_code` (via `get_code_executor()`) |
-| `OpenAlexTool` | `src/tools/openalex.py` | (Reserved for future use) |
-| `WebSearchTool` | `src/tools/web_search.py` | `search_web` |
+| `OpenAlexTool` | `src/tools/openalex.py` | OpenAlex search (used in SearchHandler) |
 | `SearchHandler` | `src/tools/search_handler.py` | Orchestrates parallel searches |
+| ~~`ModalCodeExecutor`~~ | ~~`src/tools/code_execution.py`~~ | REMOVED in PR #130 |
+| ~~`WebSearchTool`~~ | ~~`src/tools/web_search.py`~~ | REMOVED in PR #130 |
 
 ---
 

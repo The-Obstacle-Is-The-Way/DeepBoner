@@ -1,4 +1,11 @@
-# Core dependencies for HuggingFace Spaces
+# ============================================================
+# requirements.txt - HuggingFace Spaces Dependencies
+# ============================================================
+# This file MUST stay in sync with pyproject.toml dependencies.
+# Last synced: 2025-12-04
+# ============================================================
+
+# Core
 pydantic>=2.7
 pydantic-settings>=2.2
 pydantic-ai>=0.0.16
@@ -7,28 +14,18 @@ pydantic-ai>=0.0.16
 openai>=1.0.0
 chromadb>=0.4.22
 sentence-transformers>=2.2.2
-huggingface-hub>=0.20.0
-
-# Multi-agent orchestration (Advanced mode)
-agent-framework-core>=1.0.0b251120
-
-# LangGraph dependencies (SPEC-07/08)
-langgraph>=0.2.50,<1.0
-langchain>=0.3.9,<1.0
-langchain-core>=0.3.21,<1.0
-langchain-huggingface>=0.1.2,<1.0
-langgraph-checkpoint-sqlite>=3.0.0,<4.0
-
-# Web search
-duckduckgo-search>=5.0
 
 # HTTP & Parsing
 httpx>=0.27
 beautifulsoup4>=4.12
 xmltodict>=0.13
+huggingface-hub>=0.24.0
 
-# UI (Gradio with MCP server support)
+# UI (Gradio with MCP server support - 6.0 required for css in launch())
 gradio[mcp]>=6.0.0
+
+# Security: Pin mcp to fix GHSA-9h52-p55h-vw2f and ensure ToolUseContent exists
+mcp>=1.23.0
 
 # Utils
 python-dotenv>=1.0
@@ -36,9 +33,22 @@ tenacity>=8.2
 structlog>=24.1
 requests>=2.32.5
 limits>=3.0
-urllib3>=2.5.0  # Security fix for GHSA-48p4-8xcf-vxj5
+duckduckgo-search>=5.0
 
-# Optional: LlamaIndex RAG (chromadb/sentence-transformers already in core above)
+# LangGraph deps - upper bounds prevent breaking changes from major versions
+langgraph>=0.2.50,<1.0
+langchain>=0.3.9,<1.0
+langchain-core>=0.3.21,<1.0
+langchain-huggingface>=0.1.2,<1.0
+langgraph-checkpoint-sqlite>=3.0.0,<4.0
+
+# Security: Pin urllib3 to fix GHSA-48p4-8xcf-vxj5 and GHSA-pq67-6m6q-mj2v
+urllib3>=2.5.0
+
+# Multi-agent orchestration (Advanced mode) - from [magentic] optional
+agent-framework-core>=1.0.0b251120,<2.0.0
+
+# LlamaIndex RAG support - from [rag] optional
 llama-index>=0.11.0
 llama-index-llms-openai
 llama-index-embeddings-openai
