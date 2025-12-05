@@ -46,6 +46,7 @@ message=f"Round {iteration}/{self._max_rounds} (~{est_display} remaining)"
 ### Why It Happens
 
 In a multi-agent workflow with 4 agents (searcher, hypothesizer, judge, reporter):
+
 - Each "round" involves the manager delegating to multiple agents
 - Each agent completion fires an `ExecutorCompletedEvent`
 - With 4+ agents, we see 4+ events per workflow round
@@ -57,6 +58,7 @@ In a multi-agent workflow with 4 agents (searcher, hypothesizer, judge, reporter
 ## Evidence From Logs
 
 The session showed this progression:
+
 ```text
 Round 1/5   - First agent completed
 Round 2/5   - Second agent completed
@@ -203,6 +205,7 @@ est_seconds = rounds_remaining * 45
 ### Issue 4: Time Estimate Always Shows "~0s remaining"
 
 Since `iteration` quickly exceeds `max_rounds`:
+
 ```python
 rounds_remaining = max(self._max_rounds - iteration, 0)
 # When iteration=11, max_rounds=5: rounds_remaining = max(5-11, 0) = 0
@@ -239,6 +242,7 @@ The time estimate becomes useless after the first few agent completions.
    - A full round of 4 agents might only take 60s total
 
 3. **API Discovery - Can Track Actual Rounds**:
+
    ```python
    # These constants exist in agent_framework:
    ORCH_MSG_KIND_INSTRUCTION = 'instruction'
@@ -272,6 +276,7 @@ The time estimate becomes useless after the first few agent completions.
    - Removed unused `_EST_SECONDS_PER_ROUND` constant
 
 2. **Added Semantic Agent Mapping** (`_get_agent_semantic_name`):
+
    ```python
    def _get_agent_semantic_name(self, agent_id: str) -> str:
        """Map internal agent ID to user-facing semantic name."""
