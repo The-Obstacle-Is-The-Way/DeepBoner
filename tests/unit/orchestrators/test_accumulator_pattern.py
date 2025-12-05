@@ -1,8 +1,13 @@
 """
 Test the Accumulator Pattern for Microsoft Agent Framework event handling.
 
-This tests SPEC 17: We use MagenticAgentDeltaEvent.text as the sole source of content,
-and MagenticAgentMessageEvent as a signal only (ignoring .message to avoid repr bug).
+This tests SPEC-17 (updated for SPEC-18): We use AgentRunUpdateEvent.data.text as the
+sole source of streaming content, and ExecutorCompletedEvent as a completion signal.
+
+Event mapping (SPEC-18 migration):
+- MagenticAgentDeltaEvent → AgentRunUpdateEvent
+- MagenticAgentMessageEvent → ExecutorCompletedEvent
+- MagenticFinalResultEvent → WorkflowOutputEvent
 """
 
 import importlib
