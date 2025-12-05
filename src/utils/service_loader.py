@@ -18,7 +18,6 @@ from src.utils.config import settings
 
 if TYPE_CHECKING:
     from src.services.embedding_protocol import EmbeddingServiceProtocol
-    from src.services.statistical_analyzer import StatisticalAnalyzer
 
 logger = structlog.get_logger()
 
@@ -66,13 +65,9 @@ def get_embedding_service(api_key: str | None = None) -> "EmbeddingServiceProtoc
         ImportError: If no embedding service dependencies are available
     """
     # Determine if we have a valid OpenAI key (BYOK or Env)
-    # Note: Must check sk-ant- BEFORE sk- since Anthropic keys start with sk-ant-
     has_openai = False
     if api_key:
-        if api_key.startswith("sk-ant-"):
-            # Anthropic key - not supported for embeddings
-            logger.warning("Anthropic keys don't support embeddings, falling back to free tier")
-        elif api_key.startswith("sk-"):
+        if api_key.startswith("sk-"):
             # OpenAI BYOK
             has_openai = True
     elif settings.has_openai_key:
@@ -125,7 +120,7 @@ def get_embedding_service(api_key: str | None = None) -> "EmbeddingServiceProtoc
         raise ImportError(
             "No embedding service available. Install either:\n"
             "  - uv sync --extra embeddings (for local embeddings)\n"
-            "  - uv sync --extra modal (for LlamaIndex with OpenAI)"
+            "  - uv sync --extra rag (for LlamaIndex with OpenAI)"
         ) from e
 
 
@@ -153,32 +148,6 @@ def get_embedding_service_if_available(
     except Exception as e:
         logger.warning(
             "Embedding service initialization failed unexpectedly",
-            error=str(e),
-            error_type=type(e).__name__,
-        )
-    return None
-
-
-def get_analyzer_if_available() -> "StatisticalAnalyzer | None":
-    """Safely attempt to load and initialize the StatisticalAnalyzer.
-
-    Returns:
-        StatisticalAnalyzer instance if Modal is available, else None.
-    """
-    try:
-        from src.services.statistical_analyzer import get_statistical_analyzer
-
-        analyzer = get_statistical_analyzer()
-        logger.info("StatisticalAnalyzer initialized successfully")
-        return analyzer
-    except ImportError as e:
-        logger.info(
-            "StatisticalAnalyzer not available (Modal dependencies missing)",
-            missing_dependency=str(e),
-        )
-    except Exception as e:
-        logger.warning(
-            "StatisticalAnalyzer initialization failed unexpectedly",
             error=str(e),
             error_type=type(e).__name__,
         )
