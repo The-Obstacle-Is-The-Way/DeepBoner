@@ -499,9 +499,9 @@ graph TD
 
     Submit -.->|Triggers| Workflow[Magentic Workflow]
     Workflow -.->|MagenticOrchestratorMessageEvent| Log
-    Workflow -.->|MagenticAgentDeltaEvent| Log
-    Workflow -.->|MagenticAgentMessageEvent| Log
-    Workflow -.->|MagenticFinalResultEvent| Tab4
+    Workflow -.->|AgentRunUpdateEvent| Log
+    Workflow -.->|ExecutorCompletedEvent| Log
+    Workflow -.->|WorkflowOutputEvent| Tab4
 
     style App fill:#e1f5e1
     style Input fill:#fff4e6
