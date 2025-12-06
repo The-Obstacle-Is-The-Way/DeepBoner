@@ -90,6 +90,9 @@ def mock_agent_framework():
     mock_af.MagenticOrchestratorMessageEvent = MockOrchestratorMessageEvent
     mock_af.AgentRunResponse = MagicMock
     mock_af.MAGENTIC_EVENT_TYPE_ORCHESTRATOR = "orchestrator_message"
+    # P2 Fix: Add constants for metadata filtering
+    mock_af.ORCH_MSG_KIND_INSTRUCTION = "instruction"
+    mock_af.ORCH_MSG_KIND_TASK_LEDGER = "task_ledger"
 
     # Mock other classes
     mock_af.MagenticBuilder = MagicMock
@@ -170,9 +173,9 @@ def mock_orchestrator(mock_agent_framework):
 @pytest.mark.asyncio
 async def test_accumulator_pattern_scenario_a_standard_text(mock_orchestrator):
     """
-    Scenario A: Standard Text Message
+    Scenario A: Standard Text Message (P2 Fix)
     Input: Updates ("Hello", " World") -> Completed
-    Expected: AgentEvent with "Hello World"
+    Expected: Streaming events for text, NO completion events (P2 fix silences them)
     """
     # Use "searcher" to map to "SearchAgent"
     events = [
@@ -193,27 +196,32 @@ async def test_accumulator_pattern_scenario_a_standard_text(mock_orchestrator):
         async for event in mock_orchestrator.run("test query"):
             generated_events.append(event)
 
-    # Find the completion event for SearchAgent (non-streaming)
-    chat_events = [
-        e for e in generated_events if "SearchAgent" in str(e.message) and e.type != "streaming"
-    ]
-
-    assert len(chat_events) >= 1, (
-        f"Expected SearchAgent events, got: {[e.message for e in generated_events]}"
+    # P2 FIX: ExecutorCompletedEvent is SILENCED - no non-streaming agent events
+    # We should have STREAMING events from AgentRunUpdateEvent
+    streaming_events = [e for e in generated_events if e.type == "streaming"]
+    assert len(streaming_events) >= 1, (
+        f"Expected streaming events, got: {[e.type for e in generated_events]}"
     )
-    final_event = chat_events[0]
 
-    # Must contain accumulated text
-    assert "Hello World" in final_event.message or "Hello" in final_event.message
+    # P2 FIX: No "SearchAgent" completion events should exist (silenced)
+    completion_events = [
+        e
+        for e in generated_events
+        if "SearchAgent" in str(e.message)
+        and e.type not in ("streaming", "started", "progress", "thinking")
+    ]
+    assert len(completion_events) == 0, (
+        f"P2 Fix: Should NOT emit completion events, got: {[e.message for e in completion_events]}"
+    )
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_accumulator_pattern_scenario_b_tool_call(mock_orchestrator):
     """
-    Scenario B: Tool Call (No Text Deltas)
+    Scenario B: Tool Call (No Text Deltas) - P2 Fix
     Input: No Deltas -> Completed
-    Expected: AgentEvent with fallback text
+    Expected: NO completion events (P2 fix silences ExecutorCompletedEvent)
     """
     # Use "searcher" to map to "SearchAgent"
     events = [
@@ -232,26 +240,27 @@ async def test_accumulator_pattern_scenario_b_tool_call(mock_orchestrator):
         async for event in mock_orchestrator.run("test query"):
             generated_events.append(event)
 
-    # Find completion events for SearchAgent
+    # P2 FIX: ExecutorCompletedEvent is SILENCED - no agent completion events
     search_events = [
-        e for e in generated_events if "SearchAgent" in str(e.message) and e.type != "streaming"
+        e
+        for e in generated_events
+        if "SearchAgent" in str(e.message)
+        and e.type not in ("streaming", "started", "progress", "thinking")
     ]
 
-    assert len(search_events) >= 1, (
-        f"Expected SearchAgent events, got: {[e.message for e in generated_events]}"
+    # P2 Fix: Should have NO completion events (they are silenced)
+    assert len(search_events) == 0, (
+        f"P2 Fix: Should NOT emit completion events, got: {[e.message for e in search_events]}"
     )
-    final_event = search_events[0]
-
-    # Should contain fallback or tool indicator
-    assert "Action completed" in final_event.message or "Tool" in final_event.message
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_accumulator_pattern_buffer_clearing(mock_orchestrator):
     """
-    Verify buffer clears between agents.
-    Agent B should NOT inherit Agent A's accumulated text.
+    Verify buffer clears between agents (P2 Fix).
+    P2 Fix: ExecutorCompletedEvent is silenced, so we verify via streaming events.
+    Agent B's streaming should NOT contain Agent A's text.
     """
     # Use "searcher" (SearchAgent) and "judge" (JudgeAgent)
     events = [
@@ -273,24 +282,22 @@ async def test_accumulator_pattern_buffer_clearing(mock_orchestrator):
         async for event in mock_orchestrator.run("test query"):
             generated_events.append(event)
 
-    # Find non-streaming events for each agent
-    agent_a_events = [
-        e for e in generated_events if "SearchAgent" in str(e.message) and e.type != "streaming"
-    ]
-    agent_b_events = [
-        e for e in generated_events if "JudgeAgent" in str(e.message) and e.type != "streaming"
-    ]
+    # P2 FIX: ExecutorCompletedEvent is SILENCED
+    # Verify via STREAMING events - each agent's stream is separate
+    streaming_events = [e for e in generated_events if e.type == "streaming"]
 
-    # Both should have completion events
-    assert len(agent_a_events) >= 1, (
-        f"No SearchAgent events: {[e.message for e in generated_events]}"
-    )
-    assert len(agent_b_events) >= 1, (
-        f"No JudgeAgent events: {[e.message for e in generated_events]}"
+    # Should have streaming events from both agents
+    assert len(streaming_events) >= 2, (
+        f"Expected streaming events, got: {[e.type for e in generated_events]}"
     )
 
-    # Agent A should have its own text
-    assert "Searcher" in agent_a_events[0].message
-    # Agent B should have its own text, NOT Agent A's
-    assert "Judge" in agent_b_events[0].message
-    assert "Searcher" not in agent_b_events[0].message, "Buffer not cleared between agents!"
+    # Verify content separation - each streaming event has its own content
+    searcher_streams = [e for e in streaming_events if "Searcher" in e.message]
+    judge_streams = [e for e in streaming_events if "Judge" in e.message]
+
+    assert len(searcher_streams) >= 1, "Missing searcher streaming events"
+    assert len(judge_streams) >= 1, "Missing judge streaming events"
+
+    # Buffer isolation: Judge stream should NOT contain Searcher text
+    for judge_event in judge_streams:
+        assert "Searcher" not in judge_event.message, "Buffer not cleared between agents!"
