@@ -539,7 +539,7 @@ The final output should be a structured research report."""
             message = getattr(event, "message", "")
 
             # FILTERING: Skip internal framework bookkeeping
-            if kind in ("task_ledger", "instruction"):
+            if kind in (ORCH_MSG_KIND_TASK_LEDGER, ORCH_MSG_KIND_INSTRUCTION):
                 return None
 
             # TRANSFORMATION: Handle user_task BEFORE text extraction
