@@ -8,6 +8,7 @@ Welcome to the DeepBoner documentation. This directory contains comprehensive do
 |------------|----------|
 | Get started quickly | [Getting Started](getting-started/installation.md) |
 | Understand the architecture | [Architecture Overview](architecture/overview.md) |
+| Assess production readiness | [Production Readiness](architecture/production-readiness.md) |
 | Set up for development | [Development Guide](development/testing.md) |
 | Deploy the application | [Deployment Guide](deployment/docker.md) |
 | Look up configuration | [Reference](reference/configuration.md) |
@@ -28,6 +29,7 @@ docs/
 ├── architecture/                 # System design documentation
 │   ├── overview.md               # High-level architecture
 │   ├── agent-tool-state-contracts.md  # Agent/Tool/State contracts (CRITICAL)
+│   ├── production-readiness.md   # Enterprise gap analysis (HONEST)
 │   ├── system-registry.md        # Service registry (canonical wiring)
 │   ├── workflow-diagrams.md      # Visual workflow diagrams
 │   ├── component-inventory.md    # Complete component catalog
