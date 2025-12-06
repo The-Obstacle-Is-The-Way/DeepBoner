@@ -6,7 +6,7 @@
 
 ## P3 - Progress Bar Positioning in ChatInterface
 
-**File:** [P3_PROGRESS_BAR_POSITIONING.md](./P3_PROGRESS_BAR_POSITIONING.md)
+**File:** [p3-progress-bar-positioning.md](./p3-progress-bar-positioning.md)
 **Status:** OPEN
 **Priority:** Low (cosmetic UX issue)
 
@@ -18,7 +18,7 @@
 
 ## How to Report Bugs
 
-1. Create `docs/bugs/P{N}_{SHORT_NAME}.md`
+1. Create `docs/bugs/p{n}-short-name.md` (kebab-case)
 2. Add entry to this file
 3. Priority: P0=blocker, P1=important, P2=UX, P3=cosmetic
 
