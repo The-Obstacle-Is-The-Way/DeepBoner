@@ -1,6 +1,6 @@
 # Active Bugs
 
-> Last updated: 2025-12-04
+> Last updated: 2025-12-06
 >
 > **Note:** Completed bug docs archived to `docs/bugs/archive/`
 > **See also:** [ARCHITECTURE.md](../ARCHITECTURE.md) for unified architecture plan
@@ -41,9 +41,11 @@ All resolved bugs have been moved to `docs/bugs/archive/`. Summary:
 - **P1 HuggingFace Novita 500 Error** - SUPERSEDED, switched to 7B model
 - **P1 Advanced Mode Uninterpretable Chain-of-Thought** - FIXED in PR #107
 - **P1 Synthesis Broken Key Fallback** - FIXED in PR #103
-- **P1 Simple Mode Removed Breaks Free Tier UX** - FIXED via Accumulator Pattern (PR #117)
 
 ### P2 Bugs (All FIXED)
+
+- **P2 ExecutorCompletedEvent UI Noise** - FIXED in PR #133, silenced internal framework events
+- **P2 Round Counter Semantic Mismatch** - FIXED in PR #132, semantic progress tracking
 - **P2 Duplicate Report Content** - FIXED in PR fix/p2-double-bug-squash, stateful deduplication in `run()` loop
 - **P2 First Turn Timeout** - FIXED in PR fix/p2-double-bug-squash, reduced results per tool (10→5), increased timeout (5→10 min)
 - **P2 7B Model Garbage Output** - SUPERSEDED by P1 Free Tier fix (root cause was premature marker, not model capacity)
@@ -51,6 +53,7 @@ All resolved bugs have been moved to `docs/bugs/archive/`. Summary:
 - **P2 Architectural BYOK Gaps** - FIXED, end-to-end BYOK support in PR #119
 
 ### P3 Tech Debt (All RESOLVED)
+
 - **P3 Remove Anthropic Partial Wiring** - DONE in PR #130, all Anthropic code removed
 - **P3 Remove Modal Integration** - DONE in PR #130, all Modal code removed (~1400 lines deleted)
 
@@ -68,11 +71,13 @@ All resolved bugs have been moved to `docs/bugs/archive/`. Summary:
 ## Archived Documentation
 
 The following have been moved to `docs/bugs/archive/`:
+
 - All resolved P0-P2 bug reports
 - Code quality audit findings (2025-11-30)
 - Gradio example vs chat arrow analysis
 
 Additional documentation moved:
+
 - `HF_FREE_TIER_ANALYSIS.md` → `docs/architecture/`
 - `TOOL_ANALYSIS_CRITICAL.md` → `docs/future-roadmap/`
 - `P3_REMOVE_ANTHROPIC_PARTIAL_WIRING.md` → `docs/future-roadmap/`
