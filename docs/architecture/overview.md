@@ -161,12 +161,13 @@ def get_chat_client():
 
 ### Agents (`src/agents/`)
 
-| Agent | File | Role |
-|-------|------|------|
-| SearchAgent | `search_agent.py` | Evidence retrieval |
-| JudgeAgent | `judge_agent.py` | Evidence evaluation |
-| ReportAgent | `report_agent.py` | Report synthesis |
-| HypothesisAgent | `hypothesis_agent.py` | Mechanistic pathway analysis |
+| Agent | File | Role | Status |
+|-------|------|------|--------|
+| SearchAgent | `search_agent.py` | Evidence retrieval | ✅ Active |
+| JudgeAgent | `judge_agent.py` | Evidence evaluation | ✅ Active |
+| ReportAgent | `report_agent.py` | Report synthesis | ✅ Active |
+| HypothesisAgent | `hypothesis_agent.py` | Mechanistic pathway analysis | ✅ Active |
+| RetrievalAgent | `retrieval_agent.py` | Web search (DuckDuckGo) | ⚠️ Not wired (see #134) |
 
 ### Tools (`src/tools/`)
 

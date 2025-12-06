@@ -54,6 +54,10 @@ This document defines the exact contracts between agents, tools, and shared stat
 | **ReportAgent** | `magentic_agents.py` | Report synthesis | get_bibliography |
 | **RetrievalAgent** | `retrieval_agent.py` | Web search | search_web |
 
+> **⚠️ Dead Code Warning:** RetrievalAgent is implemented but NOT wired into `magentic_agents.py`.
+> The orchestrator only uses SearchAgent (PubMed, ClinicalTrials, EuropePMC), not web search.
+> See GitHub issue #134 for decision to delete or wire in.
+
 ---
 
 ## Agent Contracts

@@ -640,39 +640,36 @@ gantt
 
 ## Implementation Highlights
 
-**Simple 4-Agent Setup:**
+**Actual Agent Factory Pattern (from `magentic_agents.py`):**
 ```python
-workflow = (
-    MagenticBuilder()
-    .participants(
-        hypothesis=HypothesisAgent(tools=[background_tool]),
-        search=SearchAgent(tools=[web_search, rag_tool]),
-        analysis=AnalysisAgent(tools=[code_execution]),
-        report=ReportAgent(tools=[code_execution, visualization])
-    )
-    .with_standard_manager(
-        chat_client=AnthropicClient(model="claude-sonnet-4"),
-        max_round_count=15,    # Prevent infinite loops
-        max_stall_count=3      # Detect stuck workflows
-    )
-    .build()
-)
+# Create agents via factory functions
+search_agent = create_search_agent(chat_client, domain, api_key)
+judge_agent = create_judge_agent(chat_client, domain, api_key)
+hypothesis_agent = create_hypothesis_agent(chat_client, domain, api_key)
+report_agent = create_report_agent(chat_client, domain, api_key)
+
+# Each agent is a ChatAgent with specific tools:
+# - SearchAgent: search_pubmed, search_clinical_trials, search_preprints
+# - JudgeAgent: None (LLM-only evaluation)
+# - HypothesisAgent: None (LLM-only generation)
+# - ReportAgent: get_bibliography
 ```
 
 **Current Agent Capabilities:**
-- **HypothesisAgent**: Generates research hypotheses
 - **SearchAgent**: Multi-source search (PubMed, ClinicalTrials, Europe PMC)
 - **JudgeAgent**: Evaluates evidence quality, determines sufficiency
-- **ReportAgent**: Generates final research report
-- **RetrievalAgent**: Web search via DuckDuckGo
+- **HypothesisAgent**: Generates research hypotheses
+- **ReportAgent**: Generates final research report with bibliography
+- **RetrievalAgent**: Web search via DuckDuckGo (⚠️ NOT wired in - see issue #134)
 
 **Manager** (AdvancedOrchestrator) coordinates agent execution and workflow.
 
 ---
 
-**Document Version**: 2.1 (Revised for accuracy)
+**Document Version**: 2.2 (Audited for accuracy)
 **Last Updated**: 2025-12-06
 **Architecture**: Microsoft Magentic Orchestration Pattern
-**Implemented Agents**: 5 (Hypothesis, Search, Judge, Report, Retrieval) + Manager
-**Planned but Not Implemented**: Analysis Agent (code execution removed in PR #130)
+**Active Agents**: 4 (Search, Judge, Hypothesis, Report) + Manager
+**Implemented but Not Wired**: RetrievalAgent (see issue #134)
+**Planned but Not Implemented**: AnalysisAgent (code execution removed in PR #130)
 **License**: MIT

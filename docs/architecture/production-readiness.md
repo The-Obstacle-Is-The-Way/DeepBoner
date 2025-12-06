@@ -323,22 +323,22 @@ None. The system is functional for demo/research use.
 
 ## Next Steps (If Going to Production)
 
-### Phase 1: Observability (2-3 weeks)
+### Phase 1: Observability
 1. Add OpenTelemetry instrumentation
 2. Emit trace IDs in AgentEvents
 3. Add token counting to LLM clients
 
-### Phase 2: Safety (1-2 weeks)
+### Phase 2: Safety
 1. Add input validation layer
 2. Implement prompt injection detection
 3. Add confidence thresholds for escalation
 
-### Phase 3: Resilience (1-2 weeks)
+### Phase 3: Resilience
 1. Add per-tool circuit breakers
 2. Improve rate limit handling
 3. Add health checks
 
-### Phase 4: Evaluation (2-4 weeks)
+### Phase 4: Evaluation
 1. Create evaluation datasets
 2. Implement meta-evaluation of Judge
 3. Establish quality baselines

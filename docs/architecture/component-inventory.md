@@ -170,7 +170,10 @@ else:
 ### `retrieval_agent.py`
 | Component | Type | Description |
 |-----------|------|-------------|
-| `RetrievalAgent` | Class | Evidence retrieval coordination |
+| `create_retrieval_agent()` | Factory | Creates ChatAgent for web search |
+| `search_web` | @ai_function | DuckDuckGo web search tool |
+
+> **Note:** This module is implemented but NOT wired into `magentic_agents.py`. See GitHub issue #134.
 
 ### `hypothesis_agent.py`
 | Component | Type | Description |
@@ -292,7 +295,9 @@ else:
 ### `web_search.py`
 | Component | Type | Description |
 |-----------|------|-------------|
-| Web search | Module | DuckDuckGo integration |
+| `WebSearchTool` | Class | DuckDuckGo integration wrapper |
+
+> **Note:** Used by `search_web` in `retrieval_agent.py`. See GitHub issue #134 for dead code status.
 
 ---
 
