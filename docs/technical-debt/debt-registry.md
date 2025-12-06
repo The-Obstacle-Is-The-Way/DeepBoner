@@ -8,46 +8,19 @@ This document tracks all known technical debt items in the DeepBoner codebase.
 
 | Category | Open | In Progress | Resolved |
 |----------|------|-------------|----------|
-| Architecture | 3 | 0 | 0 |
+| Architecture | 2 | 0 | 0 |
 | Code Quality | 4 | 0 | 0 |
 | Testing | 2 | 0 | 0 |
 | Documentation | 2 | 0 | 0 |
 | Performance | 2 | 0 | 0 |
 | Dependencies | 1 | 0 | 0 |
-| **Total** | **14** | **0** | **0** |
+| **Total** | **13** | **0** | **0** |
 
 ---
 
 ## Architecture
 
-### DEBT-001: Duplicate Agent Guide Files
-
-**Category:** Architecture
-**Severity:** Low
-**Added:** 2025-12-06
-**Status:** Open
-
-**Description:**
-CLAUDE.md, AGENTS.md, and GEMINI.md contain ~95% identical content. This violates DRY (Don't Repeat Yourself) and makes maintenance difficult.
-
-**Impact:**
-- Changes must be made in 3 places
-- Risk of documentation drift
-- Confusion about which file is canonical
-
-**Current Workaround:**
-Manual synchronization when updating.
-
-**Proposed Solution:**
-1. Keep CLAUDE.md as the canonical reference
-2. Make AGENTS.md and GEMINI.md symlinks or include-references
-3. Or consolidate into single DEVELOPMENT.md
-
-**Effort Estimate:** S
-
----
-
-### DEBT-002: Reserved but Empty Directories
+### DEBT-001: Reserved but Empty Directories
 
 **Category:** Architecture
 **Severity:** Low
@@ -71,7 +44,7 @@ Either implement the features or remove the directories.
 
 ---
 
-### DEBT-003: Experimental LangGraph Orchestrator
+### DEBT-002: Experimental LangGraph Orchestrator
 
 **Category:** Architecture
 **Severity:** Medium
@@ -98,7 +71,7 @@ Either promote to production status with full testing, or deprecate and remove.
 
 ## Code Quality
 
-### DEBT-004: Complex Orchestrator Logic
+### DEBT-003: Complex Orchestrator Logic
 
 **Category:** Code Quality
 **Severity:** Medium
@@ -123,7 +96,7 @@ Refactor into smaller, focused methods. Consider command pattern for orchestrati
 
 ---
 
-### DEBT-005: Magic Numbers in Code
+### DEBT-004: Magic Numbers in Code
 
 **Category:** Code Quality
 **Severity:** Low
@@ -147,7 +120,7 @@ Move to configuration or constants module with documentation.
 
 ---
 
-### DEBT-006: Global Singleton Pattern
+### DEBT-005: Global Singleton Pattern
 
 **Category:** Code Quality
 **Severity:** Low
@@ -171,7 +144,7 @@ Consider dependency injection for settings, especially in tests.
 
 ---
 
-### DEBT-007: ClinicalTrials Uses requests Instead of httpx
+### DEBT-006: ClinicalTrials Uses requests Instead of httpx
 
 **Category:** Code Quality
 **Severity:** Low
@@ -198,7 +171,7 @@ Documented in code comments and pyproject.toml.
 
 ## Testing
 
-### DEBT-008: Integration Tests Require Real APIs
+### DEBT-007: Integration Tests Require Real APIs
 
 **Category:** Testing
 **Severity:** Medium
@@ -225,7 +198,7 @@ Integration tests are not run in CI by default.
 
 ---
 
-### DEBT-009: Incomplete E2E Test Coverage
+### DEBT-008: Incomplete E2E Test Coverage
 
 **Category:** Testing
 **Severity:** Medium
@@ -254,7 +227,7 @@ Expand E2E test suite with more scenarios, especially:
 
 ## Documentation
 
-### DEBT-010: Outdated Inline Comments
+### DEBT-009: Outdated Inline Comments
 
 **Category:** Documentation
 **Severity:** Low
@@ -278,7 +251,7 @@ Systematic review of comments during code review process.
 
 ---
 
-### DEBT-011: Missing API Documentation
+### DEBT-010: Missing API Documentation
 
 **Category:** Documentation
 **Severity:** Low
@@ -304,7 +277,7 @@ Consider generating API docs with Sphinx or mkdocs.
 
 ## Performance
 
-### DEBT-012: Model Loading on First Request
+### DEBT-011: Model Loading on First Request
 
 **Category:** Performance
 **Severity:** Low
@@ -329,7 +302,7 @@ Docker pre-downloads the model during build.
 
 ---
 
-### DEBT-013: No Connection Pooling
+### DEBT-012: No Connection Pooling
 
 **Category:** Performance
 **Severity:** Low
@@ -355,7 +328,7 @@ Audit and optimize connection handling for external APIs.
 
 ## Dependencies
 
-### DEBT-014: Pinned Beta Dependencies
+### DEBT-013: Pinned Beta Dependencies
 
 **Category:** Dependencies
 **Severity:** Medium

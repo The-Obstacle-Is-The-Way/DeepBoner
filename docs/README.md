@@ -27,6 +27,7 @@ docs/
 │
 ├── architecture/                 # System design documentation
 │   ├── overview.md               # High-level architecture
+│   ├── agent-tool-state-contracts.md  # Agent/Tool/State contracts (CRITICAL)
 │   ├── system-registry.md        # Service registry (canonical wiring)
 │   ├── workflow-diagrams.md      # Visual workflow diagrams
 │   ├── component-inventory.md    # Complete component catalog
@@ -100,10 +101,11 @@ docs/
 3. [Configuration Reference](reference/configuration.md) - All options
 
 ### For Understanding the Codebase
-1. [Component Inventory](architecture/component-inventory.md) - All modules
-2. [Data Models](architecture/data-models.md) - Core types
-3. [System Registry](architecture/system-registry.md) - Service wiring
-4. [Technical Debt](technical-debt/index.md) - Known issues
+1. [Agent-Tool-State Contracts](architecture/agent-tool-state-contracts.md) - **CRITICAL** - Agent coordination contracts
+2. [Component Inventory](architecture/component-inventory.md) - All modules
+3. [Data Models](architecture/data-models.md) - Core types
+4. [System Registry](architecture/system-registry.md) - Service wiring
+5. [Technical Debt](technical-debt/index.md) - Known issues
 
 ## Related Documentation
 
