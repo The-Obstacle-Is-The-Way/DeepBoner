@@ -1,8 +1,24 @@
-# DeepBoner Workflow - Simplified Magentic Architecture
+# DeepBoner Workflow - Magentic Architecture
 
 > **Architecture Pattern**: Microsoft Magentic Orchestration
 > **Design Philosophy**: Simple, dynamic, manager-driven coordination
 > **Key Innovation**: Intelligent manager replaces rigid sequential phases
+> **Last Updated**: 2025-12-06
+
+## Current Agent Inventory
+
+| Agent | File | Status |
+|-------|------|--------|
+| Manager | `AdvancedOrchestrator` | ✅ Implemented |
+| Hypothesis Agent | `hypothesis_agent.py` | ✅ Implemented |
+| Search Agent | `search_agent.py` | ✅ Implemented |
+| Judge Agent | `judge_agent.py` | ✅ Implemented |
+| Report Agent | `report_agent.py` | ✅ Implemented |
+| Retrieval Agent | `retrieval_agent.py` | ✅ Implemented (web search) |
+| ~~Analysis Agent~~ | N/A | ❌ Not implemented (no code execution) |
+
+> **Note:** Some diagrams below show "AnalysisAgent" with code execution capabilities.
+> This was planned but not implemented. Modal code execution was removed in PR #130.
 
 ---
 
@@ -371,7 +387,7 @@ flowchart TD
     style CodeExec fill:#f0f0f0
 ```
 
-## 11. MCP Tool Architecture
+## 11. Tool Architecture
 
 ```mermaid
 graph TB
@@ -379,51 +395,49 @@ graph TB
         Manager[Magentic Manager]
         HypAgent[Hypothesis Agent]
         SearchAgent[Search Agent]
-        AnalysisAgent[Analysis Agent]
+        JudgeAgent[Judge Agent]
         ReportAgent[Report Agent]
     end
 
-    subgraph "MCP Protocol Layer"
-        Registry[MCP Tool Registry<br/>• Discovers tools<br/>• Routes requests<br/>• Manages connections]
+    subgraph "Tool Layer (Direct Calls)"
+        Tools[AI Functions<br/>@ai_function decorated<br/>• search_pubmed<br/>• search_clinical_trials<br/>• search_preprints<br/>• search_web<br/>• get_bibliography]
     end
 
-    subgraph "MCP Servers"
-        Server1[Web Search Server<br/>localhost:8001<br/>• PubMed<br/>• ClinicalTrials<br/>• Europe PMC]
-        Server2[Code Execution Server<br/>localhost:8002<br/>• Sandboxed Python<br/>• Package management]
-        Server3[RAG Server<br/>localhost:8003<br/>• Vector embeddings<br/>• Similarity search]
-        Server4[Visualization Server<br/>localhost:8004<br/>• Chart generation<br/>• Plot rendering]
+    subgraph "Tool Wrappers"
+        PubMedTool[PubMedTool]
+        TrialsTool[ClinicalTrialsTool]
+        EuropePMCTool[EuropePMCTool]
+        WebSearchTool[WebSearchTool]
     end
 
-    subgraph "External Services"
-        PubMed[PubMed API]
+    subgraph "External APIs"
+        PubMed[PubMed E-utilities]
         Trials[ClinicalTrials.gov API]
         EuropePMC[Europe PMC API]
-        Modal[Modal Sandbox]
-        ChromaDB[(ChromaDB)]
+        DDG[DuckDuckGo]
     end
 
-    SearchAgent -->|Request| Registry
-    AnalysisAgent -->|Request| Registry
-    ReportAgent -->|Request| Registry
+    SearchAgent -->|Calls| Tools
+    Tools --> PubMedTool
+    Tools --> TrialsTool
+    Tools --> EuropePMCTool
+    Tools --> WebSearchTool
 
-    Registry --> Server1
-    Registry --> Server2
-    Registry --> Server3
-    Registry --> Server4
-
-    Server1 --> PubMed
-    Server1 --> Trials
-    Server1 --> EuropePMC
-    Server2 --> Modal
-    Server3 --> ChromaDB
+    PubMedTool --> PubMed
+    TrialsTool --> Trials
+    EuropePMCTool --> EuropePMC
+    WebSearchTool --> DDG
 
     style Manager fill:#ffe6e6
-    style Registry fill:#fff4e6
-    style Server1 fill:#e6f3ff
-    style Server2 fill:#e6f3ff
-    style Server3 fill:#e6f3ff
-    style Server4 fill:#e6f3ff
+    style Tools fill:#fff4e6
+    style PubMedTool fill:#e6f3ff
+    style TrialsTool fill:#e6f3ff
+    style EuropePMCTool fill:#e6f3ff
+    style WebSearchTool fill:#e6f3ff
 ```
+
+> **Note:** MCP support is provided via Gradio's built-in `mcp_server=True` option in `src/app.py`.
+> This exposes the Gradio interface as an MCP server for Claude Desktop integration.
 
 ## 12. Progress Tracking & Stall Detection
 
@@ -519,18 +533,18 @@ graph LR
     DC -->|Literature search| PubMed[PubMed API<br/>Medical papers]
     DC -->|Clinical trials| Trials[ClinicalTrials.gov<br/>Trial data]
     DC -->|Preprints| EuropePMC[Europe PMC API<br/>Preprints & papers]
-    DC -->|Agent reasoning| Claude[Claude API<br/>Sonnet 4 / Opus]
-    DC -->|Code execution| Modal[Modal Sandbox<br/>Safe Python env]
-    DC -->|Vector storage| Chroma[ChromaDB<br/>Embeddings & RAG]
+    DC -->|Web search| DDG[DuckDuckGo<br/>General web]
+    DC -->|Agent reasoning| LLM[LLM Backend<br/>OpenAI or HuggingFace]
+    DC -->|Embeddings| Embed[SentenceTransformers<br/>Local embeddings]
 
-    DC -->|Deployed on| HF[HuggingFace Spaces<br/>Gradio 6.0]
+    DC -->|Deployed on| HF[HuggingFace Spaces<br/>Gradio 5.x]
 
     PubMed -->|Results| DC
     Trials -->|Results| DC
     EuropePMC -->|Results| DC
-    Claude -->|Responses| DC
-    Modal -->|Output| DC
-    Chroma -->|Context| DC
+    DDG -->|Results| DC
+    LLM -->|Responses| DC
+    Embed -->|Vectors| DC
 
     DC -->|Research report| User
 
@@ -539,9 +553,9 @@ graph LR
     style PubMed fill:#e6f3ff
     style Trials fill:#e6f3ff
     style EuropePMC fill:#e6f3ff
-    style Claude fill:#ffd6d6
-    style Modal fill:#f0f0f0
-    style Chroma fill:#ffe6f0
+    style DDG fill:#e6f3ff
+    style LLM fill:#ffd6d6
+    style Embed fill:#ffe6f0
     style HF fill:#d4edda
 ```
 
@@ -645,18 +659,20 @@ workflow = (
 )
 ```
 
-**Manager handles quality assessment in its instructions:**
-- Checks hypothesis quality (testable, novel, clear)
-- Validates search results (relevant, authoritative, recent)
-- Assesses analysis soundness (methodology, evidence, conclusions)
-- Ensures report completeness (all sections, proper citations)
+**Current Agent Capabilities:**
+- **HypothesisAgent**: Generates research hypotheses
+- **SearchAgent**: Multi-source search (PubMed, ClinicalTrials, Europe PMC)
+- **JudgeAgent**: Evaluates evidence quality, determines sufficiency
+- **ReportAgent**: Generates final research report
+- **RetrievalAgent**: Web search via DuckDuckGo
 
-No separate Judge Agent needed - manager does it all!
+**Manager** (AdvancedOrchestrator) coordinates agent execution and workflow.
 
 ---
 
-**Document Version**: 2.0 (Magentic Simplified)
-**Last Updated**: 2025-12-05
+**Document Version**: 2.1 (Revised for accuracy)
+**Last Updated**: 2025-12-06
 **Architecture**: Microsoft Magentic Orchestration Pattern
-**Agents**: 4 (Hypothesis, Search, Analysis, Report) + 1 Manager
+**Implemented Agents**: 5 (Hypothesis, Search, Judge, Report, Retrieval) + Manager
+**Planned but Not Implemented**: Analysis Agent (code execution removed in PR #130)
 **License**: MIT

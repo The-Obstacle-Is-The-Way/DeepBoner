@@ -1,6 +1,6 @@
 # System Registry & Wiring Architecture
 **Status**: Active / Canonical
-**Last Updated**: 2025-12-03
+**Last Updated**: 2025-12-06
 
 This document serves as the **Source of Truth** for the architectural wiring of the agent framework. It defines the strict rules for decorators, protocol markers, and the tool registry to prevent regression and ensure correct system behavior.
 
@@ -56,12 +56,12 @@ These are the `@ai_function` decorated functions that agents can invoke. The fra
 
 | Function Name | File Path | Description |
 |:---|:---|:---|
-| `search_pubmed` | `src/agents/tools.py:21` | Searches PubMed for biomedical literature |
-| `search_clinical_trials` | `src/agents/tools.py:81` | Searches ClinicalTrials.gov for clinical studies |
-| `search_preprints` | `src/agents/tools.py:121` | Searches Europe PMC for preprints and papers |
-| `get_bibliography` | `src/agents/tools.py:161` | Returns collected references for final report |
+| `search_pubmed` | `src/agents/tools.py:20` | Searches PubMed for biomedical literature |
+| `search_clinical_trials` | `src/agents/tools.py:80` | Searches ClinicalTrials.gov for clinical studies |
+| `search_preprints` | `src/agents/tools.py:120` | Searches Europe PMC for preprints and papers |
+| `get_bibliography` | `src/agents/tools.py:160` | Returns collected references for final report |
+| `search_web` | `src/agents/retrieval_agent.py:17` | Searches web using DuckDuckGo |
 | ~~`execute_python_code`~~ | ~~`src/agents/code_executor_agent.py`~~ | REMOVED in PR #130 (Modal deleted) |
-| ~~`search_web`~~ | ~~`src/agents/retrieval_agent.py`~~ | REMOVED in PR #130 (unused) |
 
 ### 3.2 Tool Classes (Internal Wrappers)
 
@@ -73,9 +73,11 @@ These are **internal implementation wrappers** used by the AI Functions. They ar
 | `ClinicalTrialsTool` | `src/tools/clinicaltrials.py` | `search_clinical_trials` |
 | `EuropePMCTool` | `src/tools/europepmc.py` | `search_preprints` |
 | `OpenAlexTool` | `src/tools/openalex.py` | OpenAlex search (used in SearchHandler) |
+| `WebSearchTool` | `src/tools/web_search.py` | `search_web` (DuckDuckGo) |
 | `SearchHandler` | `src/tools/search_handler.py` | Orchestrates parallel searches |
+| `RateLimiter` | `src/tools/rate_limiter.py` | Rate limiting via `limits` library |
+| `BaseTool` | `src/tools/base.py` | Abstract base class for tools |
 | ~~`ModalCodeExecutor`~~ | ~~`src/tools/code_execution.py`~~ | REMOVED in PR #130 |
-| ~~`WebSearchTool`~~ | ~~`src/tools/web_search.py`~~ | REMOVED in PR #130 |
 
 ---
 
@@ -119,8 +121,8 @@ class NewProviderChatClient(BaseChatClient):
 
 ## 5. Known Issues & Gotchas
 
-*   **~~P1 Bug - Premature Marker Setting~~ (FIXED):** The `HuggingFaceChatClient` previously set `__function_invoking_chat_client__ = True` in the class body, which caused `@use_function_invocation` to skip wrapping. **Resolution:** Marker removed; decorator now sets it correctly. See `docs/bugs/P1_FREE_TIER_TOOL_EXECUTION_FAILURE.md`.
-*   **HuggingFace Provider Routing:** Qwen2.5-7B-Instruct routes to Together.ai (not native HF). Tool call parsing may be inconsistent with complex multi-agent prompts.
+*   **~~P1 Bug - Premature Marker Setting~~ (FIXED):** The `HuggingFaceChatClient` previously set `__function_invoking_chat_client__ = True` in the class body, which caused `@use_function_invocation` to skip wrapping. **Resolution:** Marker removed; decorator now sets it correctly.
+*   **HuggingFace Provider Routing:** Large models (70B+) may be routed to third-party inference providers (Novita, Hyperbolic) instead of native HF infrastructure. See `CLAUDE.md` for current model recommendations.
 *   **Model Hallucination:** If tool execution fails (due to incorrect wiring), models like Qwen2.5-7B will often **hallucinate** fake tool results as text. Always verify `AgentRunResponse` contains actual `FunctionResultContent`.
 
 ---
