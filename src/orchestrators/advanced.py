@@ -18,11 +18,13 @@ Design Patterns:
 import asyncio
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from agent_framework import (
     MAGENTIC_EVENT_TYPE_ORCHESTRATOR,
+    ORCH_MSG_KIND_INSTRUCTION,
+    ORCH_MSG_KIND_TASK_LEDGER,
     AgentRunUpdateEvent,
     ChatAgent,
     ExecutorCompletedEvent,
@@ -327,6 +329,16 @@ The final output should be a structured research report."""
                 async for event in workflow.run_stream(task):
                     # 1. Handle Streaming (Source of Truth for Content)
                     if isinstance(event, AgentRunUpdateEvent) and event.data:
+                        # Check metadata to filter internal orchestrator messages
+                        props = getattr(event.data, "additional_properties", None) or {}
+                        event_type = props.get("magentic_event_type")
+                        msg_kind = props.get("orchestrator_message_kind")
+
+                        # Filter out internal orchestrator messages (task_ledger, instruction)
+                        if event_type == MAGENTIC_EVENT_TYPE_ORCHESTRATOR:
+                            if msg_kind in (ORCH_MSG_KIND_TASK_LEDGER, ORCH_MSG_KIND_INSTRUCTION):
+                                continue  # Skip internal coordination messages
+
                         author = getattr(event.data, "author_name", None)
                         # Detect agent switch to clear buffer
                         if author != state.current_agent_id:
@@ -346,20 +358,11 @@ The final output should be a structured research report."""
 
                     # 2. Handle Completion Signal
                     if isinstance(event, ExecutorCompletedEvent):
-                        state.iteration += 1
-
+                        # Internal state tracking only - NO UI events
                         # P1 FIX: Track if ReportAgent produced output
-                        # Note: ExecutorCompletedEvent might not have agent_id directly accessible
-                        # The executor_id usually maps to the agent name
                         agent_name = getattr(event, "executor_id", "") or "unknown"
                         if REPORTER_AGENT_ID in agent_name.lower():
                             state.reporter_ran = True
-
-                        comp_event, prog_event = self._handle_completion_event(
-                            event, state.current_message_buffer, state.iteration
-                        )
-                        yield comp_event
-                        yield prog_event
 
                         # P2 BUG FIX: Save length before clearing
                         state.last_streamed_length = len(state.current_message_buffer)
@@ -433,40 +436,6 @@ The final output should be a structured research report."""
                 message=f"Workflow error: {e!s}",
                 iteration=state.iteration,
             )
-
-    def _handle_completion_event(
-        self,
-        event: ExecutorCompletedEvent,
-        buffer: str,
-        iteration: int,
-    ) -> tuple[AgentEvent, AgentEvent]:
-        """Handle an agent completion event using the accumulated buffer."""
-        # Use buffer if available, otherwise fall back cautiously
-        # (Only fall back if buffer empty, which implies tool-only turn)
-        text_content = buffer
-        if not text_content:
-            # ExecutorCompletedEvent doesn't carry the message directly in the same way
-            # Try extraction but ignore repr strings AND empty strings
-            # The result is often in event.result or similar, but buffering is safer
-            text_content = "Action completed (Tool Call)"
-
-        agent_id = getattr(event, "executor_id", "unknown") or "unknown"
-        event_type = self._get_event_type_for_agent(agent_id)
-        semantic_name = self._get_agent_semantic_name(agent_id)
-
-        completion_event = AgentEvent(
-            type=event_type,
-            message=f"{semantic_name}: {self._smart_truncate(text_content)}",
-            iteration=iteration,
-        )
-
-        progress_event = AgentEvent(
-            type="progress",
-            message=f"Step {iteration}: {semantic_name} task completed",
-            iteration=iteration,
-        )
-
-        return completion_event, progress_event
 
     def _handle_final_event(
         self,
@@ -549,29 +518,6 @@ The final output should be a structured research report."""
         # The repr is useless for display purposes
         return ""
 
-    def _get_event_type_for_agent(
-        self,
-        agent_name: str,
-    ) -> Literal["search_complete", "judge_complete", "hypothesizing", "synthesizing", "judging"]:
-        """Map agent name to appropriate event type.
-
-        Args:
-            agent_name: The agent ID from the workflow event
-
-        Returns:
-            Event type string matching AgentEvent.type Literal
-        """
-        agent_lower = agent_name.lower()
-        if SEARCHER_AGENT_ID in agent_lower:
-            return "search_complete"
-        if JUDGE_AGENT_ID in agent_lower:
-            return "judge_complete"
-        if HYPOTHESIZER_AGENT_ID in agent_lower:
-            return "hypothesizing"
-        if REPORTER_AGENT_ID in agent_lower:
-            return "synthesizing"
-        return "judging"  # Default for unknown agents
-
     def _smart_truncate(self, text: str, max_len: int = 200) -> str:
         """Truncate at sentence boundary to avoid cutting words."""
         if len(text) <= max_len:
@@ -593,7 +539,7 @@ The final output should be a structured research report."""
             message = getattr(event, "message", "")
 
             # FILTERING: Skip internal framework bookkeeping
-            if kind in ("task_ledger", "instruction"):
+            if kind in (ORCH_MSG_KIND_TASK_LEDGER, ORCH_MSG_KIND_INSTRUCTION):
                 return None
 
             # TRANSFORMATION: Handle user_task BEFORE text extraction
