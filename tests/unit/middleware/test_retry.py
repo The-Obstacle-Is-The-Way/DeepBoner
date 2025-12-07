@@ -4,6 +4,8 @@ import pytest
 
 from src.middleware.retry import RetryMiddleware
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.mark.asyncio
 async def test_retry_middleware_succeeds_first_try():

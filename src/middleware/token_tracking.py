@@ -44,8 +44,19 @@ class TokenTrackingMiddleware(ChatMiddleware):
                 usage = msg.metadata.get("usage")
 
         if usage:
-            input_tokens = usage.get("input_tokens", 0) or usage.get("prompt_tokens", 0)
-            output_tokens = usage.get("output_tokens", 0) or usage.get("completion_tokens", 0)
+            # Handle both dict-like and object attribute access
+            if hasattr(usage, "get"):
+                # Dict-like access
+                input_tokens = usage.get("input_tokens", 0) or usage.get("prompt_tokens", 0)
+                output_tokens = usage.get("output_tokens", 0) or usage.get("completion_tokens", 0)
+            else:
+                # Object attribute access (Pydantic models, etc.)
+                input_tokens = getattr(usage, "input_tokens", 0) or getattr(
+                    usage, "prompt_tokens", 0
+                )
+                output_tokens = getattr(usage, "output_tokens", 0) or getattr(
+                    usage, "completion_tokens", 0
+                )
 
             self.total_input_tokens += input_tokens
             self.total_output_tokens += output_tokens

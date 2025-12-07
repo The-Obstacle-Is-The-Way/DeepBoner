@@ -1,6 +1,7 @@
 """Retry middleware for chat clients with exponential backoff."""
 
 import asyncio
+import random
 from collections.abc import Awaitable, Callable
 
 import structlog
@@ -52,9 +53,12 @@ class RetryMiddleware(ChatMiddleware):
         return False
 
     def _calculate_wait(self, attempt: int) -> float:
-        """Calculate wait time with exponential backoff."""
+        """Calculate wait time with exponential backoff and jitter."""
         wait = self.min_wait * (2**attempt)
-        return float(min(wait, self.max_wait))
+        wait = min(wait, self.max_wait)
+        # Add jitter (±25%) to avoid thundering herd
+        jitter = wait * 0.25 * (2 * random.random() - 1)
+        return float(max(self.min_wait, wait + jitter))
 
     async def process(
         self, context: ChatContext, next: Callable[[ChatContext], Awaitable[None]]

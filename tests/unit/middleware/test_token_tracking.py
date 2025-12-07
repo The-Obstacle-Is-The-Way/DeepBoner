@@ -4,6 +4,8 @@ import pytest
 
 from src.middleware.token_tracking import TokenTrackingMiddleware
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.mark.asyncio
 async def test_token_tracking_middleware_counts_tokens():
