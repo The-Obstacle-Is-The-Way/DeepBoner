@@ -257,6 +257,11 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
         fn=research_agent,
         title="🍆 DeepBoner",
         description=description,
+        # SPEC-22: Use native progress instead of gr.Progress (which breaks ChatInterface)
+        show_progress="full",
+        # SPEC-23: Gradio 6.0 best practices
+        fill_height=True,
+        autoscroll=True,
         examples=[
             # SPEC-16: Mode is always "advanced" (unified architecture)
             # Examples now only need: [question, domain, api_key, api_key_state]
