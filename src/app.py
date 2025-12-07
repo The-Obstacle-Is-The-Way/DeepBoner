@@ -129,7 +129,6 @@ async def research_agent(
     domain: str = "sexual_health",
     api_key: str = "",
     api_key_state: str = "",
-    progress: gr.Progress = gr.Progress(),  # noqa: B008
 ) -> AsyncGenerator[str, None]:
     """
     Gradio chat function that runs the research agent.
@@ -143,7 +142,6 @@ async def research_agent(
         domain: Research domain
         api_key: Optional user-provided API key (BYOK - auto-detects provider)
         api_key_state: Persistent API key state (survives example clicks)
-        progress: Gradio progress tracker
 
     Yields:
         Markdown-formatted responses for streaming
@@ -187,21 +185,8 @@ async def research_agent(
         )
 
         async for event in orchestrator.run(message):
-            # Update progress bar
-            if event.type == "started":
-                progress(0, desc="Starting research...")
-            elif event.type == "thinking":
-                progress(0.1, desc="Multi-agent reasoning...")
-            elif event.type == "progress":
-                # Calculate progress percentage (fallback to 0.15 for events without iteration)
-                p = 0.15
-                max_iters = getattr(orchestrator, "_max_rounds", None) or getattr(
-                    getattr(orchestrator, "config", None), "max_iterations", 10
-                )
-                if event.iteration:
-                    # Map 0..max to 0.2..0.9
-                    p = 0.2 + (0.7 * (min(event.iteration, max_iters) / max_iters))
-                progress(p, desc=event.message)
+            # SPEC-22: Progress bar removed - gr.Progress() causes visual glitches with ChatInterface
+            # Status feedback is provided via emoji-based AgentEvent.to_markdown() yielded in stream
 
             # BUG FIX: Handle streaming events separately to avoid token-by-token spam
             if event.type == "streaming":
