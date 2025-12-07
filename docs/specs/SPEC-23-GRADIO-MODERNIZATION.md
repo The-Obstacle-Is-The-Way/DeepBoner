@@ -80,7 +80,21 @@ Gradio 6.0.1 uses OpenAI-style dictionaries by default:
 
 This is the modern standard and aligns with our LLM backends.
 
-**Note:** No `type=` parameter exists in Gradio 6.0.1 - the legacy tuple format was removed.
+#### ⚠️ Version-Specific Note: No `type=` Parameter in 6.0.1
+
+**Why online docs may confuse you:**
+- Gradio 4.x/5.x had `type="messages"` or `type="tuples"` parameter
+- Gradio 6.0.0 **removed** the tuples format entirely ([changelog](https://www.gradio.app/changelog))
+- In 6.0.1, there is **no `type` parameter** - messages format is the only format
+
+**Source verification (December 2025):**
+```bash
+# Check installed signature - no 'type' param exists
+uv run python -c "import gradio; import inspect; print([p for p in inspect.signature(gradio.ChatInterface).parameters])"
+# Result: ['fn', 'multimodal', 'chatbot', ... ] - no 'type'
+```
+
+If you see docs mentioning `type="messages"`, they're from older Gradio versions.
 
 ### 2. Fill Height (`fill_height=True`)
 
@@ -182,5 +196,15 @@ uv run python src/app.py
 ## References
 
 - [Gradio ChatInterface Docs](https://www.gradio.app/docs/gradio/chatinterface)
+- [Gradio 6.0 Changelog](https://www.gradio.app/changelog) - Confirms tuples format removal
 - [GitHub #10407: fill_height with save_history](https://github.com/gradio-app/gradio/issues/10407)
 - [GitHub #11109: Autoscroll issue](https://github.com/gradio-app/gradio/issues/11109)
+
+---
+
+## Version History
+
+| Date | Change |
+|------|--------|
+| 2025-12-07 | Initial implementation (SPEC-22 + SPEC-23) |
+| 2025-12-07 | Added clarification: no `type=` param in Gradio 6.0.1 (tuples removed) |
