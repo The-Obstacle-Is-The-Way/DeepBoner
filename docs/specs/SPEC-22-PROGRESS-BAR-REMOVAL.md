@@ -1,6 +1,6 @@
 # SPEC-22: Remove Unsupported gr.Progress from ChatInterface
 
-**Status:** READY FOR IMPLEMENTATION
+**Status:** IMPLEMENTED
 **Priority:** P3 (Technical debt cleanup)
 **Effort:** 15 minutes
 **PR Scope:** Single file fix
@@ -105,12 +105,12 @@ Refactoring from `ChatInterface` to `gr.Blocks` + `gr.Chatbot` just to support `
 
 ## Implementation Checklist
 
-- [ ] Open `src/app.py`
-- [ ] Remove `progress: gr.Progress = gr.Progress()` from `research_agent` signature
-- [ ] Remove all `progress(...)` calls (lines 192, 194, 204)
-- [ ] Add `show_progress="full"` to `gr.ChatInterface` constructor
-- [ ] Verify emoji status yields still present in orchestrator events
-- [ ] Run `make check`
+- [x] Open `src/app.py`
+- [x] Remove `progress: gr.Progress = gr.Progress()` from `research_agent` signature
+- [x] Remove all `progress(...)` calls from `research_agent`
+- [x] Add `show_progress="full"` to `gr.ChatInterface` constructor
+- [x] Verify emoji status yields still present in orchestrator events
+- [x] Run `make check`
 - [ ] Test locally: `uv run python src/app.py`
 
 ---
@@ -118,8 +118,8 @@ Refactoring from `ChatInterface` to `gr.Blocks` + `gr.Chatbot` just to support `
 ## Verification
 
 ```bash
-# Verify no gr.Progress usage
-grep -n "gr.Progress\|progress(" src/app.py
+# Verify no gr.Progress usage in codebase
+grep -rn "gr.Progress" src/
 
 # Should return empty (no matches)
 ```

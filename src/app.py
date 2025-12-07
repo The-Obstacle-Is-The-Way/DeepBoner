@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from typing import Any, Literal
 
 import gradio as gr
+import structlog
 
 from src.config.domain import ResearchDomain
 from src.orchestrators import create_orchestrator
@@ -12,6 +13,8 @@ from src.utils.config import settings
 from src.utils.exceptions import ConfigurationError
 from src.utils.models import OrchestratorConfig
 from src.utils.service_loader import warmup_services
+
+logger = structlog.get_logger(__name__)
 
 OrchestratorMode = Literal["advanced", "hierarchical"]  # Unified Architecture (SPEC-16)
 
@@ -126,9 +129,9 @@ def _validate_inputs(
 async def research_agent(
     message: str,
     history: list[dict[str, Any]],
-    domain: str = "sexual_health",
-    api_key: str = "",
-    api_key_state: str = "",
+    domain: str | None = None,
+    api_key: str | None = None,
+    api_key_state: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """
     Gradio chat function that runs the research agent.
@@ -139,9 +142,9 @@ async def research_agent(
     Args:
         message: User's research question
         history: Chat history (Gradio format)
-        domain: Research domain
+        domain: Research domain (None defaults to "sexual_health")
         api_key: Optional user-provided API key (BYOK - auto-detects provider)
-        api_key_state: Persistent API key state (survives example clicks)
+        api_key_state: Persistent API key state (survives example clicks, can be None)
 
     Yields:
         Markdown-formatted responses for streaming
@@ -220,7 +223,8 @@ async def research_agent(
             yield "\n\n".join(response_parts)
 
     except Exception as e:
-        yield f"❌ **Error**: {e!s}"
+        logger.exception("research_agent_failed", error=str(e))
+        yield "❌ **Error**: Something went wrong. Please try again."
 
 
 def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
