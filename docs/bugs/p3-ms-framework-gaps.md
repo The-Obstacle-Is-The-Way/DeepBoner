@@ -217,7 +217,7 @@ class AggregateContextProvider(ContextProvider):
 ## Gap 6: Exception Granularity (LOW VALUE)
 
 **What MS Framework Has:**
-```
+```text
 AgentFrameworkException (base)
 ├── AgentException
 │   ├── AgentExecutionException
@@ -239,7 +239,7 @@ AgentFrameworkException (base)
 ```
 
 **What DeepBoner Has:**
-```
+```text
 DeepBonerError (base)
 ├── SearchError
 │   └── RateLimitError

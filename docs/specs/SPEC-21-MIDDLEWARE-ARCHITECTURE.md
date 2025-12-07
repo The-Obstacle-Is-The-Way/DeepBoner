@@ -18,7 +18,7 @@
 
 ## Current State (WRONG)
 
-```
+```text
 src/
 ├── middleware/                      ← MISLEADING: contains workflow
 │   ├── __init__.py
@@ -38,7 +38,7 @@ except Exception as e:
 
 ## Target State (CORRECT)
 
-```
+```text
 src/
 ├── workflows/                       ← RENAMED: now accurate
 │   ├── __init__.py
@@ -95,7 +95,7 @@ __all__ = ["RetryMiddleware", "TokenTrackingMiddleware"]
 """Retry middleware for chat clients with exponential backoff."""
 
 import asyncio
-from typing import Any
+from typing import Awaitable, Callable
 
 import structlog
 from agent_framework._middleware import ChatContext, ChatMiddleware
@@ -150,7 +150,9 @@ class RetryMiddleware(ChatMiddleware):
         wait = self.min_wait * (2 ** attempt)
         return min(wait, self.max_wait)
 
-    async def process(self, context: ChatContext, next: Any) -> None:
+    async def process(
+        self, context: ChatContext, next: Callable[[ChatContext], Awaitable[None]]
+    ) -> None:
         """Process the chat request with retry logic."""
         last_error: Exception | None = None
 
@@ -198,7 +200,7 @@ class RetryMiddleware(ChatMiddleware):
 """Token tracking middleware for monitoring API usage."""
 
 from contextvars import ContextVar
-from typing import Any
+from typing import Awaitable, Callable
 
 import structlog
 from agent_framework._middleware import ChatContext, ChatMiddleware
@@ -226,7 +228,9 @@ class TokenTrackingMiddleware(ChatMiddleware):
         self.total_output_tokens = 0
         self.request_count = 0
 
-    async def process(self, context: ChatContext, next: Any) -> None:
+    async def process(
+        self, context: ChatContext, next: Callable[[ChatContext], Awaitable[None]]
+    ) -> None:
         """Process request and track token usage."""
         await next(context)
 

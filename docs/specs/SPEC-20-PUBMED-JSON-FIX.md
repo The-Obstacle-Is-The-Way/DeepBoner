@@ -69,13 +69,13 @@ pmids = search_data.get("esearchresult", {}).get("idlist", [])
 
 ## Implementation Checklist
 
-- [ ] Add `import json` at top of file (if not present)
-- [ ] Move `search_resp.json()` inside try block (line ~88)
-- [ ] Add `except json.JSONDecodeError` handler
-- [ ] Log warning with response preview for debugging
-- [ ] Return empty list (graceful degradation)
-- [ ] Write unit test: mock response with HTML content
-- [ ] Run `make check` (lint + typecheck + test)
+- [x] Add `import json` at top of file (if not present)
+- [x] Move `search_resp.json()` inside try block (line ~88)
+- [x] Add `except json.JSONDecodeError` handler
+- [x] Log warning with response preview for debugging
+- [x] Return empty list (graceful degradation)
+- [x] Write unit test: mock response with HTML content
+- [x] Run `make check` (lint + typecheck + test)
 
 ---
 
