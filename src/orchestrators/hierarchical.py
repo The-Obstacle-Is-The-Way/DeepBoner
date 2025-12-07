@@ -19,11 +19,11 @@ import structlog
 from src.agents.judge_agent_llm import LLMSubIterationJudge
 from src.agents.magentic_agents import create_search_agent
 from src.config.domain import ResearchDomain
-from src.middleware.sub_iteration import SubIterationMiddleware, SubIterationTeam
 from src.orchestrators.base import OrchestratorProtocol
 from src.state import init_magentic_state
 from src.utils.models import AgentEvent, OrchestratorConfig
 from src.utils.service_loader import get_embedding_service_if_available
+from src.workflows.sub_iteration import SubIterationMiddleware, SubIterationTeam
 
 logger = structlog.get_logger()
 

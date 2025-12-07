@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.middleware.sub_iteration import SubIterationMiddleware
 from src.utils.models import AssessmentDetails, JudgeAssessment
+from src.workflows.sub_iteration import SubIterationMiddleware
 
 pytestmark = pytest.mark.unit
 
