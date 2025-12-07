@@ -1,5 +1,6 @@
 """PubMed search tool using NCBI E-utilities."""
 
+import json
 from typing import Any
 
 import httpx
@@ -80,12 +81,19 @@ class PubMedTool:
                     params=search_params,
                 )
                 search_resp.raise_for_status()
+                search_data = search_resp.json()
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == self.HTTP_TOO_MANY_REQUESTS:
                     raise RateLimitError("PubMed rate limit exceeded") from e
                 raise SearchError(f"PubMed search failed: {e}") from e
+            except json.JSONDecodeError as e:
+                logger.warning(
+                    "PubMed returned invalid JSON (possible maintenance page)",
+                    error=str(e),
+                    response_preview=search_resp.text[:200] if search_resp else "N/A",
+                )
+                return []
 
-            search_data = search_resp.json()
             pmids = search_data.get("esearchresult", {}).get("idlist", [])
 
             if not pmids:

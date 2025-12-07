@@ -1,5 +1,6 @@
 """Unit tests for PubMed tool."""
 
+import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -150,3 +151,25 @@ class TestPubMedTool:
         assert "help" not in term.lower()
         # "low libido" should be expanded
         assert "HSDD" in term or "hypoactive" in term
+
+    @pytest.mark.asyncio
+    async def test_search_handles_maintenance_page(self, mocker):
+        """PubMedTool should gracefully handle non-JSON responses (maintenance pages)."""
+        # Mock response that returns HTML instead of JSON (maintenance page)
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "<html><body>Service Temporarily Unavailable</body></html>"
+        mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        mocker.patch("httpx.AsyncClient", return_value=mock_client)
+
+        tool = PubMedTool()
+        # Should return empty list, not crash
+        results = await tool.search("test query")
+        assert results == []
