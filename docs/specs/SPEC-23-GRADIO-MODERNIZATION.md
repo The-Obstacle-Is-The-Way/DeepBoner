@@ -4,12 +4,54 @@
 **Priority:** P3 (Technical alignment)
 **Effort:** 30 minutes
 **Dependencies:** SPEC-22 (Progress Bar Removal)
+**Gradio Version:** 6.0.1 (December 2025)
+**Last Verified:** 2025-12-07
 
 ---
 
 ## Executive Summary
 
 Audit of `src/app.py` against Gradio 6.0.1 best practices. Identifies parameters we should add or update for full alignment with modern Gradio.
+
+---
+
+## Gradio Architecture Clarification
+
+### The Three High-Level Classes
+
+| Class | Purpose | Flexibility | Use Case |
+|-------|---------|-------------|----------|
+| `gr.Blocks` | Low-level building blocks | Most flexible | Custom layouts, multiple components |
+| `gr.Interface` | Input → Output wrapper | Medium | ML models, transformations |
+| `gr.ChatInterface` | Chat app wrapper | Opinionated | **Chatbots (what we use)** |
+
+### Inheritance Hierarchy
+
+```
+gr.Blocks (base)
+    ↑
+gr.ChatInterface (inherits from Blocks, adds chat-specific features)
+```
+
+**Key insight:** `ChatInterface` IS a `Blocks` context internally. We're not mixing different things - we're using the right abstraction for a chat app.
+
+### What ChatInterface Gives Us (For Free)
+
+- Chat history state management
+- Submit/Stop buttons
+- Streaming support
+- Example handling
+- `additional_inputs` accordion
+- MCP server support (`mcp_server=True`)
+
+### When Would We Need Pure `gr.Blocks`?
+
+Only if we needed:
+- Multiple independent chat windows
+- Complex multi-panel layouts
+- Non-chat components as primary UI
+
+**Verdict:** `ChatInterface` is the correct choice for DeepBoner.
 
 ---
 
