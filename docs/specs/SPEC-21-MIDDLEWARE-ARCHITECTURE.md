@@ -1,6 +1,6 @@
 # SPEC-21: Middleware Architecture Refactor
 
-**Status:** READY FOR IMPLEMENTATION
+**Status:** COMPLETED
 **Priority:** P2 (Architectural hygiene + fixes HuggingFace retry bug)
 **Effort:** 2 hours
 **PR Scope:** Folder rename + new middleware implementations

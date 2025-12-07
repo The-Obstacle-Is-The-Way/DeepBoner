@@ -27,6 +27,8 @@ from agent_framework._types import FunctionCallContent, FunctionResultContent
 from agent_framework.observability import use_observability
 from huggingface_hub import InferenceClient
 
+from src.middleware.retry import RetryMiddleware
+from src.middleware.token_tracking import TokenTrackingMiddleware
 from src.utils.config import settings
 
 logger = structlog.get_logger()
@@ -51,7 +53,13 @@ class HuggingFaceChatClient(BaseChatClient):  # type: ignore[misc]
             api_key: HF_TOKEN (optional, defaults to env var).
             **kwargs: Additional arguments passed to BaseChatClient.
         """
-        super().__init__(**kwargs)
+        # Create middleware instances
+        middleware: list[Any] = [
+            RetryMiddleware(max_attempts=3, min_wait=1.0, max_wait=10.0),
+            TokenTrackingMiddleware(),
+        ]
+
+        super().__init__(middleware=middleware, **kwargs)
         # FIX: Use 7B model to stay on HuggingFace native infrastructure (avoid Novita 500s)
         self.model_id = model_id or settings.huggingface_model or "Qwen/Qwen2.5-7B-Instruct"
         self.api_key = api_key or settings.hf_token
