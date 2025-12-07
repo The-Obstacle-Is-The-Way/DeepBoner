@@ -141,7 +141,7 @@ async def research_agent(
 
     Args:
         message: User's research question
-        history: Chat history (Gradio format)
+        history: Chat history (OpenAI-style: [{"role": "user"|"assistant", "content": str}])
         domain: Research domain (None defaults to "sexual_health")
         api_key: Optional user-provided API key (BYOK - auto-detects provider)
         api_key_state: Persistent API key state (survives example clicks, can be None)
@@ -264,6 +264,7 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
         # SPEC-22: Use native progress instead of gr.Progress (which breaks ChatInterface)
         show_progress="full",
         # SPEC-23: Gradio 6.0 best practices
+        # NOTE: Gradio 6.0.1 uses messages format by default (no type= param needed)
         fill_height=True,
         autoscroll=True,
         examples=[
