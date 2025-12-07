@@ -1,65 +1,105 @@
-# SPEC-22: Progress Bar Removal
+# SPEC-22: Remove Unsupported gr.Progress from ChatInterface
 
 **Status:** READY FOR IMPLEMENTATION
-**Priority:** P3 (Cosmetic UX fix)
+**Priority:** P3 (Technical debt cleanup)
 **Effort:** 15 minutes
 **PR Scope:** Single file fix
 
 ---
 
-## Problem Statement
+## Executive Summary
 
-The `gr.Progress()` bar conflicts with Gradio's `ChatInterface`, causing visual glitches:
-- Progress bar "floats" in the middle of chat output
-- Text overlaps with progress bar
-- Looks unprofessional
-
-**Root Cause:** `gr.Progress()` is designed for `gr.Interface`, not `ChatInterface`. It's a known Gradio limitation.
+We are using `gr.Progress()` with `gr.ChatInterface`, but **Gradio does not support this combination**. This is not a workaround - this is the correct fix to align with Gradio's architecture.
 
 ---
 
-## Current Code (BROKEN)
+## Technical Background
+
+### Gradio's Progress Mechanisms
+
+| Mechanism | Designed For | Works With ChatInterface |
+|-----------|--------------|-------------------------|
+| `gr.Progress()` | `gr.Interface` | ❌ NO - causes visual glitches |
+| `show_progress` param | `ChatInterface` | ✅ YES - built-in spinner/timer |
+| Streaming yields | `ChatInterface` | ✅ YES - native support |
+| `ChatMessage.metadata.status` | `ChatInterface` | ✅ YES - per-message indicators |
+
+### Why gr.Progress Fails with ChatInterface
+
+1. **GitHub Issue [#5967](https://github.com/gradio-app/gradio/issues/5967)**: "gr.Progress is not integrated with ChatInterface or Chatbots" - closed without resolution (Jan 2024)
+2. **Visual symptoms**: Progress bar floats in middle of chat output, overlaps text
+3. **Root cause**: `gr.Progress` injects UI into the output component area, but `ChatInterface` manages its own output rendering
+
+### What We Already Have (Working)
+
+Our `research_agent` function already yields semantic status messages:
 
 ```python
-# src/app.py - research_agent function
-async def research_agent(
-    message: str,
-    history: list[dict[str, Any]],
-    domain: str = "sexual_health",
-    api_key: str = "",
-    api_key_state: str = "",
-    progress: gr.Progress = gr.Progress(),  # ← PROBLEM: Causes visual glitches
-) -> AsyncGenerator[str, None]:
+yield "🧠 **Backend**: Paid API (OpenAI) | **Domain**: Sexual Health"
+yield "⏳ **Processing...** Searching PubMed, ClinicalTrials.gov..."
+# During orchestration:
+yield "⏱️ **PROGRESS**: Round 1/5 (~3m 0s remaining)"
+yield "🔬 **Step 2: SearchAgent** - Searching for evidence..."
+yield "✅ **COMPLETE**: Research finished"
+```
+
+These work perfectly with ChatInterface streaming.
+
+---
+
+## The Fix
+
+### What to Remove
+
+```python
+# src/app.py - REMOVE from research_agent signature:
+progress: gr.Progress = gr.Progress(),  # noqa: B008
+
+# src/app.py - REMOVE all progress() calls:
+progress(0, desc="Starting research...")
+progress(0.1, desc="Multi-agent reasoning...")
+progress(p, desc=event.message)
+```
+
+### What to Add (Optional Enhancement)
+
+```python
+# src/app.py - In create_demo(), add show_progress for built-in spinner:
+demo = gr.ChatInterface(
+    fn=research_agent,
+    show_progress="full",  # Shows spinner + runtime timer (Gradio native)
     ...
-    if event.type == "started":
-        progress(0, desc="Starting research...")  # ← These cause overlap
-    elif event.type == "progress":
-        progress(p, desc=event.message)
+)
 ```
 
 ---
 
-## Required Fix
+## Why This Is The Correct Approach (Not A Workaround)
 
-Remove `gr.Progress()` entirely. We already have emoji status messages in chat output.
+### ❌ What Would Be Over-Engineering
 
-```python
-# src/app.py - Fixed version
-async def research_agent(
-    message: str,
-    history: list[dict[str, Any]],
-    domain: str = "sexual_health",
-    api_key: str = "",
-    api_key_state: str = "",
-    # REMOVED: progress: gr.Progress = gr.Progress(),
-) -> AsyncGenerator[str, None]:
-    ...
-    # REMOVED: All progress(...) calls
+Refactoring from `ChatInterface` to `gr.Blocks` + `gr.Chatbot` just to support `gr.Progress`:
 
-    # KEEP: Emoji status messages are already being yielded
-    # These work great with ChatInterface:
-    # yield "⏱️ **PROGRESS**: Round 1/5 (~3m 0s remaining)"
-```
+| ChatInterface provides FREE | gr.Blocks would require manual |
+|---------------------------|-------------------------------|
+| MCP server support | Unknown if compatible |
+| Chat history state | Manual `gr.State` management |
+| Submit/Stop buttons | Manual button wiring |
+| Example handling | Manual click handlers |
+| Streaming support | Manual async iteration |
+| Accordion for inputs | Manual accordion component |
+
+**Effort**: Days of refactoring + testing
+**Benefit**: A progress bar (which we already have via emoji status)
+**Verdict**: Not justified
+
+### ✅ What Is Professional Engineering
+
+1. Use `ChatInterface` as designed (high-level, batteries-included)
+2. Remove unsupported feature (`gr.Progress`)
+3. Rely on supported mechanisms:
+   - Streaming status yields (already implemented)
+   - `show_progress="full"` (Gradio native)
 
 ---
 
@@ -67,61 +107,45 @@ async def research_agent(
 
 - [ ] Open `src/app.py`
 - [ ] Remove `progress: gr.Progress = gr.Progress()` from `research_agent` signature
-- [ ] Remove all `progress(...)` calls inside `research_agent`
-- [ ] Verify emoji status yields are still present (they should be)
-- [ ] Run `uv run python -c "from src.app import create_demo; print('OK')"`
+- [ ] Remove all `progress(...)` calls (lines 192, 194, 204)
+- [ ] Add `show_progress="full"` to `gr.ChatInterface` constructor
+- [ ] Verify emoji status yields still present in orchestrator events
 - [ ] Run `make check`
-- [ ] Test locally: `uv run python src/app.py` and verify no floating progress bar
+- [ ] Test locally: `uv run python src/app.py`
 
 ---
 
-## What We Keep
+## Verification
 
-The emoji status messages in chat output:
+```bash
+# Verify no gr.Progress usage
+grep -n "gr.Progress\|progress(" src/app.py
 
+# Should return empty (no matches)
 ```
-⏱️ **PROGRESS**: Round 1/5 (~3m 0s remaining)
-🔬 **Step 2: SearchAgent** - Searching for evidence...
-✅ **COMPLETE**: Research finished in 45 seconds
-```
 
-These are yielded directly to chat and work perfectly with `ChatInterface`.
+### Manual Test
+1. Start app: `uv run python src/app.py`
+2. Submit a research query
+3. Verify:
+   - ✅ Gradio spinner appears (top-right timer)
+   - ✅ Emoji status messages stream in chat
+   - ❌ No floating/overlapping progress bar
 
 ---
 
 ## Acceptance Criteria
 
-1. No `gr.Progress()` in `research_agent` function signature
-2. No `progress(...)` calls in `research_agent` function body
-3. Emoji status messages still appear in chat output
-4. No floating/overlapping progress bar in UI
+1. No `gr.Progress` in codebase
+2. `show_progress="full"` added to ChatInterface
+3. Emoji status messages continue working
+4. No visual glitches in UI
 5. `make check` passes
 
 ---
 
-## Dependencies
+## References
 
-None. This is a standalone cosmetic fix.
-
----
-
-## Testing
-
-```bash
-# Start local server
-uv run python src/app.py
-
-# In browser:
-# 1. Submit a research query
-# 2. Verify NO floating progress bar appears
-# 3. Verify emoji status messages DO appear in chat
-# 4. Verify chat messages don't have visual glitches
-```
-
----
-
-## Notes
-
-- This is the recommended fix from Gradio's own documentation
-- `ChatInterface.show_progress="minimal"` (default) still shows a spinner, which is fine
-- If we need a real progress bar later, we'd need to refactor to `gr.Blocks` wrapper
+- [Gradio ChatInterface Docs](https://www.gradio.app/docs/gradio/chatinterface)
+- [Gradio Progress Bars Guide](https://www.gradio.app/guides/progress-bars)
+- [GitHub #5967: Progress bar for ChatInterface](https://github.com/gradio-app/gradio/issues/5967)
