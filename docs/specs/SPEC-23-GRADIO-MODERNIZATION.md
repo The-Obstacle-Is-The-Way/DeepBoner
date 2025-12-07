@@ -1,6 +1,6 @@
 # SPEC-23: Gradio 6.0 Modernization Audit
 
-**Status:** READY FOR IMPLEMENTATION
+**Status:** IMPLEMENTED
 **Priority:** P3 (Technical alignment)
 **Effort:** 30 minutes
 **Dependencies:** SPEC-22 (Progress Bar Removal)
@@ -59,29 +59,28 @@ Only if we needed:
 
 | Feature | Current | Best Practice | Action |
 |---------|---------|---------------|--------|
-| `type` param | Not set (legacy) | `type="messages"` | **ADD** - Uses OpenAI-style message format |
-| `fill_height` | Not set | `fill_height=True` | **ADD** - Chat fills vertical space |
-| `autoscroll` | Not set | `autoscroll=True` | **ADD** - Auto-scroll to latest message |
-| `show_progress` | Not set (minimal) | `show_progress="full"` | **ADD** - Per SPEC-22 |
-| `gr.Progress` | Used (broken) | Remove | **REMOVE** - Per SPEC-22 |
+| Message format | N/A | OpenAI-style dicts | ✅ **DEFAULT** - Gradio 6.0.1 uses messages format by default |
+| `fill_height` | ~~Not set~~ | `fill_height=True` | ✅ **DONE** - Chat fills vertical space |
+| `autoscroll` | ~~Not set~~ | `autoscroll=True` | ✅ **DONE** - Auto-scroll to latest message |
+| `show_progress` | ~~Not set (minimal)~~ | `show_progress="full"` | ✅ **DONE** - Per SPEC-22 |
+| `gr.Progress` | ~~Used (broken)~~ | Remove | ✅ **DONE** - Per SPEC-22 |
 
 ---
 
 ## Detailed Findings
 
-### 1. Message Format (`type="messages"`)
+### 1. Message Format (OpenAI-style)
 
-**Current:** Not specified (uses legacy tuple format)
-**Recommended:** `type="messages"`
+**Status:** ✅ Default in Gradio 6.0.1
 
-The `type="messages"` format uses OpenAI-style dictionaries:
+Gradio 6.0.1 uses OpenAI-style dictionaries by default:
 ```python
 {"role": "user" | "assistant", "content": str}
 ```
 
 This is the modern standard and aligns with our LLM backends.
 
-**Note:** This may require updating how we handle `history` parameter.
+**Note:** No `type=` parameter exists in Gradio 6.0.1 - the legacy tuple format was removed.
 
 ### 2. Fill Height (`fill_height=True`)
 
@@ -104,14 +103,14 @@ Ensures chat auto-scrolls to the latest message during streaming. Critical for l
 ## Implementation Checklist
 
 ### SPEC-22 Items (Do First)
-- [ ] Remove `progress: gr.Progress = gr.Progress()` from `research_agent` signature
-- [ ] Remove all `progress(...)` calls in `research_agent`
+- [x] Remove `progress: gr.Progress = gr.Progress()` from `research_agent` signature
+- [x] Remove all `progress(...)` calls in `research_agent`
 
 ### SPEC-23 Items
-- [ ] Add `show_progress="full"` to `gr.ChatInterface`
-- [ ] Add `fill_height=True` to `gr.ChatInterface`
-- [ ] Add `autoscroll=True` to `gr.ChatInterface`
-- [ ] Evaluate `type="messages"` migration (may require history format changes)
+- [x] Add `show_progress="full"` to `gr.ChatInterface`
+- [x] Add `fill_height=True` to `gr.ChatInterface`
+- [x] Add `autoscroll=True` to `gr.ChatInterface`
+- [x] Verify messages format is default (Gradio 6.0.1 - no `type=` param needed)
 
 ---
 
@@ -131,7 +130,7 @@ demo = gr.ChatInterface(
 )
 ```
 
-### After (Modernized)
+### After (Modernized) ✅ IMPLEMENTED
 ```python
 demo = gr.ChatInterface(
     fn=research_agent,
@@ -145,9 +144,9 @@ demo = gr.ChatInterface(
     # SPEC-22: Use native progress instead of gr.Progress
     show_progress="full",
     # SPEC-23: Modern Gradio 6.0 settings
+    # NOTE: Gradio 6.0.1 uses messages format by default (no type= param needed)
     fill_height=True,
     autoscroll=True,
-    # NOTE: type="messages" requires history format migration - evaluate separately
 )
 ```
 
@@ -155,12 +154,12 @@ demo = gr.ChatInterface(
 
 ## Risk Assessment
 
-| Change | Risk | Mitigation |
-|--------|------|------------|
-| `show_progress="full"` | Low | Native Gradio feature |
-| `fill_height=True` | Low | May affect layout, test visually |
-| `autoscroll=True` | Low | Native feature, improves UX |
-| `type="messages"` | Medium | Requires history format changes - defer if needed |
+| Change | Risk | Status |
+|--------|------|--------|
+| `show_progress="full"` | Low | ✅ Implemented |
+| `fill_height=True` | Low | ✅ Implemented |
+| `autoscroll=True` | Low | ✅ Implemented |
+| Messages format | None | ✅ Default in Gradio 6.0.1 - no code change needed |
 
 ---
 
