@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from typing import Any, Literal
 
 import gradio as gr
+import structlog
 
 from src.config.domain import ResearchDomain
 from src.orchestrators import create_orchestrator
@@ -12,6 +13,8 @@ from src.utils.config import settings
 from src.utils.exceptions import ConfigurationError
 from src.utils.models import OrchestratorConfig
 from src.utils.service_loader import warmup_services
+
+logger = structlog.get_logger(__name__)
 
 OrchestratorMode = Literal["advanced", "hierarchical"]  # Unified Architecture (SPEC-16)
 
@@ -126,10 +129,9 @@ def _validate_inputs(
 async def research_agent(
     message: str,
     history: list[dict[str, Any]],
-    domain: str = "sexual_health",
-    api_key: str = "",
-    api_key_state: str = "",
-    progress: gr.Progress = gr.Progress(),  # noqa: B008
+    domain: str | None = None,
+    api_key: str | None = None,
+    api_key_state: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """
     Gradio chat function that runs the research agent.
@@ -140,10 +142,9 @@ async def research_agent(
     Args:
         message: User's research question
         history: Chat history (Gradio format)
-        domain: Research domain
+        domain: Research domain (None defaults to "sexual_health")
         api_key: Optional user-provided API key (BYOK - auto-detects provider)
-        api_key_state: Persistent API key state (survives example clicks)
-        progress: Gradio progress tracker
+        api_key_state: Persistent API key state (survives example clicks, can be None)
 
     Yields:
         Markdown-formatted responses for streaming
@@ -187,21 +188,8 @@ async def research_agent(
         )
 
         async for event in orchestrator.run(message):
-            # Update progress bar
-            if event.type == "started":
-                progress(0, desc="Starting research...")
-            elif event.type == "thinking":
-                progress(0.1, desc="Multi-agent reasoning...")
-            elif event.type == "progress":
-                # Calculate progress percentage (fallback to 0.15 for events without iteration)
-                p = 0.15
-                max_iters = getattr(orchestrator, "_max_rounds", None) or getattr(
-                    getattr(orchestrator, "config", None), "max_iterations", 10
-                )
-                if event.iteration:
-                    # Map 0..max to 0.2..0.9
-                    p = 0.2 + (0.7 * (min(event.iteration, max_iters) / max_iters))
-                progress(p, desc=event.message)
+            # SPEC-22: Progress bar removed - gr.Progress() causes visual glitches
+            # with ChatInterface. Status feedback via AgentEvent.to_markdown()
 
             # BUG FIX: Handle streaming events separately to avoid token-by-token spam
             if event.type == "streaming":
@@ -235,7 +223,8 @@ async def research_agent(
             yield "\n\n".join(response_parts)
 
     except Exception as e:
-        yield f"❌ **Error**: {e!s}"
+        logger.exception("research_agent_failed", error=str(e))
+        yield "❌ **Error**: Something went wrong. Please try again."
 
 
 def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
@@ -272,6 +261,11 @@ def create_demo() -> tuple[gr.ChatInterface, gr.Accordion]:
         fn=research_agent,
         title="🍆 DeepBoner",
         description=description,
+        # SPEC-22: Use native progress instead of gr.Progress (which breaks ChatInterface)
+        show_progress="full",
+        # SPEC-23: Gradio 6.0 best practices
+        fill_height=True,
+        autoscroll=True,
         examples=[
             # SPEC-16: Mode is always "advanced" (unified architecture)
             # Examples now only need: [question, domain, api_key, api_key_state]
