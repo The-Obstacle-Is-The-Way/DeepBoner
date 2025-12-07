@@ -1,15 +1,11 @@
 """Token tracking middleware for monitoring API usage."""
 
 from collections.abc import Awaitable, Callable
-from contextvars import ContextVar
 
 import structlog
 from agent_framework._middleware import ChatContext, ChatMiddleware
 
 logger = structlog.get_logger()
-
-# ContextVar for per-request token tracking
-_request_tokens: ContextVar[dict[str, int]] = ContextVar("request_tokens")
 
 
 class TokenTrackingMiddleware(ChatMiddleware):
@@ -64,10 +60,14 @@ class TokenTrackingMiddleware(ChatMiddleware):
                 total_requests=self.request_count,
             )
 
+    def get_stats(self) -> dict[str, int]:
+        """Get cumulative token usage statistics.
 
-def get_token_stats() -> dict[str, int]:
-    """Get current request's token usage."""
-    try:
-        return _request_tokens.get().copy()
-    except LookupError:
-        return {"input": 0, "output": 0}
+        Returns:
+            Dictionary with total_input, total_output, and request_count.
+        """
+        return {
+            "total_input": self.total_input_tokens,
+            "total_output": self.total_output_tokens,
+            "request_count": self.request_count,
+        }
