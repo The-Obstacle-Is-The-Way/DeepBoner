@@ -185,8 +185,8 @@ async def research_agent(
         )
 
         async for event in orchestrator.run(message):
-            # SPEC-22: Progress bar removed - gr.Progress() causes visual glitches with ChatInterface
-            # Status feedback is provided via emoji-based AgentEvent.to_markdown() yielded in stream
+            # SPEC-22: Progress bar removed - gr.Progress() causes visual glitches
+            # with ChatInterface. Status feedback via AgentEvent.to_markdown()
 
             # BUG FIX: Handle streaming events separately to avoid token-by-token spam
             if event.type == "streaming":

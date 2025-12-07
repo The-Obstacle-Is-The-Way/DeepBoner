@@ -1,6 +1,6 @@
 # SPEC-22: Progress Bar Removal
 
-**Status:** READY FOR IMPLEMENTATION
+**Status:** IMPLEMENTED
 **Priority:** P3 (Cosmetic UX fix)
 **Effort:** 15 minutes
 **PR Scope:** Single file fix
@@ -65,12 +65,12 @@ async def research_agent(
 
 ## Implementation Checklist
 
-- [ ] Open `src/app.py`
-- [ ] Remove `progress: gr.Progress = gr.Progress()` from `research_agent` signature
-- [ ] Remove all `progress(...)` calls inside `research_agent`
-- [ ] Verify emoji status yields are still present (they should be)
-- [ ] Run `uv run python -c "from src.app import create_demo; print('OK')"`
-- [ ] Run `make check`
+- [x] Open `src/app.py`
+- [x] Remove `progress: gr.Progress = gr.Progress()` from `research_agent` signature
+- [x] Remove all `progress(...)` calls inside `research_agent`
+- [x] Verify emoji status yields are still present (they should be)
+- [x] Run `uv run python -c "from src.app import create_demo; print('OK')"`
+- [x] Run `make check` (lint passes; pre-existing mypy issues unrelated to this change)
 - [ ] Test locally: `uv run python src/app.py` and verify no floating progress bar
 
 ---
