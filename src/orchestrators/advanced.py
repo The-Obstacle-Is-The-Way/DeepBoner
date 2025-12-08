@@ -45,6 +45,7 @@ from src.config.domain import ResearchDomain, get_domain_config
 from src.orchestrators.base import OrchestratorProtocol
 from src.utils.config import settings
 from src.utils.models import AgentEvent
+from src.utils.sanitize import sanitize_streaming_text
 from src.utils.service_loader import get_embedding_service_if_available
 
 if TYPE_CHECKING:
@@ -347,13 +348,17 @@ The final output should be a structured research report."""
 
                         text = getattr(event.data, "text", None)
                         if text:
-                            state.current_message_buffer += text
-                            yield AgentEvent(
-                                type="streaming",
-                                message=text,
-                                data={"agent_id": author},
-                                iteration=state.iteration,
-                            )
+                            # P2 FIX: Sanitize LLM output to remove garbage tokens
+                            # See: docs/bugs/p2-llm-output-contamination.md
+                            clean_text = sanitize_streaming_text(text)
+                            if clean_text:  # Skip if sanitization removed everything
+                                state.current_message_buffer += clean_text
+                                yield AgentEvent(
+                                    type="streaming",
+                                    message=clean_text,
+                                    data={"agent_id": author},
+                                    iteration=state.iteration,
+                                )
                         continue
 
                     # 2. Handle Completion Signal

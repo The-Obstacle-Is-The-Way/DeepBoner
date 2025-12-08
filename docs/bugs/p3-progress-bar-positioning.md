@@ -1,9 +1,10 @@
 # P3 Bug: Progress Bar Positioning/Overlap in ChatInterface
 
 **Severity**: P3 (Low - UX polish)
-**Status**: Open
+**Status**: CLOSED (SPEC-22 implemented 2025-12-07)
 **Discovered**: 2025-12-01
 **Reporter**: Internal QA
+**Resolution**: Removed `gr.Progress()` entirely, added `show_progress="full"` to ChatInterface
 
 ## Symptom
 
