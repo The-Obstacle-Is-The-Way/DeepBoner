@@ -1,18 +1,30 @@
 # Active Bugs
 
-> Last updated: 2025-12-06
+> Last updated: 2025-12-08
 
 ---
 
-## P3 - Progress Bar Positioning in ChatInterface
+## ~~P2 - LLM Output Contamination (Free Tier)~~ (RESOLVED)
+
+**File:** [p2-llm-output-contamination.md](./p2-llm-output-contamination.md)
+**Status:** CLOSED (Implemented 2025-12-08)
+**Priority:** Medium (affects output quality)
+
+**Problem:** Qwen 2.5 7B occasionally outputs garbage tokens like `.ToDecimal` (C# method names) mid-output due to training data contamination.
+
+**Fix:** Added `src/utils/sanitize.py` with regex-based output filtering. Integrated into `src/orchestrators/advanced.py` at streaming emission point.
+
+---
+
+## ~~P3 - Progress Bar Positioning in ChatInterface~~ (RESOLVED)
 
 **File:** [p3-progress-bar-positioning.md](./p3-progress-bar-positioning.md)
-**Status:** OPEN
+**Status:** CLOSED (SPEC-22)
 **Priority:** Low (cosmetic UX issue)
 
 **Problem:** `gr.Progress()` conflicts with ChatInterface, causing the progress bar to float/overlap with chat messages.
 
-**Fix:** Remove `gr.Progress()` entirely and rely on emoji status messages in chat output.
+**Fix:** Removed `gr.Progress()` entirely per SPEC-22. Now uses `show_progress="full"` for native Gradio spinner.
 
 ---
 
