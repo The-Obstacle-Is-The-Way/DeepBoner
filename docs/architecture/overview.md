@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Last Updated**: 2025-12-06
+> **Last Updated**: 2025-12-12
 
 This document provides a comprehensive overview of DeepBoner's architecture.
 
@@ -36,11 +36,6 @@ DeepBoner is an **AI-native sexual health research agent** that autonomously:
 │  │   │  Agent  │    │  Agent  │    │  Agent  │                  │  │
 │  │   └─────────┘    └─────────┘    └─────────┘                  │  │
 │  │                                                               │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-│                                                                      │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                  LangGraph Orchestrator                       │  │
-│  │                    (Experimental)                             │  │
 │  └───────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────┘
           │
@@ -157,7 +152,7 @@ def get_chat_client():
 |-----------|------|---------|
 | AdvancedOrchestrator | `advanced.py` | Main multi-agent orchestrator |
 | OrchestratorFactory | `factory.py` | Backend selection |
-| LangGraphOrchestrator | `langgraph_orchestrator.py` | Experimental workflow engine |
+| HierarchicalOrchestrator | `hierarchical.py` | Alternative manager-agent hierarchy |
 
 ### Agents (`src/agents/`)
 
@@ -167,7 +162,6 @@ def get_chat_client():
 | JudgeAgent | `judge_agent.py` | Evidence evaluation | ✅ Active |
 | ReportAgent | `report_agent.py` | Report synthesis | ✅ Active |
 | HypothesisAgent | `hypothesis_agent.py` | Mechanistic pathway analysis | ✅ Active |
-| RetrievalAgent | `retrieval_agent.py` | Web search (DuckDuckGo) | ⚠️ Not wired (see #134) |
 
 ### Tools (`src/tools/`)
 

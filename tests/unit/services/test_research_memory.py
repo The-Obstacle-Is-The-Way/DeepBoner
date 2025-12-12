@@ -4,10 +4,9 @@ from unittest.mock import AsyncMock, create_autospec
 
 import pytest
 
-from src.agents.graph.state import Conflict, Hypothesis
 from src.services.embedding_protocol import EmbeddingServiceProtocol
 from src.services.research_memory import ResearchMemory
-from src.utils.models import Citation, Evidence
+from src.utils.models import Citation, Conflict, Evidence, Hypothesis
 
 
 @pytest.fixture

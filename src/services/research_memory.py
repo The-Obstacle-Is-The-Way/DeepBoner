@@ -14,8 +14,7 @@ from typing import TYPE_CHECKING, Any, get_args
 
 import structlog
 
-from src.agents.graph.state import Conflict, Hypothesis
-from src.utils.models import Citation, Evidence, SourceName
+from src.utils.models import Citation, Conflict, Evidence, Hypothesis, SourceName
 
 if TYPE_CHECKING:
     from src.services.embedding_protocol import EmbeddingServiceProtocol

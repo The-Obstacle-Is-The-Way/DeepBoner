@@ -1,6 +1,6 @@
 # Technical Debt Registry
 
-> **Last Updated**: 2025-12-06
+> **Last Updated**: 2025-12-12
 
 This document tracks all known technical debt items in the DeepBoner codebase.
 
@@ -8,64 +8,13 @@ This document tracks all known technical debt items in the DeepBoner codebase.
 
 | Category | Open | In Progress | Resolved |
 |----------|------|-------------|----------|
-| Architecture | 2 | 0 | 0 |
+| Architecture | 0 | 0 | 2 |
 | Code Quality | 4 | 0 | 0 |
 | Testing | 2 | 0 | 0 |
 | Documentation | 2 | 0 | 0 |
 | Performance | 2 | 0 | 0 |
 | Dependencies | 1 | 0 | 0 |
-| **Total** | **13** | **0** | **0** |
-
----
-
-## Architecture
-
-### DEBT-001: Reserved but Empty Directories
-
-**Category:** Architecture
-**Severity:** Low
-**Added:** 2025-12-06
-**Status:** Open
-
-**Description:**
-`src/database_services/` and `src/retrieval_factory/` exist but are empty placeholders for future features.
-
-**Impact:**
-- Confusion about project structure
-- Empty imports may cause issues
-
-**Current Workaround:**
-Document as "reserved" in component inventory.
-
-**Proposed Solution:**
-Either implement the features or remove the directories.
-
-**Effort Estimate:** S
-
----
-
-### DEBT-002: Experimental LangGraph Orchestrator
-
-**Category:** Architecture
-**Severity:** Medium
-**Added:** 2025-12-06
-**Status:** Open
-
-**Description:**
-`src/orchestrators/langgraph_orchestrator.py` is marked as experimental and may not be fully tested or integrated.
-
-**Impact:**
-- Unclear which orchestrator is preferred
-- May have untested edge cases
-- Maintenance burden of two orchestrators
-
-**Current Workaround:**
-Default to AdvancedOrchestrator in production.
-
-**Proposed Solution:**
-Either promote to production status with full testing, or deprecate and remove.
-
-**Effort Estimate:** M
+| **Total** | **11** | **0** | **2** |
 
 ---
 
@@ -356,7 +305,47 @@ Version pinning with explicit documentation.
 
 ## Resolved Items
 
-*No items resolved yet.*
+### DEBT-001: Reserved but Empty Directories ✅
+
+**Category:** Architecture
+**Severity:** Low
+**Added:** 2025-12-06
+**Resolved:** 2025-12-12
+**Status:** Resolved
+
+**Description:**
+`src/database_services/` and `src/retrieval_factory/` existed as empty placeholders for future features.
+
+**Resolution:**
+Removed the empty directories. The Microsoft Agent Framework provides pluggable memory modules (Redis, Pinecone, Qdrant, etc.) that supersede any custom implementation needs. Future persistence requirements can use the framework's built-in capabilities.
+
+**PR:** Technical debt cleanup
+
+---
+
+### DEBT-002: Experimental LangGraph Orchestrator ✅
+
+**Category:** Architecture
+**Severity:** Medium
+**Added:** 2025-12-06
+**Resolved:** 2025-12-12
+**Status:** Resolved
+
+**Description:**
+`src/orchestrators/langgraph_orchestrator.py` was marked as experimental and deprecated.
+
+**Resolution:**
+Removed the LangGraph orchestrator and all related code:
+- Deleted `src/orchestrators/langgraph_orchestrator.py`
+- Deleted `src/agents/graph/` directory (nodes.py, workflow.py, state.py)
+- Deleted `src/agents/retrieval_agent.py` (dead code, never wired - see #134)
+- Deleted `src/tools/web_search.py` (dead code)
+- Removed LangGraph/LangChain dependencies from pyproject.toml
+- Moved `Hypothesis` and `Conflict` models from graph/state.py to utils/models.py (these were shared domain models)
+
+The Microsoft Agent Framework's workflow capabilities (graph-based workflows with streaming, checkpointing, human-in-the-loop) supersede what LangGraph was providing. AdvancedOrchestrator is now the sole orchestrator implementation.
+
+**PR:** Technical debt cleanup
 
 ---
 

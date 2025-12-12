@@ -311,3 +311,38 @@ class OrchestratorConfig(BaseModel):
     max_iterations: int = Field(default=10, ge=1, le=20)
     max_results_per_tool: int = Field(default=10, ge=1, le=50)
     search_timeout: float = Field(default=30.0, ge=5.0, le=120.0)
+
+
+# --- Cognitive State Models ---
+# These models track research progress and hypothesis validation
+
+
+class Hypothesis(BaseModel):
+    """A research hypothesis with evidence tracking.
+
+    Used by ResearchMemory to track hypotheses generated during research.
+    """
+
+    id: str = Field(description="Unique identifier for the hypothesis")
+    statement: str = Field(description="The hypothesis statement")
+    status: Literal["proposed", "validating", "confirmed", "refuted"] = Field(
+        default="proposed", description="Current validation status"
+    )
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Confidence score (0.0-1.0)")
+    supporting_evidence_ids: list[str] = Field(default_factory=list)
+    contradicting_evidence_ids: list[str] = Field(default_factory=list)
+    reasoning: str | None = Field(default=None, description="Reasoning for current status")
+
+
+class Conflict(BaseModel):
+    """A detected contradiction between sources.
+
+    Used by ResearchMemory to track conflicts that need resolution.
+    """
+
+    id: str = Field(description="Unique identifier for the conflict")
+    description: str = Field(description="Description of the contradiction")
+    source_a_id: str = Field(description="ID of the first conflicting source")
+    source_b_id: str = Field(description="ID of the second conflicting source")
+    status: Literal["open", "resolved"] = Field(default="open")
+    resolution: str | None = Field(default=None, description="Resolution explanation if resolved")
