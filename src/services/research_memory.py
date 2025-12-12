@@ -14,8 +14,7 @@ from typing import TYPE_CHECKING, Any, get_args
 
 import structlog
 
-from src.agents.graph.state import Conflict, Hypothesis
-from src.utils.models import Citation, Evidence, SourceName
+from src.utils.models import Citation, Conflict, Evidence, Hypothesis, SourceName
 
 if TYPE_CHECKING:
     from src.services.embedding_protocol import EmbeddingServiceProtocol
@@ -142,7 +141,11 @@ class ResearchMemory:
         # Group by source for cleaner summary
         for i, ev in enumerate(evidence[:20], 1):  # Limit to top 20 items
             summary.append(f"{i}. {ev.citation.title} ({ev.citation.date})")
-            summary.append(f"   {ev.content[:200]}...")  # Brief snippet
+            # Brief snippet with proper truncation indicator
+            content_snippet = ev.content[:200]
+            if len(ev.content) > 200:
+                content_snippet += "..."
+            summary.append(f"   {content_snippet}")
 
         return "\n".join(summary)
 

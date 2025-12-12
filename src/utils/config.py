@@ -92,11 +92,11 @@ class Settings(BaseSettings):
         raise ConfigurationError(f"Unknown LLM provider: {self.llm_provider}")
 
     def get_openai_api_key(self) -> str:
-        """Get OpenAI API key (required for Magentic function calling)."""
+        """Get OpenAI API key (required for premium features)."""
         if not self.openai_api_key:
             raise ConfigurationError(
-                "OPENAI_API_KEY not set. Magentic mode requires OpenAI for function calling. "
-                "Use mode='simple' for other providers."
+                "OPENAI_API_KEY not set. Premium features require OpenAI API key. "
+                "Free tier uses HuggingFace Inference instead."
             )
         return self.openai_api_key
 

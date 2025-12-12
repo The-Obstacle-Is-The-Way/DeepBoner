@@ -92,7 +92,7 @@ def configure_orchestrator(
 
     # 4. Free Tier (HuggingFace Inference)
     else:
-        backend_info = "Free Tier (Llama 3.1 / Mistral)"
+        backend_info = "Free Tier (Qwen 2.5 7B)"
 
     orchestrator = create_orchestrator(
         config=config,
@@ -161,7 +161,7 @@ async def research_agent(
 
     if not has_paid_key:
         yield (
-            "🤗 **Free Tier**: Using HuggingFace Inference (Llama 3.1 / Mistral) for AI analysis.\n"
+            "🤗 **Free Tier**: Using HuggingFace Inference (Qwen 2.5 7B) for AI analysis.\n"
             "For premium models, enter an OpenAI API key below.\n\n"
         )
 
