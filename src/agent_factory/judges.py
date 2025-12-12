@@ -251,10 +251,13 @@ class HFInferenceJudgeHandler:
     See CodeRabbit review PR #104 for details on this architectural consideration.
     """
 
+    # NOTE: Models < 30B run on HuggingFace native infrastructure (reliable).
+    # Models >= 70B route to third-party providers (Novita, Hyperbolic) which are UNRELIABLE.
+    # See CLAUDE.md "HuggingFace Free Tier Architecture" for details.
     FALLBACK_MODELS: ClassVar[list[str]] = [
-        "meta-llama/Llama-3.1-8B-Instruct",  # Primary (Gated)
-        "mistralai/Mistral-7B-Instruct-v0.3",  # Secondary
-        "HuggingFaceH4/zephyr-7b-beta",  # Fallback (Ungated)
+        "Qwen/Qwen2.5-7B-Instruct",  # Primary - Native HF infrastructure (reliable)
+        "mistralai/Mistral-Nemo-Instruct-2407",  # Secondary - 12B, Native HF (reliable)
+        "HuggingFaceH4/zephyr-7b-beta",  # Fallback - Ungated, Native HF
     ]
 
     # Force synthesis after N consecutive failures to prevent infinite loops

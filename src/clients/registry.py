@@ -78,7 +78,7 @@ class ProviderRegistry:
             Configured BaseChatClient
 
         Raises:
-            ValueError: If no provider can handle the request
+            ConfigurationError: If no provider can handle the request
         """
         # Normalize provider name
         normalized_provider = provider.lower() if provider else None
